@@ -1,7 +1,7 @@
 
 CXX = g++
-CXXFLAGS += -Wall -Werror -std=c++11 -I../ -I.
-# CXXFLAGS += -fsanitize=address
+CXXFLAGS += -Wall -Werror -std=c++11 -I../../ -I.
+CXXFLAGS += -fsanitize=address
 LDFLAGS +=
 
 SRC = main.cc

@@ -260,6 +260,16 @@ rta_type_to_str(uint16_t type)
     case IFLA_LINK_NETNSID   : return "IFLA_LINK_NETNSID";
     case IFLA_PHYS_PORT_NAME : return "IFLA_PHYS_PORT_NAME";
     case IFLA_PROTO_DOWN     : return "IFLA_PROTO_DOWN";
+    case IFLA_GSO_MAX_SEGS      : return "IFLA_GSO_MAX_SEGS";
+    case IFLA_GSO_MAX_SIZE      : return "IFLA_GSO_MAX_SIZE";
+    case IFLA_PAD               : return "IFLA_PAD";
+    case IFLA_XDP               : return "IFLA_XDP";
+    case IFLA_EVENT             : return "IFLA_EVENT";
+    case IFLA_NEW_NETNSID       : return "IFLA_NEW_NETNSID";
+    case IFLA_IF_NETNSID        : return "IFLA_IF_NETNSID";
+    case IFLA_CARRIER_UP_COUNT  : return "IFLA_CARRIER_UP_COUNT";
+    case IFLA_CARRIER_DOWN_COUNT: return "IFLA_CARRIER_DOWN_COUNT";
+    case IFLA_NEW_IFINDEX       : return "IFLA_NEW_IFINDEX";
     default:
       fprintf(stderr, "%s: unknown(%u)\n", __func__, type);
       return "unknown";

@@ -9,7 +9,7 @@
 - rtnetlink is composed of link,addr,route,etc..
   - each operation associated to 3messages(link,addr,route)
 
-opening the netlink monitor socket
+**opening the netlink monitor socket**
 ```
 int open_rtnl_sock(uint32_t groups) {
   int sock = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
@@ -29,14 +29,119 @@ grp |= RTMGRP_IPV4_IFADDR;
 int sock = open_rtnl_sock(grp);
 ```
 
+<a name="netlink-family"></a>
+**netlink-family** defined at `/usr/include/linux/netlink.h`
+- 0x00: rtnetlink
+- 0x10: genetlink
+
+### rtnetlink
+
+#### generics of rtnetlink
+
 Tipical Netlink packet format is following.
 ```
-bit0 --------> bitN(N>0)
-Netlink
-MsgHdr
++------------+----------+---------//-----+
+| struct     | type     | type           |
+| rtnlmsghdr | specific | specific data  |
+|            | header   | netlink        |
+| (A)        | (B)      | attributes (C) |
+|            |          |                |
++------------+----------+---------//-----+
+(B) is or of following types.
+  - struct ifinfomsg;
+  - etc..
 ```
 
-## Use cases
+struct nlmsghdr has following specification.
+This is standarded on RFC as Netlink message header
+([RFC3549](https://tools.ietf.org/html/rfc3549#section-2.3.2)).
+```
+strcut nlmsghdr {
+  uint32_t nlmsg_len;   /* length  */
+  uint16_t nlmsg_type;  /* type    */
+  uint16_t nlmsg_flags; /* flags   */
+  uint32_t nlmsg_seq;   /* seq-num */
+  uint32_t nlmsg_pid;   /* proc-id */
+};
+```
+
+the type of (B) is determined by member of (A),
+the member `nlmsghdr.nlmsg_type` determine the next
+format type.
+also this is showing the message type of following.
+
+<a name="rtnetlink-message-type"></a>
+**rtnetlink-message-type** defined at `/usr/include/rtnetlink.h`
+- `0x02,02`: error
+- `0x03,03`: end of a dump
+- `0x10,16`: `NEW_LINK`, create network interface
+- `0x11,17`: `DEL_LINK`, remove network interface
+- `0x12,18`: `GET_LINK`, get network interface info
+- `0x13,19`: `SET_LINK`
+- `0x14,20`: add ip address
+- `0x15,21`: del ip address
+- `0x16,22`: get ip address
+- `0x18,24`: add network route
+- `0x19,25`: del network route
+- `0x20,26`: get network route
+
+<a name="struct-rtattr"></a>
+the format of (C) is following. This is general purpose
+TLV(Type/Length/Value) format.
+```
+struct rtattr {
+  uint16_t rta_len;  /* Length of option */
+  uint16_t rta_type; /* Type of option */
+  /* Data follows */
+};
+```
+
+#### rtnetlink LINK message
+
+frame format
+```
++------------+-----------+--------+---//-+--------+
+| struct     | struct    | struct |      | struct |
+| rtnlmsghdr | ifinfomsg | rtattr |      | rtattr |
+|            |           | rta[0] | .... | rta[N] |
+| - type: A  |           | (B_0)  |      | (B_N)  |
+|            |           |        |      |        |
++------------+-----------+--------+---//-+--------+
+(A) is RTM_NEWLINK or RTM_DELLINK or RTM_GETLINU
+(N_i, i:0-N):
+  - this is strcut rtattr's format.
+  - attr's type is defined at /usr/include/linux/if_link.h as IFLA_XXXXX.
+		ex: If rta's type is IFLA_MTU(4), the rta includes MTU-size of interface.
+		ex: If rta's type is IFLA_PROMISCUITY(30) and value is 0,
+		    that shows the interface isn't promiscuous mode.
+```
+
+struct ifinfomsg has following specification
+```
+struct ifinfomsg {
+  uint8_t   ifi_family; /* AF_UNSPEC */
+  uint16_t  ifi_type;   /* Device type */
+  int32_t   ifi_index;  /* Interface index */
+  uint32_t  ifi_flags;  /* Device flags  */
+  uint32_t  ifi_change; /* change mask */
+};
+```
+
+following is special attribute for LINK message.
+<a name="rtnetlink-attribute-type"></a>
+**rtnetlink-attribute-type**
+
+#### rtnetlink ADDR message
+#### rtnetlink ROUTE message
+#### rtnetlink NEIGH message
+### genetlink (write soon)
+#### generics of genetlink
+
+<a name="genetlink-message-type"></a>
+**rtnetlink-message-type** defined at `/usr/include/genetlink.h`
+- write soon
+
+## Examples
 
 **When I operate `ip link set dum0 up`**<br>
 - please refer the `pcap/link_up.pcap`
@@ -107,37 +212,6 @@ MsgHdr
   - Netlink Message Header
     - Message type: [ref](#genetlink-message-type)
 
-<a name="netlink-foramt-type"></a>
-**netlink-format-type**
-- Netlink message header ([RFC3549](https://tools.ietf.org/html/rfc3549#section-2.3.2))
-```
-/*
- * 0                   1                   2                   3
- * 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                          Length                             |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |            Type              |           Flags              |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                      Sequence Number                        |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                      Process ID (PID)                       |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- */
-strcut nlmsghdr {
-	uint32_t nlmsg_len;   /* length  */
-	uint16_t nlmsg_type;  /* type    */
-	uint16_t nlmsg_flags; /* flags   */
-	uint32_t nlmsg_seq;   /* seq-num */
-	uint32_t nlmsg_pid;   /* proc-id */
-};
-```
-
-<a name="netlink-family"></a>
-**netlink-family** defined at `/usr/include/linux/netlink.h`
-- 0x00: rtnetlink
-- 0x10: genetlink
-
 <a name="rtnetlink-multicast-group"></a>
 **rtnetlink-multicast-group** defined at `/usr/include/rtnetlink.h`
 - `0x001`: link
@@ -152,28 +226,6 @@ strcut nlmsghdr {
 - `0x200`: ipv6 mroute
 - `0x400`: ipv6 route
 - `0x800`: ipv6 rule
-
-<a name="rtnetlink-message-type"></a>
-**rtnetlink-message-type** defined at `/usr/include/rtnetlink.h`
-- `0x02,02`: error
-- `0x03,03`: end of a dump
-- `0x10,16`: `NEW_LINK`, create network interface
-- `0x11,17`: `DEL_LINK`, remove network interface
-- `0x12,18`: `GET_LINK`, get network interface info
-- `0x13,19`: `SET_LINK`
-- `0x14,20`: add ip address
-- `0x15,21`: del ip address
-- `0x16,22`: get ip address
-- `0x18,24`: add network route
-- `0x19,25`: del network route
-- `0x20,26`: get network route
-
-<a name="rtnetlink-attribute-type"></a>
-**rtnetlink-attribute-type**
-
-<a name="genetlink-message-type"></a>
-**rtnetlink-message-type** defined at `/usr/include/genetlink.h`
-- write soon
 
 ## iproute2 cheat-sheet
 ```
