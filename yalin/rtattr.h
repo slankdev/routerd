@@ -16,7 +16,6 @@
 #include <linux/rtnetlink.h>
 #include <net/if_arp.h>
 #include "flags.h"
-#include "hexdump.h"
 
 inline static size_t
 align(size_t blocklen, size_t alignlen)
@@ -346,7 +345,7 @@ rta_to_str(const struct rtattr* rta, char* str, size_t len)
       }
       snprintf(str, len, "%s unsupport-data=<%s>",
           rta_type_to_str(rta->rta_type), dstr);
-      hexdump(stdout, rta, rtattr_len(rta));
+      // hexdump(stdout, rta, rtattr_len(rta));
 #endif
       return str;
     }

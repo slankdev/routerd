@@ -14,7 +14,7 @@
 #include <linux/rtnetlink.h>
 #include <net/if_arp.h>
 #include "flags.h"
-#include "hexdump.h"
+// #include "hexdump.h"
 
 
 inline static const char*
