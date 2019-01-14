@@ -18,6 +18,7 @@
 #define NDM_RTA(r) ((struct rtattr*)(((char*)(r))+NLMSG_ALIGN(sizeof(struct ndmsg))))
 #endif
 
+#if 0
 inline static void
 netlink_link_msg_dump(FILE* fp, const struct nlmsghdr* hdr)
 {
@@ -154,6 +155,7 @@ netlink_msg_dump(FILE* fp, const struct nlmsghdr* hdr)
   }
   printf("-----NLMSG-END-----------------------------\n");
 }
+#endif
 
 #endif /* _NETLINK_DUMP_H_ */
 

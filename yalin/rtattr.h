@@ -138,6 +138,7 @@ rtattr_read_str(const struct rtattr* attr, char* str, size_t strbuflen)
   return align(rtattr_payload_len(attr), 4);
 }
 
+#if 0
 inline static const char*
 rta_to_str_IFLA_LINKINFO(const struct rtattr* root_rta, char* str, size_t len)
 {
@@ -198,6 +199,7 @@ rta_to_str_IFLA_LINKINFO(const struct rtattr* root_rta, char* str, size_t len)
   carrydump(stdout, "IFLA_LINKINFO Unknown-link-kind", root_rta, rtattr_len(root_rta));
   return str;
 }
+#endif
 
 inline static const char*
 rta_to_str_IFLA_AF_SPEC(const struct rtattr* rta, char* str, size_t len)
@@ -206,6 +208,7 @@ rta_to_str_IFLA_AF_SPEC(const struct rtattr* rta, char* str, size_t len)
   return str;
 }
 
+#if 0
 inline static const char*
 rta_to_str(const struct rtattr* rta, char* str, size_t len)
 {
@@ -349,5 +352,6 @@ rta_to_str(const struct rtattr* rta, char* str, size_t len)
     }
   }
 }
+#endif
 
 #endif /* _NETLINK_RTATTR_H_ */

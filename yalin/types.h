@@ -216,6 +216,7 @@ ifa_family_to_str(uint8_t family)
   }
 }
 
+#if 0
 inline static const char*
 rta_type_to_str(uint16_t type)
 {
@@ -276,6 +277,7 @@ rta_type_to_str(uint16_t type)
       break;
   }
 }
+#endif
 
 
 #endif /* _NETLINK_TYPES_H_ */

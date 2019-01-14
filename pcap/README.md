@@ -8,7 +8,6 @@ ip link add link dum0 name dum0.10 type vlan id 10
 ip link add vxlan0 type vxlan id 100 local 1.1.1.1 remote 2.2.2.2 dev dum0 dstport 4789
 ip link del dum0
 ip link set dum0 up
-ip link set dum0 up
 ip addr add 1.1.1.1/24 dev dum0
 ip addr del 1.1.1.1/24 dev dum0
 ip route add 2.2.2.2 via 1.1.1.10

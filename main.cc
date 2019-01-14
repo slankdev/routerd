@@ -7,7 +7,27 @@
 #include <stdarg.h>
 #include <string>
 #include <algorithm>
+#include <arpa/inet.h>
 #include "yalin/yalin.h"
+
+inline static std::string
+strfmt(const char* fmt, ...)
+{
+  char str[1000];
+  va_list args;
+  va_start(args, fmt);
+  vsprintf(str, fmt, args);
+  va_end(args);
+  return str;
+}
+
+inline static std::string
+inetpton(const void* ptr, int afi)
+{
+  char buf[256];
+  inet_ntop(afi, ptr, buf, sizeof(buf));
+  return buf;
+}
 
 inline static std::string
 nlmsghdr_summary(const struct nlmsghdr* hdr)
@@ -29,15 +49,13 @@ ifinfomsg_summary(const struct ifinfomsg* ifm)
   return buf;
 }
 
+
 inline static std::string
-strfmt(const char* fmt, ...)
+ifaddrmsg_summary(const struct ifaddrmsg* ifa)
 {
-  char str[1000];
-  va_list args;
-  va_start(args, fmt);
-  vsprintf(str, fmt, args);
-  va_end(args);
-  return str;
+  return strfmt("family=%u pref=%u ifindex=%u flags=0x%x"
+      " scope=%u", ifa->ifa_family, ifa->ifa_prefixlen,
+      ifa->ifa_index, ifa->ifa_flags, ifa->ifa_scope);
 }
 
 inline static const char*
@@ -165,6 +183,83 @@ rta_type_VXLAN_to_str(uint16_t type)
     case IFLA_VXLAN_GPE: return "IFLA_VXLAN_GPE";
     case IFLA_VXLAN_FAN_MAP: return "IFLA_VXLAN_FAN_MAP";
     default: return "IFLA_BR_XXXXXXXXUNKNOWN";
+  }
+}
+
+inline static const char*
+rta_type_LINK_to_str(uint16_t type)
+{
+  /* defined at /usr/include/linux/if_link.h */
+  switch (type) {
+    case IFLA_UNSPEC         : return "IFLA_UNSPEC";
+    case IFLA_ADDRESS        : return "IFLA_ADDRESS";
+    case IFLA_BROADCAST      : return "IFLA_BROADCAST";
+    case IFLA_IFNAME         : return "IFLA_IFNAME";
+    case IFLA_MTU            : return "IFLA_MTU";
+    case IFLA_LINK           : return "IFLA_LINK ";
+    case IFLA_QDISC          : return "IFLA_QDISC";
+    case IFLA_STATS          : return "IFLA_STATS";
+    case IFLA_COST           : return "IFLA_COST";
+    case IFLA_PRIORITY       : return "IFLA_PRIORITY";
+    case IFLA_MASTER         : return "IFLA_MASTER";
+    case IFLA_WIRELESS       : return "IFLA_WIRELESS";
+    case IFLA_PROTINFO       : return "IFLA_PROTINFO";
+    case IFLA_TXQLEN         : return "IFLA_TXQLEN";
+    case IFLA_MAP            : return "IFLA_MAP";
+    case IFLA_WEIGHT         : return "IFLA_WEIGHT";
+    case IFLA_OPERSTATE      : return "IFLA_OPERSTATE";
+    case IFLA_LINKMODE       : return "IFLA_LINKMODE";
+    case IFLA_LINKINFO       : return "IFLA_LINKINFO";
+    case IFLA_NET_NS_PID     : return "IFLA_NET_NS_PID";
+    case IFLA_IFALIAS        : return "IFLA_IFALIAS";
+    case IFLA_NUM_VF         : return "IFLA_NUM_VF";
+    case IFLA_VFINFO_LIST    : return "IFLA_VFINFO_LIST";
+    case IFLA_STATS64        : return "IFLA_STATS64";
+    case IFLA_VF_PORTS       : return "IFLA_VF_PORTS";
+    case IFLA_PORT_SELF      : return "IFLA_PORT_SELF";
+    case IFLA_AF_SPEC        : return "IFLA_AF_SPEC";
+    case IFLA_GROUP          : return "IFLA_GROUP";
+    case IFLA_NET_NS_FD      : return "IFLA_NET_NS_FD";
+    case IFLA_EXT_MASK       : return "IFLA_EXT_MASK";
+    case IFLA_PROMISCUITY    : return "IFLA_PROMISCUITY";
+    case IFLA_NUM_TX_QUEUES  : return "IFLA_NUM_TX_QUEUES";
+    case IFLA_NUM_RX_QUEUES  : return "IFLA_NUM_RX_QUEUES";
+    case IFLA_CARRIER        : return "IFLA_CARRIER";
+    case IFLA_PHYS_PORT_ID   : return "IFLA_PHYS_PORT_ID";
+    case IFLA_CARRIER_CHANGES: return "IFLA_CARRIER_CHANGES";
+    case IFLA_PHYS_SWITCH_ID : return "IFLA_PHYS_SWITCH_ID";
+    case IFLA_LINK_NETNSID   : return "IFLA_LINK_NETNSID";
+    case IFLA_PHYS_PORT_NAME : return "IFLA_PHYS_PORT_NAME";
+    case IFLA_PROTO_DOWN     : return "IFLA_PROTO_DOWN";
+    case IFLA_GSO_MAX_SEGS      : return "IFLA_GSO_MAX_SEGS";
+    case IFLA_GSO_MAX_SIZE      : return "IFLA_GSO_MAX_SIZE";
+    case IFLA_PAD               : return "IFLA_PAD";
+    case IFLA_XDP               : return "IFLA_XDP";
+    case IFLA_EVENT             : return "IFLA_EVENT";
+    case IFLA_NEW_NETNSID       : return "IFLA_NEW_NETNSID";
+    case IFLA_IF_NETNSID        : return "IFLA_IF_NETNSID";
+    case IFLA_CARRIER_UP_COUNT  : return "IFLA_CARRIER_UP_COUNT";
+    case IFLA_CARRIER_DOWN_COUNT: return "IFLA_CARRIER_DOWN_COUNT";
+    case IFLA_NEW_IFINDEX       : return "IFLA_NEW_IFINDEX";
+    default: return "IFLA_XXXXUNKNOWNXXX";
+  }
+}
+
+inline static const char*
+rta_type_ADDR_to_str(uint16_t type)
+{
+  /* defined at /usr/include/linux/if_addr.h */
+  switch (type) {
+    case IFA_UNSPEC   : return "IFA_UNSPEC";
+    case IFA_ADDRESS  : return "IFA_ADDRESS";
+    case IFA_LOCAL    : return "IFA_LOCAL";
+    case IFA_LABEL    : return "IFA_LABEL";
+    case IFA_BROADCAST: return "IFA_BROADCAST";
+    case IFA_ANYCAST  : return "IFA_ANYCAST";
+    case IFA_CACHEINFO: return "IFA_CACHEINFO";
+    case IFA_MULTICAST: return "IFA_MULTICAST";
+    case IFA_FLAGS    : return "IFA_FLAGS";
+    default: return "IFA_UNKWNOWN";
   }
 }
 
@@ -432,12 +527,13 @@ ifinfomsg_rtattr_LINKINFO_summary(const struct rtattr* rta)
   }
 }
 
+
 inline static std::string
 ifinfomsg_rtattr_summary(const struct rtattr* rta)
 {
   char _hdr[256];
   snprintf(_hdr, sizeof(_hdr), "0x%04x %-24s :: ",
-      rta->rta_type, rta_type_to_str(rta->rta_type));
+      rta->rta_type, rta_type_LINK_to_str(rta->rta_type));
   std::string hdr = _hdr;
 
   switch (rta->rta_type) {
@@ -499,6 +595,52 @@ ifinfomsg_rtattr_summary(const struct rtattr* rta)
 }
 
 inline static std::string
+ifaddrmsg_rtattr_summary(const struct rtattr* rta)
+{
+  std::string hdr = strfmt("0x%04x %-16s :: ",
+      rta->rta_type, rta_type_ADDR_to_str(rta->rta_type));
+  switch (rta->rta_type) {
+
+    case IFA_ADDRESS:
+    case IFA_LOCAL:
+    {
+      uint8_t* addr_ptr = (uint8_t*)(rta+1);
+      size_t addr_len = rta->rta_len - sizeof(*rta);
+      if (addr_len == 4) return hdr + inetpton(addr_ptr, AF_INET);
+      if (addr_len == 16) return hdr + inetpton(addr_ptr, AF_INET6);
+      else return hdr + "unknown-addr-fmt";
+    }
+    case IFA_LABEL:
+    {
+      const char* val = (const char*)(rta+1);
+      return hdr + val;
+    }
+    case IFA_FLAGS:
+    {
+      uint32_t val = *(uint32_t*)(rta+1);
+      return hdr + strfmt("0x%x", val);
+    }
+    case IFA_BROADCAST:
+    case IFA_ANYCAST:
+    case IFA_CACHEINFO:
+    case IFA_MULTICAST:
+    default:
+    {
+      std::string val;
+      val = strfmt("unknown-fmt(rta_len=%u,data=", rta->rta_len);
+      const uint8_t* data = (const uint8_t*)(rta+1);
+      size_t payload_len = size_t(rta->rta_len-sizeof(*rta));
+      size_t n = std::min(size_t(4), payload_len);
+      for (size_t i=0; i<n; i++)
+        val += strfmt("%02x", data[i]);
+      if (4 < payload_len) val += "...";
+      val += ")";
+      return hdr + val;
+    }
+  }
+}
+
+inline static std::string
 my_rtnl_link_summary(const struct nlmsghdr* hdr)
 {
   struct ifinfomsg* ifm = (struct ifinfomsg*)(hdr + 1);
@@ -508,33 +650,32 @@ my_rtnl_link_summary(const struct nlmsghdr* hdr)
        RTA_OK(rta, rta_len); rta = RTA_NEXT(rta, rta_len)) {
     std::string attr_str = ifinfomsg_rtattr_summary(rta);
     if (attr_str != "")
-      str += "  " + ifinfomsg_rtattr_summary(rta) + "\n";
+      str += "  " + attr_str + "\n";
   }
   return str;
 }
 
 inline static std::string
-my_rtnl_newaddr_summary(const struct nlmsghdr* hdr)
+my_rtnl_addr_summary(const struct nlmsghdr* hdr)
+{
+  struct ifaddrmsg* ifa = (struct ifaddrmsg*)(hdr + 1);
+  std::string str = ifaddrmsg_summary(ifa) + "\n";
+  size_t rta_len = IFA_PAYLOAD(hdr);
+  for (struct rtattr* rta = IFA_RTA(ifa);
+       RTA_OK(rta, rta_len); rta = RTA_NEXT(rta, rta_len)) {
+    std::string attr_str = ifaddrmsg_rtattr_summary(rta);
+    if (attr_str != "")
+      str += "  " + attr_str + "\n";
+  }
+  return str;
+}
+
+inline static std::string
+my_rtnl_route_summary(const struct nlmsghdr* hdr)
 { return __func__; }
 
 inline static std::string
-my_rtnl_deladdr_summary(const struct nlmsghdr* hdr)
-{ return __func__; }
-
-inline static std::string
-my_rtnl_newroute_summary(const struct nlmsghdr* hdr)
-{ return __func__; }
-
-inline static std::string
-my_rtnl_delroute_summary(const struct nlmsghdr* hdr)
-{ return __func__; }
-
-inline static std::string
-my_rtnl_newneigh_summary(const struct nlmsghdr* hdr)
-{ return __func__; }
-
-inline static std::string
-my_rtnl_delneigh_summary(const struct nlmsghdr* hdr)
+my_rtnl_neigh_summary(const struct nlmsghdr* hdr)
 { return __func__; }
 
 static int
@@ -544,18 +685,30 @@ dump_msg(const struct sockaddr_nl *who,
 {
   std::string str = nlmsghdr_summary(n) + " :: ";
   switch (n->nlmsg_type) {
+
     case RTM_NEWLINK:
     case RTM_DELLINK:
     case RTM_GETLINK:
       str += my_rtnl_link_summary(n);
       break;
 
-    // case RTM_NEWADDR : str += my_rtnl_newaddr_summary(n) ; break;
-    // case RTM_DELADDR : str += my_rtnl_deladdr_summary(n) ; break;
-    // case RTM_NEWROUTE: str += my_rtnl_newroute_summary(n); break;
-    // case RTM_DELROUTE: str += my_rtnl_delroute_summary(n); break;
-    // case RTM_NEWNEIGH: str += my_rtnl_newneigh_summary(n); break;
-    // case RTM_DELNEIGH: str += my_rtnl_delneigh_summary(n); break;
+    case RTM_NEWADDR:
+    case RTM_DELADDR:
+    case RTM_GETADDR:
+      str += my_rtnl_addr_summary(n);
+      break;
+
+    case RTM_NEWROUTE:
+    case RTM_DELROUTE:
+    case RTM_GETROUTE:
+      str += my_rtnl_route_summary(n);
+      break;
+
+    case RTM_NEWNEIGH:
+    case RTM_DELNEIGH:
+    case RTM_GETNEIGH:
+      str += my_rtnl_neigh_summary(n);
+      break;
 
     /* Invalid Case */
     default:
@@ -568,8 +721,6 @@ dump_msg(const struct sockaddr_nl *who,
       break;
   }
   printf("%s\n", str.c_str());
-  // hexdump(stderr, n, n->nlmsg_len);
-  // printf("\n");
   return 0;
 }
 
