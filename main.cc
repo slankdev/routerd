@@ -67,6 +67,14 @@ rtmsg_summary(const struct rtmsg* rtm)
       rtm->rtm_scope, rtm->rtm_type, rtm->rtm_flags);
 }
 
+inline static std::string
+ndmsg_summary(const struct ndmsg* ndm)
+{
+  return strfmt("fmly=%u index=%u state=%u flags=0x%x type=%u",
+      ndm->ndm_family, ndm->ndm_ifindex, ndm->ndm_state,
+      ndm->ndm_flags, ndm->ndm_type);
+}
+
 inline static const char*
 rta_type_LINKINFO_to_str(uint16_t type)
 {
@@ -305,6 +313,27 @@ rta_type_ROUTE_to_str(uint16_t type)
     case RTA_UID          : return "RTA_UID";
     case RTA_TTL_PROPAGATE: return "RTA_TTL_PROPAGATE";
     default: return "RTA_XXXUNKNOWNXXX";
+  }
+}
+
+inline static const char*
+rta_type_NEIGH_to_str(uint16_t type)
+{
+  switch (type) {
+    /**/
+    case NDA_UNSPEC       : return "NDA_UNSPEC";
+    case NDA_DST          : return "NDA_DST";
+    case NDA_LLADDR       : return "NDA_LLADDR";
+    case NDA_CACHEINFO    : return "NDA_CACHEINFO";
+    case NDA_PROBES       : return "NDA_PROBES";
+    case NDA_VLAN         : return "NDA_VLAN";
+    case NDA_PORT         : return "NDA_PORT";
+    case NDA_VNI          : return "NDA_VNI";
+    case NDA_IFINDEX      : return "NDA_IFINDEX";
+    case NDA_MASTER       : return "NDA_MASTER";
+    case NDA_LINK_NETNSID : return "NDA_LINK_NETNSID";
+    case NDA_SRC_VNI      : return "NDA_SRC_VNI";
+    default: return "NDA_UNKNOWN";
   }
 }
 
@@ -756,6 +785,63 @@ rtmsg_rtattr_summary(const struct rtattr* rta)
 }
 
 inline static std::string
+ndmsg_rtattr_summary(const struct rtattr* rta)
+{
+  std::string hdr = strfmt("0x%04x %-16s :: ",
+      rta->rta_type, rta_type_NEIGH_to_str(rta->rta_type));
+  switch (rta->rta_type) {
+
+    case NDA_LLADDR:
+    {
+      assert(rta->rta_len == 10);
+      uint8_t* lladdr = (uint8_t*)(rta+1);
+      std::string val;
+      val = strfmt("%02x:%02x:%02x:%02x:%02x:%02x",
+          lladdr[0], lladdr[1], lladdr[2],
+          lladdr[3], lladdr[4], lladdr[5]);
+      return hdr + val;
+    }
+    case NDA_DST:
+    {
+      uint8_t* addr_ptr = (uint8_t*)(rta+1);
+      size_t addr_len = rta->rta_len - sizeof(*rta);
+      assert(addr_len==4 || addr_len==16);
+      if (addr_len == 4) return hdr + inetpton(addr_ptr, AF_INET);
+      if (addr_len == 16) return hdr + inetpton(addr_ptr, AF_INET6);
+      else return hdr + "unknown-addr-fmt";
+    }
+    case NDA_PROBES:
+    {
+      assert(rta->rta_len == 8);
+      uint32_t val = *(uint32_t*)(rta+1);
+      return hdr + strfmt("%u", val);
+    }
+
+    case NDA_CACHEINFO:
+    case NDA_VLAN:
+    case NDA_PORT:
+    case NDA_VNI:
+    case NDA_IFINDEX:
+    case NDA_MASTER:
+    case NDA_LINK_NETNSID:
+    case NDA_SRC_VNI:
+    default:
+    {
+      std::string val;
+      val = strfmt("unknown-fmt(rta_len=%u,data=", rta->rta_len);
+      const uint8_t* data = (const uint8_t*)(rta+1);
+      size_t payload_len = size_t(rta->rta_len-sizeof(*rta));
+      size_t n = std::min(size_t(4), payload_len);
+      for (size_t i=0; i<n; i++)
+        val += strfmt("%02x", data[i]);
+      if (4 < payload_len) val += "...";
+      val += ")";
+      return hdr + val;
+    }
+  }
+}
+
+inline static std::string
 my_rtnl_link_summary(const struct nlmsghdr* hdr)
 {
   struct ifinfomsg* ifm = (struct ifinfomsg*)(hdr + 1);
@@ -802,7 +888,18 @@ my_rtnl_route_summary(const struct nlmsghdr* hdr)
 
 inline static std::string
 my_rtnl_neigh_summary(const struct nlmsghdr* hdr)
-{ return __func__; }
+{
+  struct ndmsg* ndm = (struct ndmsg*)(hdr + 1);
+  std::string str = ndmsg_summary(ndm) + "\n";
+  size_t rta_len = IFA_PAYLOAD(hdr);
+  for (struct rtattr* rta = NDM_RTA(ndm);
+       RTA_OK(rta, rta_len); rta = RTA_NEXT(rta, rta_len)) {
+    std::string attr_str = ndmsg_rtattr_summary(rta);
+    if (attr_str != "")
+      str += "  " + attr_str + "\n";
+  }
+  return str;
+}
 
 static int
 dump_msg(const struct sockaddr_nl *who,
@@ -823,18 +920,18 @@ dump_msg(const struct sockaddr_nl *who,
     // case RTM_GETADDR:
     //   str += my_rtnl_addr_summary(n);
     //   break;
-
-    case RTM_NEWROUTE:
-    case RTM_DELROUTE:
-    case RTM_GETROUTE:
-      str += my_rtnl_route_summary(n);
-      break;
-
-    // case RTM_NEWNEIGH:
-    // case RTM_DELNEIGH:
-    // case RTM_GETNEIGH:
-    //   str += my_rtnl_neigh_summary(n);
+    //
+    // case RTM_NEWROUTE:
+    // case RTM_DELROUTE:
+    // case RTM_GETROUTE:
+    //   str += my_rtnl_route_summary(n);
     //   break;
+
+    case RTM_NEWNEIGH:
+    case RTM_DELNEIGH:
+    case RTM_GETNEIGH:
+      str += my_rtnl_neigh_summary(n);
+      break;
 
     /* Invalid Case */
     default:
