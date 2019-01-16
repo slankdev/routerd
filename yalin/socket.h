@@ -35,6 +35,22 @@
 #define NETLINK_EXT_ACK 11
 #endif
 
+#ifndef IFA_RTA
+#error IFA_RTA isnt defined
+#endif
+
+#ifndef RTM_RTA
+#error RTM_RTA isnt defined
+#endif
+
+#ifndef IFLA_RTA
+#error IFLA_RTA isnt defined
+#endif
+
+#ifndef NDM_RTA
+#define NDM_RTA(r) ((struct rtattr*)(((char*)(r))+NLMSG_ALIGN(sizeof(struct ndmsg))))
+#endif
+
 typedef struct netlink_s {
   int32_t fd;
   struct sockaddr_nl local;
