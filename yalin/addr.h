@@ -1,6 +1,30 @@
 #ifndef _YALIN_ADDR_H_
 #define _YALIN_ADDR_H_
 
+#include <assert.h>
+
+#ifndef IFA_RTA
+#error IFA_RTA isnt defined
+#endif
+
+inline static const char*
+rta_type_ADDR_to_str(uint16_t type)
+{
+  /* defined at /usr/include/linux/if_addr.h */
+  switch (type) {
+    case IFA_UNSPEC   : return "IFA_UNSPEC";
+    case IFA_ADDRESS  : return "IFA_ADDRESS";
+    case IFA_LOCAL    : return "IFA_LOCAL";
+    case IFA_LABEL    : return "IFA_LABEL";
+    case IFA_BROADCAST: return "IFA_BROADCAST";
+    case IFA_ANYCAST  : return "IFA_ANYCAST";
+    case IFA_CACHEINFO: return "IFA_CACHEINFO";
+    case IFA_MULTICAST: return "IFA_MULTICAST";
+    case IFA_FLAGS    : return "IFA_FLAGS";
+    default: return "IFA_UNKWNOWN";
+  }
+}
+
 inline static std::string
 ifaddrmsg_rtattr_summary(const struct rtattr* rta)
 {

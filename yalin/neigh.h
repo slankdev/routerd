@@ -1,6 +1,34 @@
 #ifndef _YALIN_NEIGH_H_
 #define _YALIN_NEIGH_H_
 
+#include <assert.h>
+
+#ifndef NDM_RTA
+#define NDM_RTA(r) ((struct rtattr*)(((char*)(r))+NLMSG_ALIGN(sizeof(struct ndmsg))))
+#endif
+
+
+inline static const char*
+rta_type_NEIGH_to_str(uint16_t type)
+{
+  switch (type) {
+    /**/
+    case NDA_UNSPEC       : return "NDA_UNSPEC";
+    case NDA_DST          : return "NDA_DST";
+    case NDA_LLADDR       : return "NDA_LLADDR";
+    case NDA_CACHEINFO    : return "NDA_CACHEINFO";
+    case NDA_PROBES       : return "NDA_PROBES";
+    case NDA_VLAN         : return "NDA_VLAN";
+    case NDA_PORT         : return "NDA_PORT";
+    case NDA_VNI          : return "NDA_VNI";
+    case NDA_IFINDEX      : return "NDA_IFINDEX";
+    case NDA_MASTER       : return "NDA_MASTER";
+    case NDA_LINK_NETNSID : return "NDA_LINK_NETNSID";
+    case NDA_SRC_VNI      : return "NDA_SRC_VNI";
+    default: return "NDA_UNKNOWN";
+  }
+}
+
 inline static std::string
 ndmsg_rtattr_summary(const struct rtattr* rta)
 {

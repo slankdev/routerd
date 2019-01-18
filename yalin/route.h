@@ -1,6 +1,48 @@
 #ifndef _YALIN_ROUTE_H_
 #define _YALIN_ROUTE_H_
 
+#include <assert.h>
+
+#ifndef RTM_RTA
+#error RTM_RTA isnt defined
+#endif
+
+inline static const char*
+rta_type_ROUTE_to_str(uint16_t type)
+{
+  /* defined at /usr/include/linux/rtnetlink.h */
+  switch (type) {
+    case RTA_UNSPEC       : return "RTA_UNSPEC";
+    case RTA_DST          : return "RTA_DST";
+    case RTA_SRC          : return "RTA_SRC";
+    case RTA_IIF          : return "RTA_IIF";
+    case RTA_OIF          : return "RTA_OIF";
+    case RTA_GATEWAY      : return "RTA_GATEWAY";
+    case RTA_PRIORITY     : return "RTA_PRIORITY";
+    case RTA_PREFSRC      : return "RTA_PREFSRC";
+    case RTA_METRICS      : return "RTA_METRICS";
+    case RTA_MULTIPATH    : return "RTA_MULTIPATH";
+    case RTA_PROTOINFO    : return "RTA_PROTOINFO";
+    case RTA_FLOW         : return "RTA_FLOW";
+    case RTA_CACHEINFO    : return "RTA_CACHEINFO";
+    case RTA_SESSION      : return "RTA_SESSION";
+    case RTA_MP_ALGO      : return "RTA_MP_ALGO";
+    case RTA_TABLE        : return "RTA_TABLE";
+    case RTA_MARK         : return "RTA_MARK";
+    case RTA_MFC_STATS    : return "RTA_MFC_STATS";
+    case RTA_VIA          : return "RTA_VIA";
+    case RTA_NEWDST       : return "RTA_NEWDST";
+    case RTA_PREF         : return "RTA_PREF";
+    case RTA_ENCAP_TYPE   : return "RTA_ENCAP_TYPE";
+    case RTA_ENCAP        : return "RTA_ENCAP";
+    case RTA_EXPIRES      : return "RTA_EXPIRES";
+    case RTA_PAD          : return "RTA_PAD";
+    case RTA_UID          : return "RTA_UID";
+    case RTA_TTL_PROPAGATE: return "RTA_TTL_PROPAGATE";
+    default: return "RTA_XXXUNKNOWNXXX";
+  }
+}
+
 inline static std::string
 rtmsg_rtattr_summary(const struct rtattr* rta)
 {

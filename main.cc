@@ -28,29 +28,29 @@ dump_msg(const struct sockaddr_nl *who,
   std::string str = nlmsghdr_summary(n) + " :: ";
   switch (n->nlmsg_type) {
 
-    // case RTM_NEWLINK:
-    // case RTM_DELLINK:
-    // case RTM_GETLINK:
-    //   str += rtnl_link_summary(n);
-    //   break;
-    //
-    // case RTM_NEWADDR:
-    // case RTM_DELADDR:
-    // case RTM_GETADDR:
-    //   str += rtnl_addr_summary(n);
-    //   break;
-    //
-    // case RTM_NEWROUTE:
-    // case RTM_DELROUTE:
-    // case RTM_GETROUTE:
-    //   str += rtnl_route_summary(n);
-    //   break;
-    //
-    // case RTM_NEWNEIGH:
-    // case RTM_DELNEIGH:
-    // case RTM_GETNEIGH:
-    //   str += rtnl_neigh_summary(n);
-    //   break;
+    case RTM_NEWLINK:
+    case RTM_DELLINK:
+    case RTM_GETLINK:
+      str += rtnl_link_summary(n);
+      break;
+
+    case RTM_NEWADDR:
+    case RTM_DELADDR:
+    case RTM_GETADDR:
+      str += rtnl_addr_summary(n);
+      break;
+
+    case RTM_NEWROUTE:
+    case RTM_DELROUTE:
+    case RTM_GETROUTE:
+      str += rtnl_route_summary(n);
+      break;
+
+    case RTM_NEWNEIGH:
+    case RTM_DELNEIGH:
+    case RTM_GETNEIGH:
+      str += rtnl_neigh_summary(n);
+      break;
 
     case RTM_NEWNETCONF:
     case RTM_DELNETCONF:
@@ -60,7 +60,6 @@ dump_msg(const struct sockaddr_nl *who,
 
     /* Invalid Case */
     default:
-      return 0;
       fprintf(stderr, "%s: unknown type(%u)\n", __func__, n->nlmsg_type);
       fprintf(stderr, "%s: type=%s\n", __func__, str.c_str());
       fprintf(stderr, "please check with "
