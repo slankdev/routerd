@@ -9,7 +9,6 @@
 #include <algorithm>
 #include <arpa/inet.h>
 #include "yalin/yalin.h"
-#include "stub.h"
 
 namespace routerd {
 

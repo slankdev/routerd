@@ -18,3 +18,6 @@ install:
 	cp $(TARGET).out /usr/local/bin/$(TARGET)
 
 re: clean all
+
+run:
+	sudo ./nlsniff.out -g ipv4route,ipv6route

@@ -2,6 +2,12 @@
 #define _YALIN_ROUTE_H_
 
 #include <assert.h>
+#include <linux/lwtunnel.h>
+#include <linux/seg6.h>
+#include <linux/seg6_local.h>
+#include <linux/seg6_iptunnel.h>
+
+#include <slankdev/hexdump.h>
 
 #ifndef RTM_RTA
 #error RTM_RTA isnt defined
@@ -43,6 +49,190 @@ rta_type_ROUTE_to_str(uint16_t type)
   }
 }
 
+inline static const char*
+lwtunnel_encap_types_to_str(uint16_t type)
+{
+  switch (type)
+  {
+    /* defined at /usr/include/linux/lwtunnel.h */
+    case LWTUNNEL_ENCAP_NONE      : return "LWTUNNEL_ENCAP_NONE";
+    case LWTUNNEL_ENCAP_MPLS      : return "LWTUNNEL_ENCAP_MPLS";
+    case LWTUNNEL_ENCAP_IP        : return "LWTUNNEL_ENCAP_IP";
+    case LWTUNNEL_ENCAP_ILA       : return "LWTUNNEL_ENCAP_ILA";
+    case LWTUNNEL_ENCAP_IP6       : return "LWTUNNEL_ENCAP_IP6";
+    case LWTUNNEL_ENCAP_SEG6      : return "LWTUNNEL_ENCAP_SEG6";
+    case LWTUNNEL_ENCAP_BPF       : return "LWTUNNEL_ENCAP_BPF";
+    case LWTUNNEL_ENCAP_SEG6_LOCAL: return "LWTUNNEL_ENCAP_SEG6_LOCAL";
+    default: return "LWTUNNEL_ENCAP_UNKNOWN";
+  }
+}
+
+inline static const char*
+SEG6_LOCAL_ACTION_to_str(uint16_t act)
+{
+  switch (act) {
+    /* define at /usr/include/linux/seg6_local.h */
+    case SEG6_LOCAL_ACTION_UNSPEC      : return "SEG6_LOCAL_ACTION_UNSPEC ";
+    case SEG6_LOCAL_ACTION_END         : return "SEG6_LOCAL_ACTION_END";
+    case SEG6_LOCAL_ACTION_END_X       : return "SEG6_LOCAL_ACTION_END_X";
+    case SEG6_LOCAL_ACTION_END_T       : return "SEG6_LOCAL_ACTION_END_T";
+    case SEG6_LOCAL_ACTION_END_DX2     : return "SEG6_LOCAL_ACTION_END_DX2";
+    case SEG6_LOCAL_ACTION_END_DX6     : return "SEG6_LOCAL_ACTION_END_DX6";
+    case SEG6_LOCAL_ACTION_END_DX4     : return "SEG6_LOCAL_ACTION_END_DX4";
+    case SEG6_LOCAL_ACTION_END_DT6     : return "SEG6_LOCAL_ACTION_END_DT6";
+    case SEG6_LOCAL_ACTION_END_DT4     : return "SEG6_LOCAL_ACTION_END_DT4";
+    case SEG6_LOCAL_ACTION_END_B6      : return "SEG6_LOCAL_ACTION_END_B6";
+    case SEG6_LOCAL_ACTION_END_B6_ENCAP: return "SEG6_LOCAL_ACTION_END_B6_ENCAP";
+    case SEG6_LOCAL_ACTION_END_BM      : return "SEG6_LOCAL_ACTION_END_BM";
+    case SEG6_LOCAL_ACTION_END_S       : return "SEG6_LOCAL_ACTION_END_S";
+    case SEG6_LOCAL_ACTION_END_AS      : return "SEG6_LOCAL_ACTION_END_AS";
+    case SEG6_LOCAL_ACTION_END_AM      : return "SEG6_LOCAL_ACTION_END_AM";
+    default: return "SEG6_LOCAL_ACTION_UNKNOWN";
+  }
+}
+
+inline static const char*
+SEG6_LOCAL_to_str(uint16_t type)
+{
+  switch (type) {
+    case SEG6_LOCAL_UNSPEC: return "SEG6_LOCAL_UNSPEC";
+    case SEG6_LOCAL_ACTION: return "SEG6_LOCAL_ACTION";
+    case SEG6_LOCAL_SRH   : return "SEG6_LOCAL_SRH";
+    case SEG6_LOCAL_TABLE : return "SEG6_LOCAL_TABLE ";
+    case SEG6_LOCAL_NH4   : return "SEG6_LOCAL_NH4";
+    case SEG6_LOCAL_NH6   : return "SEG6_LOCAL_NH6";
+    case SEG6_LOCAL_IIF   : return "SEG6_LOCAL_IIF";
+    case SEG6_LOCAL_OIF   : return "SEG6_LOCAL_OIF";
+    default: return "SEG6_LOCAL_UKNOWN";
+  }
+}
+
+inline static const char*
+SEG6_IPTUNNEL_to_str(uint16_t type)
+{
+  switch (type) {
+    case SEG6_IPTUNNEL_UNSPEC: return "SEG6_IPTUNNEL_UNSPEC";
+    case SEG6_IPTUNNEL_SRH   : return "SEG6_IPTUNNEL_SRH";
+    default: return "SEG6_IPTUNNEL_UNKNOWN";
+  }
+}
+
+inline static const char*
+SEG6_IPTUN_MODE_to_str(uint16_t type)
+{
+  switch (type) {
+    case SEG6_IPTUN_MODE_INLINE : return "SEG6_IPTUN_MODE_INLINE";
+    case SEG6_IPTUN_MODE_ENCAP  : return "SEG6_IPTUN_MODE_ENCAP";
+    case SEG6_IPTUN_MODE_L2ENCAP: return "SEG6_IPTUN_MODE_L2ENCAP";
+    default: return "SEG6_IPTUN_MODE_UNKNOWN";
+  }
+}
+
+inline static std::string
+ipv6_sr_hdr_summary(const struct ipv6_sr_hdr* srh)
+{
+  std::string str = strfmt("nh=%u hl=%u t=%u sl=%u [",
+      srh->nexthdr, srh->hdrlen, srh->type,
+      srh->segments_left, srh->first_segment);
+  const size_t n = ((srh->hdrlen*8+8)-8)/16;
+  for (size_t i=0; i<n; i++) {
+    const struct in6_addr* addr = &srh->segments[i];
+    str += strfmt("%s%s",
+        inetpton(addr, AF_INET6).c_str(),
+        i+1<n?",":"]");
+  }
+  return str;
+}
+
+inline static std::string
+rtmsg_rtattr_SEG6_summary(const struct rtattr* rta)
+{
+  std::string hdr = strfmt("0x%04x %-20s :: ",
+      rta->rta_type, SEG6_IPTUNNEL_to_str(rta->rta_type));
+  switch (rta->rta_type) {
+    case SEG6_IPTUNNEL_SRH:
+    {
+      const struct seg6_iptunnel_encap* sie;
+      sie = (const struct seg6_iptunnel_encap*)(rta+1);
+      return hdr + strfmt("mode=%u (%s) ", sie->mode,
+          SEG6_IPTUN_MODE_to_str(sie->mode)) +
+          ipv6_sr_hdr_summary(sie->srh);
+    }
+    default:
+    {
+      std::string val;
+      val = strfmt("unknown-fmt(rta_len=%u,data=", rta->rta_len);
+      const uint8_t* data = (const uint8_t*)(rta+1);
+      size_t payload_len = size_t(rta->rta_len-sizeof(*rta));
+      size_t n = std::min(size_t(4), payload_len);
+      for (size_t i=0; i<n; i++)
+        val += strfmt("%02x", data[i]);
+      if (4 < payload_len) val += "...";
+      val += ")";
+      return hdr + val;
+    }
+  }
+  return hdr + __func__;
+}
+
+inline static std::string
+rtmsg_rtattr_SEG6_LOCAL_summary(const struct rtattr* rta)
+{
+  std::string hdr = strfmt("0x%04x %-20s :: ",
+      rta->rta_type, SEG6_LOCAL_to_str(rta->rta_type));
+  switch (rta->rta_type) {
+
+    case SEG6_LOCAL_ACTION:
+    {
+      assert(rta->rta_len == 8);
+      uint32_t num = *(uint32_t*)(rta+1);
+      return hdr + strfmt("%u (%s)", num,
+          SEG6_LOCAL_ACTION_to_str(num));
+    }
+    case SEG6_LOCAL_NH6:
+    {
+      uint8_t* addr_ptr = (uint8_t*)(rta+1);
+      size_t addr_len = rta->rta_len - sizeof(*rta);
+      assert(addr_len==16);
+      return hdr + inetpton(addr_ptr, AF_INET6);
+    }
+    case SEG6_LOCAL_NH4:
+    {
+      uint8_t* addr_ptr = (uint8_t*)(rta+1);
+      size_t addr_len = rta->rta_len - sizeof(*rta);
+      assert(addr_len==4);
+      return hdr + inetpton(addr_ptr, AF_INET);
+    }
+    case SEG6_LOCAL_OIF:
+    case SEG6_LOCAL_IIF:
+    case SEG6_LOCAL_TABLE:
+    {
+      assert(rta->rta_len == 8);
+      uint32_t num = *(uint32_t*)(rta+1);
+      return hdr + strfmt("%u", num);
+    }
+    case SEG6_LOCAL_SRH:
+    {
+      const struct ipv6_sr_hdr* srh = (const struct ipv6_sr_hdr*)(rta+1);
+      std::string str = ipv6_sr_hdr_summary(srh);
+      return hdr + str;
+    }
+    default:
+    {
+      std::string val;
+      val = strfmt("unknown-fmt(rta_len=%u,data=", rta->rta_len);
+      const uint8_t* data = (const uint8_t*)(rta+1);
+      size_t payload_len = size_t(rta->rta_len-sizeof(*rta));
+      size_t n = std::min(size_t(4), payload_len);
+      for (size_t i=0; i<n; i++)
+        val += strfmt("%02x", data[i]);
+      if (4 < payload_len) val += "...";
+      val += ")";
+      return hdr + val;
+    }
+  }
+}
+
 inline static std::string
 rtmsg_rtattr_summary(const struct rtattr* rta)
 {
@@ -60,10 +250,47 @@ rtmsg_rtattr_summary(const struct rtattr* rta)
       uint32_t val = *(uint32_t*)(rta+1);
       return hdr + strfmt("%u", val);
     }
+    case RTA_ENCAP_TYPE:
+    {
+      assert(rta->rta_len == 6);
+      uint16_t val = *(uint16_t*)(rta+1);
+      return hdr + strfmt("%u (%s)", val,
+          lwtunnel_encap_types_to_str(val));
+    }
+    case RTA_ENCAP:
+    {
+      uint16_t encap_kind;
+      {
+        const uint8_t* ptr = (const uint8_t*)rta;
+        ptr += rta->rta_len;
+        const struct rtattr* rtan = (const struct rtattr*)ptr;
+        assert(rtan->rta_type == RTA_ENCAP_TYPE);
+        assert(rtan->rta_len == 6);
+        uint16_t val = *(uint16_t*)(rtan+1);
+        encap_kind = val;
+      }
+
+      std::string str = "nested-data\n";
+      size_t rta_len = rta->rta_len - sizeof(*rta);
+      const uint8_t* data = (const uint8_t*)(rta + 1);
+      for (const struct rtattr* rta = (const struct rtattr*)data;
+           RTA_OK(rta, rta_len); rta = RTA_NEXT(rta, rta_len)) {
+        std::string attr_str;
+        if (encap_kind==LWTUNNEL_ENCAP_SEG6_LOCAL)
+          attr_str = rtmsg_rtattr_SEG6_LOCAL_summary(rta);
+        else if (encap_kind==LWTUNNEL_ENCAP_SEG6)
+          attr_str = rtmsg_rtattr_SEG6_summary(rta);
+
+        if (attr_str != "")
+          str += "    " + attr_str + "\n";
+      }
+      str.pop_back();
+      return hdr + str;
+    }
     case RTA_PREF:
     {
       assert(rta->rta_len == 5);
-      uint32_t val = *(uint32_t*)(rta+1);
+      uint8_t val = *(uint8_t*)(rta+1);
       return hdr + strfmt("%u", val);
     }
 
@@ -90,8 +317,6 @@ rtmsg_rtattr_summary(const struct rtattr* rta)
     case RTA_MFC_STATS:
     case RTA_VIA:
     case RTA_NEWDST:
-    case RTA_ENCAP_TYPE:
-    case RTA_ENCAP:
     case RTA_EXPIRES:
     case RTA_PAD:
     case RTA_UID:
