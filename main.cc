@@ -152,6 +152,53 @@ struct route {
   }
 };
 
+struct neigh {
+  uint32_t ifindex;
+  uint32_t afi;
+  addr_t addr;
+  uint8_t lladdr[6];
+  uint32_t state;
+  neigh(const struct ndmsg* ndm, size_t rta_len)
+  {
+    memset(this, 0, sizeof(*this));
+    ifindex = ndm->ndm_ifindex;
+    afi = ndm->ndm_family;
+    state = ndm->ndm_state;
+    for (struct rtattr* rta = NDM_RTA(ndm);
+         RTA_OK(rta, rta_len); rta = RTA_NEXT(rta, rta_len)) {
+
+      switch (rta->rta_type) {
+        case NDA_LLADDR:
+        {
+          assert(rta->rta_len == 10);
+          uint8_t* ptr = (uint8_t*)(rta+1);
+          memcpy(lladdr, ptr, sizeof(lladdr));
+          break;
+        }
+        case NDA_DST:
+        {
+          uint8_t* addr_ptr = (uint8_t*)(rta+1);
+          size_t addr_len = rta->rta_len - sizeof(*rta);
+          assert(addr_len==4 || addr_len==16);
+          if (addr_len == 4) memcpy(addr.raw, addr_ptr, addr_len);
+          if (addr_len == 16) memcpy(addr.raw, addr_ptr, addr_len);
+          break;
+        }
+      }
+    }
+  }
+  std::string summary() const
+  {
+    std::string addr_str = inetpton(addr.raw, afi);
+    return strfmt("%s lladdr="
+        "%02x:%02x:%02x:%02x:%02x:%02x if=%u state=0x%x",
+        addr_str.c_str(),
+        lladdr[0], lladdr[1], lladdr[2],
+        lladdr[3], lladdr[4], lladdr[5],
+        ifindex, state);
+  }
+}; /* struct neigh */
+
 static int ip_addr_add(const ifaddr* addr)
 { printf("NEWADDR  [%s]\n", addr->summary().c_str()); return -1; }
 static int ip_addr_del(const ifaddr* addr)
@@ -160,6 +207,10 @@ static int ip_route_add(const route* route)
 { printf("NEWROUTE [%s]\n", route->summary().c_str()); return -1; }
 static int ip_route_del(const route* route)
 { printf("DELROUTE [%s]\n", route->summary().c_str()); return -1; }
+static int ip_neigh_add(const neigh* nei)
+{ printf("NEWNEIGH [%s]\n", nei->summary().c_str()); return -1; }
+static int ip_neigh_del(const neigh* nei)
+{ printf("DELNEIGH [%s]\n", nei->summary().c_str()); return -1; }
 
 inline static void
 monitor_NEWADDR(const struct nlmsghdr* hdr)
@@ -197,6 +248,24 @@ monitor_DELROUTE(const struct nlmsghdr* hdr)
   ip_route_del(&route);
 }
 
+inline static void
+monitor_NEWNEIGH(const struct nlmsghdr* hdr)
+{
+  struct ndmsg* ndm = (struct ndmsg*)(hdr + 1);
+  const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
+  routerd::neigh nei(ndm, ifa_payload_len);
+  ip_neigh_add(&nei);
+}
+
+inline static void
+monitor_DELNEIGH(const struct nlmsghdr* hdr)
+{
+  struct ndmsg* ndm = (struct ndmsg*)(hdr + 1);
+  const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
+  routerd::neigh nei(ndm, ifa_payload_len);
+  ip_neigh_del(&nei);
+}
+
 inline static int
 monitor(const struct sockaddr_nl *who,
          struct rtnl_ctrl_data* _dum_,
@@ -207,6 +276,8 @@ monitor(const struct sockaddr_nl *who,
     case RTM_DELADDR: monitor_DELADDR(n); break;
     case RTM_NEWROUTE: monitor_NEWROUTE(n); break;
     case RTM_DELROUTE: monitor_DELROUTE(n); break;
+    case RTM_NEWNEIGH: monitor_NEWNEIGH(n); break;
+    case RTM_DELNEIGH: monitor_DELNEIGH(n); break;
     default: break;
   }
   return 0;

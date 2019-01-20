@@ -11,17 +11,12 @@ ip addr show dev dum0
 echo -------
 
 # ROUTE
-sudo ip route add 20.0.0.0/24 via 10.0.0.10
-sudo ip route del 20.0.0.0/24
-sudo ip route add 30.0.0.0/24 dev dum0
-sudo ip route del 30.0.0.0/24
-sudo ip route add 2001:2::/64 via 2001:1::10
-sudo ip route del 2001:2::/64
-sudo ip route add 2001:3::/64 dev dum0
-sudo ip route del 2001:3::/64
-ip route show
-ip -6 route show
+sudo ip neigh add 10.0.0.2 lladdr 11:11:11:11:11:11 dev dum0
+sudo ip neigh add 2001:1::2 lladdr 22:22:22:22:22:22 dev dum0
+ip neigh
 echo -------
+sudo ip neigh del 10.0.0.2 lladdr 11:11:11:11:11:11 dev dum0
+sudo ip neigh del 2001:1::2 lladdr 22:22:22:22:22:22 dev dum0
 
 # LINK & ADDR
 sudo ip addr del 10.0.0.1/24 dev dum0
