@@ -19,6 +19,25 @@ union addr_t {
   uint8_t raw[16];
 };
 
+struct link {
+  uint32_t ifindex;
+  uint32_t type;
+  uint32_t change;
+  uint32_t flags;
+  link(const struct ifinfomsg* ifm, size_t rta_len)
+  {
+    ifindex = ifm->ifi_index;
+    type = ifm->ifi_type;
+    change = ifm->ifi_change;
+    flags = ifm->ifi_flags;
+  }
+  std::string summary() const
+  {
+    return strfmt("if=%u type=%u change=0x%x flags=0x%x",
+        ifindex, type, change, flags);
+  }
+}; /* struct link */
+
 struct ifaddr {
   uint16_t ifindex;
   uint16_t afi;
@@ -59,7 +78,7 @@ struct ifaddr {
     return strfmt("%s/%u if=%u 0x%x",
         addrstr.c_str(), prefix, ifindex, flags);
   }
-};
+}; /* struct ifaddr */
 
 struct route {
   uint16_t table;
@@ -150,7 +169,7 @@ struct route {
       src_str.c_str(), src_pref, dst_str.c_str(), dst_pref,
       gw_str.c_str(), iif_index, oif_index, priority, table, proto);
   }
-};
+}; /* struct ifaddr */
 
 struct neigh {
   uint32_t ifindex;
@@ -199,6 +218,10 @@ struct neigh {
   }
 }; /* struct neigh */
 
+static int ip_link_add(const link* link)
+{ printf("NEWLINK  [%s]\n", link->summary().c_str()); return -1; }
+static int ip_link_del(const link* link)
+{ printf("DELLINK  [%s]\n", link->summary().c_str()); return -1; }
 static int ip_addr_add(const ifaddr* addr)
 { printf("NEWADDR  [%s]\n", addr->summary().c_str()); return -1; }
 static int ip_addr_del(const ifaddr* addr)
@@ -211,6 +234,24 @@ static int ip_neigh_add(const neigh* nei)
 { printf("NEWNEIGH [%s]\n", nei->summary().c_str()); return -1; }
 static int ip_neigh_del(const neigh* nei)
 { printf("DELNEIGH [%s]\n", nei->summary().c_str()); return -1; }
+
+inline static void
+monitor_NEWLINK(const struct nlmsghdr* hdr)
+{
+  const struct ifinfomsg* ifi = (struct ifinfomsg*)(hdr + 1);
+  const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
+  routerd::link link(ifi, ifa_payload_len);
+  ip_link_add(&link);
+}
+
+inline static void
+monitor_DELLINK(const struct nlmsghdr* hdr)
+{
+  const struct ifinfomsg* ifi = (struct ifinfomsg*)(hdr + 1);
+  const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
+  routerd::link link(ifi, ifa_payload_len);
+  ip_link_del(&link);
+}
 
 inline static void
 monitor_NEWADDR(const struct nlmsghdr* hdr)
@@ -272,6 +313,8 @@ monitor(const struct sockaddr_nl *who,
          struct nlmsghdr *n, void *arg)
 {
   switch (n->nlmsg_type) {
+    case RTM_NEWLINK: monitor_NEWLINK(n); break;
+    case RTM_DELLINK: monitor_DELLINK(n); break;
     case RTM_NEWADDR: monitor_NEWADDR(n); break;
     case RTM_DELADDR: monitor_DELADDR(n); break;
     case RTM_NEWROUTE: monitor_NEWROUTE(n); break;

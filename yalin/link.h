@@ -535,11 +535,9 @@ ifinfomsg_rtattr_summary(const struct rtattr* rta)
 inline static std::string
 ifinfomsg_summary(const struct ifinfomsg* ifm)
 {
-  char buf[256];
-  snprintf(buf, sizeof(buf), "family=%u type=%u ifindex=%u "
-      "flags=0x%x change=0x%x", ifm->ifi_family, ifm->ifi_type,
-      ifm->ifi_index, ifm->ifi_flags, ifm->ifi_change);
-  return buf;
+  return strfmt("family=%u type=%u ifindex=%u flags=0x%x change=0x%x",
+      ifm->ifi_family, ifm->ifi_type, ifm->ifi_index, ifm->ifi_flags,
+      ifm->ifi_change);
 }
 
 inline static std::string
