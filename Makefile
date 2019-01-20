@@ -17,4 +17,4 @@ clean:
 re: clean all
 
 run:
-	sudo ./a.out
+	sudo ./$(TARGET)

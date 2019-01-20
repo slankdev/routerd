@@ -6,15 +6,15 @@ LDFLAGS +=
 
 SRC = main.cc
 OBJ = $(SRC:.cc=.o)
-TARGET = nlsniff.out
+TARGET = nlsniff
 
 all: $(OBJ)
-	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJ) $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) -o $(TARGET).out $(OBJ) $(LDFLAGS)
 
 clean:
-	rm -f $(OBJ) $(TARGET)
+	rm -f $(OBJ) $(TARGET).out $(TARGET)
+
+install:
+	cp $(TARGET).out /usr/local/bin/$(TARGET)
 
 re: clean all
-
-run:
-	sudo ./a.out
