@@ -11,17 +11,15 @@ ip addr show dev dum0
 echo -------
 
 # ROUTE
-sudo ip route add 20.0.0.0/24 via 10.0.0.10
-sudo ip route del 20.0.0.0/24
-sudo ip route add 30.0.0.0/24 dev dum0
-sudo ip route del 30.0.0.0/24
-sudo ip route add 2001:2::/64 via 2001:1::10
-sudo ip route del 2001:2::/64
-sudo ip route add 2001:3::/64 dev dum0
-sudo ip route del 2001:3::/64
+sudo ip route add 20.0.0.0/24 encap seg6 mode encap segs fc00:2::10 dev dum0
+sudo ip route add fc00:1::10/128 encap seg6local action End.DX4 nh4 10.0.0.1 dev dum0
 ip route show
 ip -6 route show
 echo -------
+
+# ROUTE
+sudo ip route del 20.0.0.0/24
+sudo ip route del fc00:1::10/128
 
 # LINK & ADDR
 sudo ip addr del 10.0.0.1/24 dev dum0

@@ -13,16 +13,18 @@
 
 namespace routerd {
 
+union addr_t {
+  uint32_t in4;
+  struct in6_addr in6;
+  uint8_t raw[16];
+};
+
 struct ifaddr {
   uint16_t ifindex;
   uint16_t afi;
   uint16_t prefix;
   uint32_t flags;
-  union {
-    uint8_t raw[16];
-    uint32_t in4;
-    struct in6_addr in6;
-  } addr;
+  addr_t addr;
   ifaddr(const struct ifaddrmsg* ifa, size_t rta_len)
   {
     ifindex = ifa->ifa_index;
@@ -36,6 +38,7 @@ struct ifaddr {
         {
           uint8_t* addr_ptr = (uint8_t*)(rta+1);
           size_t addr_len = rta->rta_len - sizeof(*rta);
+          assert(addr_len==4 || addr_len==16);
           if (addr_len == 4) memcpy(addr.raw, addr_ptr, addr_len);
           if (addr_len == 16) memcpy(addr.raw, addr_ptr, addr_len);
           break;
@@ -53,15 +56,110 @@ struct ifaddr {
   std::string summary() const
   {
     std::string addrstr = inetpton(addr.raw, afi);
-    return strfmt("%u: %s/%u 0x%x",
-        ifindex, addrstr.c_str(), prefix, flags);
+    return strfmt("%s/%u if=%u 0x%x",
+        addrstr.c_str(), prefix, ifindex, flags);
+  }
+};
+
+struct route {
+  uint16_t table;
+  uint16_t oif_index;
+  uint16_t iif_index;
+  uint32_t priority;
+  uint16_t afi;
+  uint32_t dst_pref;
+  uint32_t src_pref;
+  uint32_t proto;
+  addr_t dst;
+  addr_t src;
+  addr_t gw;
+
+  route(const struct rtmsg* rtm, size_t rta_len)
+  {
+    memset(this, 0, sizeof(*this));
+
+    afi       = rtm->rtm_family;
+    table     = rtm->rtm_table;
+    dst_pref  = rtm->rtm_dst_len;
+    src_pref  = rtm->rtm_src_len;
+    proto     = rtm->rtm_protocol;
+
+    for (struct rtattr* rta = RTM_RTA(rtm);
+         RTA_OK(rta, rta_len); rta = RTA_NEXT(rta, rta_len)) {
+
+      switch (rta->rta_type)
+      {
+        case RTA_PRIORITY:
+        {
+          assert(rta->rta_len == 8);
+          uint32_t val = *(uint32_t*)(rta+1);
+          priority = val;
+          break;
+        }
+        case RTA_IIF:
+        {
+          assert(rta->rta_len == 8);
+          uint32_t val = *(uint32_t*)(rta+1);
+          iif_index = val;
+        }
+        case RTA_OIF:
+        {
+          assert(rta->rta_len == 8);
+          uint32_t val = *(uint32_t*)(rta+1);
+          oif_index = val;
+          break;
+        }
+        case RTA_DST:
+        {
+          uint8_t* addr_ptr = (uint8_t*)(rta+1);
+          size_t addr_len = rta->rta_len - sizeof(*rta);
+          assert(addr_len==4 || addr_len==16);
+          if (addr_len == 4) memcpy(dst.raw, addr_ptr, addr_len);
+          if (addr_len == 16) memcpy(dst.raw, addr_ptr, addr_len);
+          break;
+        }
+        case RTA_SRC:
+        {
+          uint8_t* addr_ptr = (uint8_t*)(rta+1);
+          size_t addr_len = rta->rta_len - sizeof(*rta);
+          assert(addr_len==4 || addr_len==16);
+          if (addr_len == 4) memcpy(src.raw, addr_ptr, addr_len);
+          if (addr_len == 16) memcpy(src.raw, addr_ptr, addr_len);
+          break;
+        }
+        case RTA_GATEWAY:
+        {
+          uint8_t* addr_ptr = (uint8_t*)(rta+1);
+          size_t addr_len = rta->rta_len - sizeof(*rta);
+          assert(addr_len==4 || addr_len==16);
+          if (addr_len == 4) memcpy(gw.raw, addr_ptr, addr_len);
+          if (addr_len == 16) memcpy(gw.raw, addr_ptr, addr_len);
+          break;
+        }
+        default: break;
+      }
+    }
+  }
+  std::string summary() const
+  {
+    std::string src_str = inetpton(src.raw, afi);
+    std::string dst_str = inetpton(dst.raw, afi);
+    std::string gw_str = inetpton(gw.raw, afi);
+    return strfmt("s=%s/%u d=%s/%u gw=%s iif=%u oif=%u "
+      "prio=%u tab=%u proto=%u",
+      src_str.c_str(), src_pref, dst_str.c_str(), dst_pref,
+      gw_str.c_str(), iif_index, oif_index, priority, table, proto);
   }
 };
 
 static int ip_addr_add(const ifaddr* addr)
-{ printf("ADD [%s]\n", addr->summary().c_str()); return -1; }
+{ printf("NEWADDR  [%s]\n", addr->summary().c_str()); return -1; }
 static int ip_addr_del(const ifaddr* addr)
-{ printf("DEL [%s]\n", addr->summary().c_str()); return -1; }
+{ printf("DELADDR  [%s]\n", addr->summary().c_str()); return -1; }
+static int ip_route_add(const route* route)
+{ printf("NEWROUTE [%s]\n", route->summary().c_str()); return -1; }
+static int ip_route_del(const route* route)
+{ printf("DELROUTE [%s]\n", route->summary().c_str()); return -1; }
 
 inline static void
 monitor_NEWADDR(const struct nlmsghdr* hdr)
@@ -81,6 +179,24 @@ monitor_DELADDR(const struct nlmsghdr* hdr)
   ip_addr_del(&addr);
 }
 
+inline static void
+monitor_NEWROUTE(const struct nlmsghdr* hdr)
+{
+  const struct rtmsg* rtm = (struct rtmsg*)(hdr + 1);
+  const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
+  routerd::route route(rtm, ifa_payload_len);
+  ip_route_add(&route);
+}
+
+inline static void
+monitor_DELROUTE(const struct nlmsghdr* hdr)
+{
+  const struct rtmsg* rtm = (struct rtmsg*)(hdr + 1);
+  const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
+  routerd::route route(rtm, ifa_payload_len);
+  ip_route_del(&route);
+}
+
 inline static int
 monitor(const struct sockaddr_nl *who,
          struct rtnl_ctrl_data* _dum_,
@@ -89,6 +205,8 @@ monitor(const struct sockaddr_nl *who,
   switch (n->nlmsg_type) {
     case RTM_NEWADDR: monitor_NEWADDR(n); break;
     case RTM_DELADDR: monitor_DELADDR(n); break;
+    case RTM_NEWROUTE: monitor_NEWROUTE(n); break;
+    case RTM_DELROUTE: monitor_DELROUTE(n); break;
     default: break;
   }
   return 0;

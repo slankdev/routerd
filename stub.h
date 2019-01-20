@@ -7,10 +7,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-
 #if 0
-inline static int ip_route_add()    { puts(__func__); return -1; }
-inline static int ip_route_del()    { puts(__func__); return -1; }
 inline static int ip_neigh_add()    { puts(__func__); return -1; }
 inline static int ip_neigh_del()    { puts(__func__); return -1; }
 inline static int ip_link_set_up()  { puts(__func__); return -1; }

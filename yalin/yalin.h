@@ -59,6 +59,7 @@ inline static std::string
 inetpton(const void* ptr, int afi)
 {
   char buf[256];
+  memset(buf, 0, sizeof(buf));
   inet_ntop(afi, ptr, buf, sizeof(buf));
   return buf;
 }
