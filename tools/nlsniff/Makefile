@@ -1,6 +1,6 @@
 
 CXX = g++
-CXXFLAGS += -Wall -Werror -std=c++11 -I../../
+CXXFLAGS += -Wall -Werror -std=c++11 -I../../ -I../../libslankdev
 CXXFLAGS += -fsanitize=address
 LDFLAGS +=
 
@@ -15,9 +15,10 @@ clean:
 	rm -f $(OBJ) $(TARGET).out $(TARGET)
 
 install:
+	mkdir -p /usr/local/bin
 	cp $(TARGET).out /usr/local/bin/$(TARGET)
 
-re: clean all
+install_docker:
+	for c in `docker ps --format "{{.Names}}"`; do\
+		docker cp nlsniff.out $$c:/usr/bin/nlsniff ; done
 
-run:
-	sudo ./nlsniff.out -g ipv4route,ipv6route

@@ -1,6 +1,6 @@
 
 CXX = g++
-CXXFLAGS += -Wall -Werror -std=c++11
+CXXFLAGS += -Wall -Werror -std=c++11 -I./libslankdev
 CXXFLAGS += -fsanitize=address
 LDFLAGS +=
 
@@ -14,7 +14,14 @@ all: $(OBJ)
 clean:
 	rm -f $(OBJ) $(TARGET)
 
+tools_install:
+	make -C tools/nldump
+	make -C tools/nldump install
+	make -C tools/nlsniff
+	make -C tools/nlsniff install
+
 re: clean all
 
 run:
 	sudo ./$(TARGET)
+

@@ -257,6 +257,12 @@ rtmsg_rtattr_summary(const struct rtattr* rta)
       return hdr + strfmt("%u (%s)", val,
           lwtunnel_encap_types_to_str(val));
     }
+    case RTA_EXPIRES:
+    {
+      assert(rta->rta_len == 12);
+      uint64_t val = *(uint64_t*)(rta+1);
+      return hdr + strfmt("%lu", val);
+    }
     case RTA_ENCAP:
     {
       uint16_t encap_kind;
@@ -306,18 +312,45 @@ rtmsg_rtattr_summary(const struct rtattr* rta)
       else return hdr + "unknown-addr-fmt";
     }
 
+    case RTA_MFC_STATS:
+    {
+      assert(rta->rta_len == 28);
+      struct rta_mfc_stats {
+        uint64_t mfcs_packets;
+        uint64_t mfcs_bytes;
+        uint64_t mfcs_wrong_if;
+      };
+      const struct rta_mfc_stats* ms;
+      ms = (const struct rta_mfc_stats*)(rta+1);
+      return hdr + strfmt("pkt=%lu bytes=%lu wrong_if=%lu",
+          ms->mfcs_packets, ms->mfcs_bytes, ms->mfcs_wrong_if);
+    }
+
+    case RTA_MULTIPATH:
+    {
+      std::string str = strfmt("nested");
+      const struct rtnexthop* nhs = (const struct rtnexthop*)(rta+1);
+      const size_t n_nhs = (rta->rta_len-sizeof(*rta))/sizeof(struct rtnexthop);
+      for (size_t i=0; i<n_nhs; i++) {
+        const struct rtnexthop* nh = &nhs[i];
+        const size_t nh_len = rta->rta_len - sizeof(*rta);
+        assert(nh_len >= nh->rtnh_len);
+        assert(nh_len >= sizeof(struct rtnexthop));
+        str += strfmt("\n%4snexthop flags=0x%x hops=%u ifindex=%d",
+            " ", nh->rtnh_flags, nh->rtnh_hops, nh->rtnh_ifindex);
+      }
+      return hdr + str;
+    }
+
     // Others
     case RTA_METRICS:
-    case RTA_MULTIPATH:
     case RTA_PROTOINFO:
     case RTA_FLOW:
     case RTA_SESSION:
     case RTA_MP_ALGO:
     case RTA_MARK:
-    case RTA_MFC_STATS:
     case RTA_VIA:
     case RTA_NEWDST:
-    case RTA_EXPIRES:
     case RTA_PAD:
     case RTA_UID:
     case RTA_TTL_PROPAGATE:

@@ -1,0 +1,3 @@
+[submodule "libslankdev"]
+	path = libslankdev
+	url = https://github.com/slankdev/libslankdev

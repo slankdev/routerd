@@ -1,6 +1,6 @@
 
 CXX = g++
-CXXFLAGS += -Wall -Werror -std=c++11 -I../../ -I.
+CXXFLAGS += -Wall -Werror -std=c++11 -I../../ -I../../libslankdev
 CXXFLAGS += -fsanitize=address
 LDFLAGS +=
 
