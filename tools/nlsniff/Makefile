@@ -22,3 +22,4 @@ install_docker:
 	for c in `docker ps --format "{{.Names}}"`; do\
 		docker cp nlsniff.out $$c:/usr/bin/nlsniff ; done
 
+run: clean all install_docker

@@ -20,6 +20,13 @@ tools_install:
 	make -C tools/nlsniff
 	make -C tools/nlsniff install
 
+docker_tools_install:
+	# make -C tools/nldump
+	# make -C tools/nldump install_docker
+	make -C tools/nlsniff clean
+	make -C tools/nlsniff
+	make -C tools/nlsniff install_docker
+
 re: clean all
 
 run:
