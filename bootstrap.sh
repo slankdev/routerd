@@ -1,2 +1,3 @@
 #!/bin/sh
-git submodule update --init --recursive<Paste>
+git submodule update --init --recursive
+
