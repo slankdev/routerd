@@ -329,15 +329,20 @@ rtmsg_rtattr_summary(const struct rtattr* rta)
     case RTA_MULTIPATH:
     {
       std::string str = strfmt("nested");
-      const struct rtnexthop* nhs = (const struct rtnexthop*)(rta+1);
-      const size_t n_nhs = (rta->rta_len-sizeof(*rta))/sizeof(struct rtnexthop);
-      for (size_t i=0; i<n_nhs; i++) {
-        const struct rtnexthop* nh = &nhs[i];
-        const size_t nh_len = rta->rta_len - sizeof(*rta);
-        assert(nh_len >= nh->rtnh_len);
-        assert(nh_len >= sizeof(struct rtnexthop));
+      size_t plen = rta->rta_len - sizeof(struct rtattr);
+      const struct rtnexthop* rtnh = (const struct rtnexthop*)(rta+1);
+      for (; RTNH_OK(rtnh, plen);
+           rtnh = RTNH_NEXT(rtnh)) {
         str += strfmt("\n%4snexthop flags=0x%x hops=%u ifindex=%d",
-            " ", nh->rtnh_flags, nh->rtnh_hops, nh->rtnh_ifindex);
+            " ", rtnh->rtnh_flags, rtnh->rtnh_hops, rtnh->rtnh_ifindex);
+        size_t sub_plen = rtnh->rtnh_len - sizeof(struct rtnexthop);
+        printf("SLANKDE!!!! sub_plen=%zd\n", sub_plen);
+        for (struct rtattr* rta = RTNH_DATA(rtnh);
+            RTA_OK(rta, sub_plen);
+            rta = RTA_NEXT (rta, sub_plen)) {
+          str += strfmt("\n%6s", " ");
+          str += rtmsg_rtattr_summary(rta);
+        }
       }
       return hdr + str;
     }
