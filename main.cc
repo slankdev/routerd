@@ -169,27 +169,24 @@ struct neigh {
     ifindex = ndm->ndm_ifindex;
     afi = ndm->ndm_family;
     state = ndm->ndm_state;
-    for (struct rtattr* rta = NDM_RTA(ndm);
-         RTA_OK(rta, rta_len); rta = RTA_NEXT(rta, rta_len)) {
 
-      switch (rta->rta_type) {
-        case NDA_LLADDR:
-        {
-          assert(rta->rta_len == 10);
-          uint8_t* ptr = (uint8_t*)(rta+1);
-          memcpy(lladdr, ptr, sizeof(lladdr));
-          break;
-        }
-        case NDA_DST:
-        {
-          uint8_t* addr_ptr = (uint8_t*)(rta+1);
-          size_t addr_len = rta->rta_len - sizeof(*rta);
-          assert(addr_len==4 || addr_len==16);
-          if (addr_len == 4) memcpy(addr.raw, addr_ptr, addr_len);
-          if (addr_len == 16) memcpy(addr.raw, addr_ptr, addr_len);
-          break;
-        }
-      }
+    const size_t max_attrs = 1000;
+    struct rtattr* attrs[max_attrs] = { NULL };
+    parse_rtattr(NDM_RTA(ndm), rta_len, attrs, max_attrs);
+
+    if (attrs[ NDA_LLADDR]) {
+      struct rtattr* rta = attrs[NDA_LLADDR];
+      assert(rta->rta_len == 10);
+      uint8_t* ptr = (uint8_t*)(rta+1);
+      memcpy(lladdr, ptr, sizeof(lladdr));
+    }
+    if (attrs[ NDA_DST]) {
+      struct rtattr* rta = attrs[NDA_DST];
+      uint8_t* addr_ptr = (uint8_t*)(rta+1);
+      size_t addr_len = rta->rta_len - sizeof(*rta);
+      assert(addr_len==4 || addr_len==16);
+      if (addr_len == 4) memcpy(addr.raw, addr_ptr, addr_len);
+      if (addr_len == 16) memcpy(addr.raw, addr_ptr, addr_len);
     }
   }
   std::string summary() const
