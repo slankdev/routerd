@@ -73,7 +73,7 @@ rtattr_payload_ptr(const struct rtattr* rta)
 { return (uint8_t*)(rta + 1); }
 
 inline static uint8_t
-rtattr_read_8bit (const struct rtattr* attr)
+rta_read8(const struct rtattr* attr)
 {
   if (rtattr_payload_len(attr) > sizeof(uint8_t)) {
     fprintf(stderr, "%s: read miss (l,t)=(%zd,%u)\n", __func__,
@@ -86,7 +86,7 @@ rtattr_read_8bit (const struct rtattr* attr)
 }
 
 inline static uint16_t
-rtattr_read_16bit(const struct rtattr* attr)
+rta_read16(const struct rtattr* attr)
 {
   if (rtattr_payload_len(attr) > sizeof(uint16_t)) {
     fprintf(stderr, "%s: read miss (l,t)=(%zd,%u)\n", __func__,
@@ -99,7 +99,7 @@ rtattr_read_16bit(const struct rtattr* attr)
 }
 
 inline static uint32_t
-rtattr_read_32bit(const struct rtattr* attr)
+rta_read32(const struct rtattr* attr)
 {
   if (rtattr_payload_len(attr) > sizeof(uint32_t)) {
     fprintf(stderr, "%s: read miss (l,t)=(%zd,%u)\n", __func__,
@@ -112,7 +112,7 @@ rtattr_read_32bit(const struct rtattr* attr)
 }
 
 inline static uint64_t
-rtattr_read_64bit(const struct rtattr* attr)
+rta_read64(const struct rtattr* attr)
 {
   if (rtattr_payload_len(attr) > sizeof(uint64_t)) {
     fprintf(stderr, "%s: read miss (l,t)=(%zd,%u)\n", __func__,
@@ -125,12 +125,12 @@ rtattr_read_64bit(const struct rtattr* attr)
 }
 
 inline static const char*
-rtattr_read_str(const struct rtattr* attr)
+rta_readstr(const struct rtattr* attr)
 {
   const char* strptr = (const char*)rtattr_payload_ptr(attr);
   const size_t strbuflen = strlen(strptr);
   const size_t payloadlen = rtattr_payload_len(attr);
-  if (payloadlen > strbuflen) {
+  if (payloadlen < strbuflen) {
     fprintf(stderr, "%s: read miss (type=%u)\n", __func__, attr->rta_type);
     printf("payloadlen: %zd\n", payloadlen);
     printf("strbuflen: %zd\n", strbuflen);
@@ -384,6 +384,12 @@ rtnl_summary(const struct sockaddr_nl *who,
       str += rtnl_netconf_summary(n);
       break;
 
+    case RTM_NEWNSID:
+    case RTM_DELNSID:
+    case RTM_GETNSID:
+      str += "unsupport nsid msg";
+      break;
+
     /* Invalid Case */
     default:
       fprintf(stderr, "%s: unknown type(%u)\n", __func__, n->nlmsg_type);
@@ -403,6 +409,9 @@ parse_rtattr(const void* buf, size_t buflen, struct rtattr* attrs[], size_t max_
   size_t rta_len = buflen;
   for (struct rtattr* rta = (struct rtattr*)buf;
        RTA_OK(rta, rta_len); rta = RTA_NEXT(rta, rta_len)) {
+    if (rta->rta_type >= max_attrs)
+      printf("rta->rta_type:%u, max_attr:%zd\n",
+          rta->rta_type, max_attrs);
     assert(rta->rta_type < max_attrs);
     attrs[rta->rta_type] = rta;
   }

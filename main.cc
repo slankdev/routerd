@@ -48,9 +48,7 @@ struct link {
           sub, sizeof(sub)/sizeof(sub[0]));
 
       if (sub[IFLA_INFO_KIND]) {
-        struct rtattr* s = sub[IFLA_INFO_KIND];
-        const char* val = (const char*)(s+1);
-        str += std::string(" ") + val;
+        str += std::string(" ") + rta_readstr(sub[IFLA_INFO_KIND]);
       }
     }
     return str;
