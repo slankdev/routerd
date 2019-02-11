@@ -29,6 +29,11 @@ struct link {
     type = ifm->ifi_type;
     change = ifm->ifi_change;
     flags = ifm->ifi_flags;
+
+    struct rtattr* attrs[1000];
+    memset(attrs, 0x0, sizeof(attrs));
+    parse_rtattr(IFLA_RTA(ifm), rta_len, attrs,
+        sizeof(attrs)/sizeof(attrs[0]));
   }
   std::string summary() const
   {
@@ -49,9 +54,10 @@ struct ifaddr {
     afi     = ifa->ifa_family;
     prefix  = ifa->ifa_prefixlen;
 
-    const size_t max_attrs = 1000;
-    struct rtattr* attrs[max_attrs] = { NULL };
-    parse_rtattr(IFA_RTA(ifa), rta_len, attrs, max_attrs);
+    struct rtattr* attrs[1000];
+    memset(attrs, 0x0, sizeof(attrs));
+    parse_rtattr(IFA_RTA(ifa), rta_len, attrs,
+        sizeof(attrs)/sizeof(attrs[0]));
 
     if (attrs[IFA_ADDRESS]) {
       struct rtattr* rta = attrs[IFA_ADDRESS];
@@ -98,9 +104,10 @@ struct route {
     src_pref  = rtm->rtm_src_len;
     proto     = rtm->rtm_protocol;
 
-    const size_t max_attrs = 1000;
-    struct rtattr* attrs[max_attrs] = { NULL };
-    parse_rtattr(RTM_RTA(rtm), rta_len, attrs, max_attrs);
+    struct rtattr* attrs[1000];
+    memset(attrs, 0x0, sizeof(attrs));
+    parse_rtattr(RTM_RTA(rtm), rta_len, attrs,
+        sizeof(attrs)/sizeof(attrs[0]));
 
     if (attrs[RTA_PRIORITY]) {
       struct rtattr* rta = attrs[RTA_PRIORITY];
@@ -170,9 +177,10 @@ struct neigh {
     afi = ndm->ndm_family;
     state = ndm->ndm_state;
 
-    const size_t max_attrs = 1000;
-    struct rtattr* attrs[max_attrs] = { NULL };
-    parse_rtattr(NDM_RTA(ndm), rta_len, attrs, max_attrs);
+    struct rtattr* attrs[1000];
+    memset(attrs, 0x0, sizeof(attrs));
+    parse_rtattr(NDM_RTA(ndm), rta_len, attrs,
+        sizeof(attrs)/sizeof(attrs[0]));
 
     if (attrs[ NDA_LLADDR]) {
       struct rtattr* rta = attrs[NDA_LLADDR];
