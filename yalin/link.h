@@ -6,6 +6,11 @@
 #include <linux/rtnetlink.h>
 #include <linux/neighbour.h>
 #include <linux/if_link.h>
+#include <linux/if.h>
+#include <net/if.h>
+#include <sys/ioctl.h>
+#include <string>
+#include <vector>
 
 #ifndef IFLA_RTA
 #error IFLA_RTA isnt defined
@@ -565,11 +570,40 @@ ifinfomsg_rtattr_summary(const struct rtattr* rta)
 }
 
 inline static std::string
+ifm_flags2str(uint16_t flag)
+{
+  std::vector<std::string> tmp;
+  if (flag & IFF_UP         ) tmp.push_back("UP");
+  if (flag & IFF_BROADCAST  ) tmp.push_back("BROADCAST");
+  if (flag & IFF_DEBUG      ) tmp.push_back("DEBUG");
+  if (flag & IFF_LOOPBACK   ) tmp.push_back("LOOPBACK");
+  if (flag & IFF_POINTOPOINT) tmp.push_back("POINTOPOINT");
+  if (flag & IFF_RUNNING    ) tmp.push_back("RUNNING");
+  if (flag & IFF_NOARP      ) tmp.push_back("NOARP");
+  if (flag & IFF_PROMISC    ) tmp.push_back("PROMISC");
+  if (flag & IFF_NOTRAILERS ) tmp.push_back("NOTRAILERS");
+  if (flag & IFF_ALLMULTI   ) tmp.push_back("ALLMULTI");
+  if (flag & IFF_MASTER     ) tmp.push_back("MASTER");
+  if (flag & IFF_SLAVE      ) tmp.push_back("SLAVE");
+  if (flag & IFF_MULTICAST  ) tmp.push_back("MULTICAST");
+  if (flag & IFF_PORTSEL    ) tmp.push_back("PORTSEL");
+  if (flag & IFF_AUTOMEDIA  ) tmp.push_back("AUTOMEDIA");
+  if (flag & IFF_DYNAMIC    ) tmp.push_back("DYNAMIC");
+  if (flag & IFF_LOWER_UP   ) tmp.push_back("LOWER_UP");
+  if (flag & IFF_DORMANT    ) tmp.push_back("DORMANT");
+  if (flag & IFF_ECHO       ) tmp.push_back("ECHO");
+  std::string ret;
+  for (size_t i=0; i<tmp.size(); i++)
+    ret += tmp[i] + ((i+1)<tmp.size()?"|":"");
+  return ret;
+}
+
+inline static std::string
 ifinfomsg_summary(const struct ifinfomsg* ifm)
 {
-  return strfmt("family=%u type=%u ifindex=%u flags=0x%x change=0x%x",
+  return strfmt("family=%u type=%u ifindex=%u flags=0x%x<%s> change=0x%x",
       ifm->ifi_family, ifm->ifi_type, ifm->ifi_index, ifm->ifi_flags,
-      ifm->ifi_change);
+      ifm_flags2str(ifm->ifi_flags).c_str(), ifm->ifi_change);
 }
 
 inline static std::string
