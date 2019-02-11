@@ -38,8 +38,22 @@ struct link {
   }
   std::string summary() const
   {
-    return strfmt("if=%u type=%u change=0x%x flags=0x%x",
-        ifindex, type, change, flags);
+    std::string str = strfmt("if=%u type=%u change=0x%x flags=0x%x",
+                            ifindex, type, change, flags);
+    if (attrs[IFLA_LINKINFO]) {
+      struct rtattr* sub[1000];
+      parse_rtattr(
+          RTA_DATA(attrs[IFLA_LINKINFO]),
+          RTA_PAYLOAD(attrs[IFLA_LINKINFO]),
+          sub, sizeof(sub)/sizeof(sub[0]));
+
+      if (sub[IFLA_INFO_KIND]) {
+        struct rtattr* s = sub[IFLA_INFO_KIND];
+        const char* val = (const char*)(s+1);
+        str += std::string(" ") + val;
+      }
+    }
+    return str;
   }
 }; /* struct link */
 
