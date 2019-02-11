@@ -98,60 +98,51 @@ struct route {
     src_pref  = rtm->rtm_src_len;
     proto     = rtm->rtm_protocol;
 
-    for (struct rtattr* rta = RTM_RTA(rtm);
-         RTA_OK(rta, rta_len); rta = RTA_NEXT(rta, rta_len)) {
+    const size_t max_attrs = 1000;
+    struct rtattr* attrs[max_attrs] = { NULL };
+    parse_rtattr(RTM_RTA(rtm), rta_len, attrs, max_attrs);
 
-      switch (rta->rta_type)
-      {
-        case RTA_PRIORITY:
-        {
-          assert(rta->rta_len == 8);
-          uint32_t val = *(uint32_t*)(rta+1);
-          priority = val;
-          break;
-        }
-        case RTA_IIF:
-        {
-          assert(rta->rta_len == 8);
-          uint32_t val = *(uint32_t*)(rta+1);
-          iif_index = val;
-        }
-        case RTA_OIF:
-        {
-          assert(rta->rta_len == 8);
-          uint32_t val = *(uint32_t*)(rta+1);
-          oif_index = val;
-          break;
-        }
-        case RTA_DST:
-        {
-          uint8_t* addr_ptr = (uint8_t*)(rta+1);
-          size_t addr_len = rta->rta_len - sizeof(*rta);
-          assert(addr_len==4 || addr_len==16);
-          if (addr_len == 4) memcpy(dst.raw, addr_ptr, addr_len);
-          if (addr_len == 16) memcpy(dst.raw, addr_ptr, addr_len);
-          break;
-        }
-        case RTA_SRC:
-        {
-          uint8_t* addr_ptr = (uint8_t*)(rta+1);
-          size_t addr_len = rta->rta_len - sizeof(*rta);
-          assert(addr_len==4 || addr_len==16);
-          if (addr_len == 4) memcpy(src.raw, addr_ptr, addr_len);
-          if (addr_len == 16) memcpy(src.raw, addr_ptr, addr_len);
-          break;
-        }
-        case RTA_GATEWAY:
-        {
-          uint8_t* addr_ptr = (uint8_t*)(rta+1);
-          size_t addr_len = rta->rta_len - sizeof(*rta);
-          assert(addr_len==4 || addr_len==16);
-          if (addr_len == 4) memcpy(gw.raw, addr_ptr, addr_len);
-          if (addr_len == 16) memcpy(gw.raw, addr_ptr, addr_len);
-          break;
-        }
-        default: break;
-      }
+    if (attrs[RTA_PRIORITY]) {
+      struct rtattr* rta = attrs[RTA_PRIORITY];
+      assert(rta->rta_len == 8);
+      uint32_t val = *(uint32_t*)(rta+1);
+      priority = val;
+    }
+    if (attrs[RTA_IIF]) {
+      struct rtattr* rta = attrs[RTA_IIF];
+      assert(rta->rta_len == 8);
+      uint32_t val = *(uint32_t*)(rta+1);
+      iif_index = val;
+    }
+    if (attrs[RTA_OIF]) {
+      struct rtattr* rta = attrs[RTA_OIF];
+      assert(rta->rta_len == 8);
+      uint32_t val = *(uint32_t*)(rta+1);
+      oif_index = val;
+    }
+    if (attrs[RTA_DST]) {
+      struct rtattr* rta = attrs[RTA_DST];
+      uint8_t* addr_ptr = (uint8_t*)(rta+1);
+      size_t addr_len = rta->rta_len - sizeof(*rta);
+      assert(addr_len==4 || addr_len==16);
+      if (addr_len == 4) memcpy(dst.raw, addr_ptr, addr_len);
+      if (addr_len == 16) memcpy(dst.raw, addr_ptr, addr_len);
+    }
+    if (attrs[RTA_SRC]) {
+      struct rtattr* rta = attrs[RTA_SRC];
+      uint8_t* addr_ptr = (uint8_t*)(rta+1);
+      size_t addr_len = rta->rta_len - sizeof(*rta);
+      assert(addr_len==4 || addr_len==16);
+      if (addr_len == 4) memcpy(src.raw, addr_ptr, addr_len);
+      if (addr_len == 16) memcpy(src.raw, addr_ptr, addr_len);
+    }
+    if (attrs[RTA_GATEWAY]) {
+      struct rtattr* rta = attrs[RTA_GATEWAY];
+      uint8_t* addr_ptr = (uint8_t*)(rta+1);
+      size_t addr_len = rta->rta_len - sizeof(*rta);
+      assert(addr_len==4 || addr_len==16);
+      if (addr_len == 4) memcpy(gw.raw, addr_ptr, addr_len);
+      if (addr_len == 16) memcpy(gw.raw, addr_ptr, addr_len);
     }
   }
   std::string summary() const
