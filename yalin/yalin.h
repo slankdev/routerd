@@ -397,5 +397,16 @@ rtnl_summary(const struct sockaddr_nl *who,
   return 0;
 }
 
+inline static void
+parse_rtattr(const void* buf, size_t buflen, struct rtattr* attrs[], size_t max_attrs)
+{
+  size_t rta_len = buflen;
+  for (struct rtattr* rta = (struct rtattr*)buf;
+       RTA_OK(rta, rta_len); rta = RTA_NEXT(rta, rta_len)) {
+    assert(rta->rta_type < max_attrs);
+    attrs[rta->rta_type] = rta;
+  }
+}
+
 #endif /* _YALIN_H_ */
 
