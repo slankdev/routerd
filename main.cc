@@ -23,6 +23,8 @@ struct link {
   uint32_t type;
   uint32_t change;
   uint32_t flags;
+  struct rtattr* attrs[1000];
+
   link(const struct ifinfomsg* ifm, size_t rta_len)
   {
     ifindex = ifm->ifi_index;
@@ -30,7 +32,6 @@ struct link {
     change = ifm->ifi_change;
     flags = ifm->ifi_flags;
 
-    struct rtattr* attrs[1000];
     memset(attrs, 0x0, sizeof(attrs));
     parse_rtattr(IFLA_RTA(ifm), rta_len, attrs,
         sizeof(attrs)/sizeof(attrs[0]));
@@ -48,13 +49,14 @@ struct ifaddr {
   uint16_t prefix;
   uint32_t flags;
   addr_t addr;
+  struct rtattr* attrs[1000];
+
   ifaddr(const struct ifaddrmsg* ifa, size_t rta_len)
   {
     ifindex = ifa->ifa_index;
     afi     = ifa->ifa_family;
     prefix  = ifa->ifa_prefixlen;
 
-    struct rtattr* attrs[1000];
     memset(attrs, 0x0, sizeof(attrs));
     parse_rtattr(IFA_RTA(ifa), rta_len, attrs,
         sizeof(attrs)/sizeof(attrs[0]));
@@ -93,6 +95,7 @@ struct route {
   addr_t dst;
   addr_t src;
   addr_t gw;
+  struct rtattr* attrs[1000];
 
   route(const struct rtmsg* rtm, size_t rta_len)
   {
@@ -104,7 +107,6 @@ struct route {
     src_pref  = rtm->rtm_src_len;
     proto     = rtm->rtm_protocol;
 
-    struct rtattr* attrs[1000];
     memset(attrs, 0x0, sizeof(attrs));
     parse_rtattr(RTM_RTA(rtm), rta_len, attrs,
         sizeof(attrs)/sizeof(attrs[0]));
@@ -170,6 +172,8 @@ struct neigh {
   addr_t addr;
   uint8_t lladdr[6];
   uint32_t state;
+  struct rtattr* attrs[1000];
+
   neigh(const struct ndmsg* ndm, size_t rta_len)
   {
     memset(this, 0, sizeof(*this));
@@ -177,7 +181,6 @@ struct neigh {
     afi = ndm->ndm_family;
     state = ndm->ndm_state;
 
-    struct rtattr* attrs[1000];
     memset(attrs, 0x0, sizeof(attrs));
     parse_rtattr(NDM_RTA(ndm), rta_len, attrs,
         sizeof(attrs)/sizeof(attrs[0]));
