@@ -49,26 +49,22 @@ struct ifaddr {
     afi     = ifa->ifa_family;
     prefix  = ifa->ifa_prefixlen;
 
-    for (struct rtattr* rta = IFA_RTA(ifa);
-         RTA_OK(rta, rta_len); rta = RTA_NEXT(rta, rta_len)) {
-      switch (rta->rta_type) {
-        case IFA_ADDRESS:
-        {
-          uint8_t* addr_ptr = (uint8_t*)(rta+1);
-          size_t addr_len = rta->rta_len - sizeof(*rta);
-          assert(addr_len==4 || addr_len==16);
-          if (addr_len == 4) memcpy(addr.raw, addr_ptr, addr_len);
-          if (addr_len == 16) memcpy(addr.raw, addr_ptr, addr_len);
-          break;
-        }
-        case IFA_FLAGS:
-        {
-          uint32_t val = *(uint32_t*)(rta+1);
-          flags = val;
-          break;
-        }
-        default: break;
-      }
+    const size_t max_attrs = 1000;
+    struct rtattr* attrs[max_attrs] = { NULL };
+    parse_rtattr(IFA_RTA(ifa), rta_len, attrs, max_attrs);
+
+    if (attrs[IFA_ADDRESS]) {
+      struct rtattr* rta = attrs[IFA_ADDRESS];
+      uint8_t* addr_ptr = (uint8_t*)(rta+1);
+      size_t addr_len = rta->rta_len - sizeof(*rta);
+      assert(addr_len==4 || addr_len==16);
+      if (addr_len == 4) memcpy(addr.raw, addr_ptr, addr_len);
+      if (addr_len == 16) memcpy(addr.raw, addr_ptr, addr_len);
+    }
+    if (attrs[IFA_FLAGS]) {
+      struct rtattr* rta = attrs[IFA_ADDRESS];
+      uint32_t val = *(uint32_t*)(rta+1);
+      flags = val;
     }
   }
   std::string summary() const
