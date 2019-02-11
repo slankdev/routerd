@@ -516,6 +516,38 @@ ifinfomsg_rtattr_summary(const struct rtattr* rta)
       str.pop_back();
       return hdr + str;
     }
+    case IFLA_OPERSTATE:
+    case IFLA_LINKMODE:
+    case IFLA_CARRIER:
+    case IFLA_PROTO_DOWN:
+    {
+      assert(rta->rta_len == 5);
+      uint8_t num = *(uint8_t*)(rta+1);
+      return hdr + strfmt("%u", num);
+    }
+    case IFLA_CARRIER_CHANGES:
+    case IFLA_TXQLEN:
+    case IFLA_GROUP:
+    case IFLA_NUM_TX_QUEUES:
+    case IFLA_GSO_MAX_SEGS:
+    case IFLA_GSO_MAX_SIZE:
+    case IFLA_CARRIER_UP_COUNT:
+    case IFLA_CARRIER_DOWN_COUNT:
+    case IFLA_NUM_RX_QUEUES:
+    {
+      assert(rta->rta_len == 8);
+      uint32_t num = *(uint32_t*)(rta+1);
+      return hdr + strfmt("%u", num);
+    }
+
+    //  0x0006 IFLA_QDISC               :: unknown-fmt(rta_len=9,data=6e6f6f70...)
+    //  0x000e IFLA_MAP                 :: unknown-fmt(rta_len=36,data=00000000...)
+    //  0x0017 IFLA_STATS64             :: unknown-fmt(rta_len=196,data=00000000...)
+    //  0x0007 IFLA_STATS               :: unknown-fmt(rta_len=100,data=00000000...)
+    case IFLA_QDISC:
+    case IFLA_MAP:
+    case IFLA_STATS64:
+    case IFLA_STATS:
     default:
     {
       std::string val;
