@@ -1,7 +1,7 @@
 
 CXX = g++
-CXXFLAGS += -Wall -Werror -std=c++11 -I./libslankdev
-CXXFLAGS += -fsanitize=address
+CXXFLAGS += -Wall -Werror -std=c++11 -I./libslankdev -g -O0
+# CXXFLAGS += -fsanitize=address
 LDFLAGS +=
 
 SRC = main.cc

@@ -231,10 +231,85 @@ struct rtnl_ctrl_data {
   int nsid;
 };
 
+struct buffer {
+  std::vector<uint8_t> raw;
+  uint8_t* data() { return raw.data(); }
+  size_t size() { return raw.size(); }
+  void memcpy(const void* src, size_t len)
+  {
+    raw.clear();
+    raw.resize(len);
+    ::memcpy(raw.data(), src, len);
+  }
+};
+
+typedef struct netlink_cache_s {
+  std::vector<buffer> links;
+  // std::vector<uint8_t> addr;
+  // std::vector<uint8_t> route;
+  // std::vector<uint8_t> neigh;
+} netlink_cache_t;
+
+static inline void
+netlink_dump_link(netlink_t* nl)
+{
+  /*
+   * REFERENCES
+   * + https://gist.github.com/cl4u2/5204374
+   * + https://linuxjm.osdn.jp/html/LDP_man-pages/man3/rtnetlink.3.html
+   */
+
+  struct {
+    struct nlmsghdr hdr;
+    struct rtgenmsg gen;
+  } req;
+  memset(&req, 0x0, sizeof(req));
+
+  req.hdr.nlmsg_len = NLMSG_LENGTH(sizeof(struct rtgenmsg));
+  req.hdr.nlmsg_type = RTM_GETLINK;
+  req.hdr.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
+  req.hdr.nlmsg_seq = random();
+  req.hdr.nlmsg_pid = getpid();
+  req.gen.rtgen_family = AF_PACKET;
+
+  int ret = write(nl->fd, &req, sizeof(req));
+  if (ret < 0) {
+    fprintf(stderr, "OKASHII..\n");
+    abort();
+  }
+}
+
+inline static int
+cache_callback(const struct sockaddr_nl *who,
+         struct rtnl_ctrl_data* _dum_,
+         struct nlmsghdr *n, void *arg)
+{
+  netlink_cache_t* nlc = (netlink_cache_t*)arg;
+  if (n->nlmsg_type == NLMSG_DONE) {
+      return -1;
+  }
+  switch (n->nlmsg_type) {
+    case RTM_NEWLINK:
+    case RTM_DELLINK:
+    {
+      buffer buf;
+      buf.memcpy(n, n->nlmsg_len);
+      nlc->links.push_back(buf);
+      break;
+    }
+  }
+  return 0;
+}
+
+static inline void
+netlink_cache_free(netlink_cache_t* nlc)
+{ delete nlc; }
+
 typedef int (*rtnl_listen_filter_t)(
              const struct sockaddr_nl*,
              struct rtnl_ctrl_data *,
              struct nlmsghdr *n, void *);
+
 
 static inline netlink_t*
 netlink_open(uint32_t subscriptions, int32_t protocol)
@@ -427,6 +502,19 @@ parse_rtattr(const void* buf, size_t buflen, struct rtattr* attrs[], size_t max_
     assert(rta->rta_type < max_attrs);
     attrs[rta->rta_type] = rta;
   }
+}
+
+static inline netlink_cache_t*
+netlink_cache_alloc(netlink_t* nl)
+{
+  netlink_cache_t* nlc = new netlink_cache_s;
+  if (!nlc) {
+    perror("malloc");
+    return NULL;
+  }
+  netlink_dump_link(nl);
+  netlink_listen(nl, cache_callback, nlc);
+  return nlc;
 }
 
 #endif /* _YALIN_H_ */

@@ -423,6 +423,7 @@ ifinfomsg_rtattr_LINKINFO_summary(const struct rtattr* rta)
 
   switch (rta->rta_type) {
     case IFLA_INFO_KIND:
+    case IFLA_INFO_SLAVE_KIND:
     {
       const char* val = (const char*)(rta+1);
       tmp_kind = val;
@@ -447,8 +448,8 @@ ifinfomsg_rtattr_LINKINFO_summary(const struct rtattr* rta)
       str.pop_back();
       return hdr + str;
     }
+
     case IFLA_INFO_XSTATS    :
-    case IFLA_INFO_SLAVE_KIND:
     case IFLA_INFO_SLAVE_DATA:
     default:
     {
@@ -499,9 +500,11 @@ ifinfomsg_rtattr_summary(const struct rtattr* rta)
       uint32_t promisc = *(uint32_t*)(rta+1);
       return hdr + (promisc==1?"on":"off");
     }
+    case IFLA_MASTER:
     case IFLA_MTU:
     case IFLA_LINK:
     {
+      assert(rta->rta_len == 8);
       char str[256];
       uint32_t num = *(uint32_t*)(rta+1);
       snprintf(str, sizeof(str), "%u", num);
@@ -570,7 +573,7 @@ ifinfomsg_rtattr_summary(const struct rtattr* rta)
 }
 
 inline static std::string
-ifm_flags2str(uint16_t flag)
+ifm_flags2str(uint32_t flag)
 {
   std::vector<std::string> tmp;
   if (flag & IFF_UP         ) tmp.push_back("UP");
@@ -601,9 +604,11 @@ ifm_flags2str(uint16_t flag)
 inline static std::string
 ifinfomsg_summary(const struct ifinfomsg* ifm)
 {
-  return strfmt("family=%u type=%u ifindex=%u flags=0x%x<%s> change=0x%x",
+  uint16_t affected_flag = ~uint16_t(0) & ifm->ifi_change;
+  return strfmt("family=%u type=%u ifindex=%u flags=0x%08x<%s> change=0x%08x<%s>",
       ifm->ifi_family, ifm->ifi_type, ifm->ifi_index, ifm->ifi_flags,
-      ifm_flags2str(ifm->ifi_flags).c_str(), ifm->ifi_change);
+      ifm_flags2str(ifm->ifi_flags).c_str(), ifm->ifi_change,
+      ifm_flags2str(affected_flag).c_str());
 }
 
 inline static std::string

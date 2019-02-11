@@ -23,7 +23,7 @@ struct link {
   uint32_t type;
   uint32_t change;
   uint32_t flags;
-  struct rtattr* attrs[1000];
+  struct rtattr* attrs[50000];
 
   link(const struct ifinfomsg* ifm, size_t rta_len)
   {
@@ -45,10 +45,10 @@ struct link {
   {
     std::string str;
     std::string ifname = rta_readstr((attrs[IFLA_IFNAME]));
-    if (change == uint32_t(~0)) {
+    if (~change == 0) { // change is 0xff..ff
       uint8_t* d = (uint8_t*)rta_readptr(attrs[IFLA_LINKINFO]);
       size_t l = rta_payload(attrs[IFLA_LINKINFO]);
-      struct rtattr* sub[1000];
+      struct rtattr* sub[50000];
       parse_rtattr(d, l, sub, sizeof(sub)/sizeof(sub[0]));
       std::string tname = rta_readstr(sub[IFLA_INFO_KIND]);
       std::string ope = nlmsg_type==RTM_NEWLINK?"add":"del";
@@ -58,18 +58,36 @@ struct link {
         uint32_t ii = rta_read32(attrs[IFLA_LINK]);
         uint8_t* sd = (uint8_t*)rta_readptr(sub[IFLA_INFO_DATA]);
         size_t sdl = rta_payload(sub[IFLA_INFO_DATA]);
-        struct rtattr* subsub[1000];
+        struct rtattr* subsub[50000];
         parse_rtattr(sd, sdl, subsub, sizeof(subsub)/sizeof(subsub[0]));
         std::string lname = ifindex2str(ii);
         uint16_t id = rta_read16(subsub[IFLA_VLAN_ID]);
         str += strfmt(" link %s id %u", lname.c_str(), id);
       } else if (tname == "dummy") {
-        // nothing
+      } else if (tname == "bridge") {
+      } else if (tname == "vrf") {
+        uint8_t* sd = (uint8_t*)rta_readptr(sub[IFLA_INFO_DATA]);
+        size_t sdl = rta_payload(sub[IFLA_INFO_DATA]);
+        struct rtattr* subsub[50000];
+        parse_rtattr(sd, sdl, subsub, sizeof(subsub)/sizeof(subsub[0]));
+        uint32_t tableid = rta_read32(subsub[IFLA_VRF_TABLE]);
+        str += strfmt(" table %u", tableid);
       } else {
         str += " UNKNOWNOPT???";
       }
+    } else if (change == 0) {
+      str += std::string("Unknwon link-state change (ex. master/slave/mtu)");
+      printf("comparing with cache...\n");
     } else {
-      str += strfmt("modify ");
+      str += strfmt("ip link set dev %s ", ifname.c_str());
+      if (change) {
+        uint32_t affected_flag = ~uint32_t(0) & change;
+        uint32_t destination_bit = flags & change;
+        if (affected_flag & IFF_UP) str += destination_bit&affected_flag?"up":"down";
+        if (affected_flag & IFF_PROMISC) str += destination_bit&affected_flag?"promisc on":"promisc off";
+      } else {
+        str += "UNSUPPORTED...?";
+      }
     }
     return str;
   }
@@ -349,12 +367,14 @@ monitor(const struct sockaddr_nl *who,
   switch (n->nlmsg_type) {
     case RTM_NEWLINK: monitor_NEWLINK(n); break;
     case RTM_DELLINK: monitor_DELLINK(n); break;
+#if 0
     case RTM_NEWADDR: monitor_NEWADDR(n); break;
     case RTM_DELADDR: monitor_DELADDR(n); break;
     case RTM_NEWROUTE: monitor_NEWROUTE(n); break;
     case RTM_DELROUTE: monitor_DELROUTE(n); break;
     case RTM_NEWNEIGH: monitor_NEWNEIGH(n); break;
     case RTM_DELNEIGH: monitor_DELNEIGH(n); break;
+#endif
     default: break;
   }
   return 0;
@@ -370,7 +390,23 @@ main(int argc, char **argv)
   if (nl == NULL)
     return 1;
 
-  int ret = netlink_listen(nl, routerd::monitor, NULL);
+  netlink_cache_t* nlc = netlink_cache_alloc(nl);
+  if (nl == NULL)
+    return 1;
+
+  printf("---Cache-INFO-BEGIN---\n");
+  printf("link: %zd\n", nlc->links.size());
+  for (size_t i=0; i<nlc->links.size(); i++) {
+    auto& raw = nlc->links[i];
+    const struct nlmsghdr* hdr = (const struct nlmsghdr*)raw.data();
+    const struct ifinfomsg* ifi = (struct ifinfomsg*)(hdr + 1);
+    const size_t rta_len = IFA_PAYLOAD(hdr);
+    routerd::link l(ifi, rta_len);
+    printf("link[%zd] --> %s\n", i, l.summary().c_str());
+  }
+  printf("---Cache-INFO-END-----\n");
+
+  int ret = netlink_listen(nl, routerd::monitor, nlc);
   if (ret < 0)
     return 1;
 
