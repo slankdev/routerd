@@ -53,6 +53,38 @@ struct link {
     }
     return str;
   }
+  std::string to_iproute2_cli(uint16_t nlmsg_type) const
+  {
+    std::string str;
+    std::string ifname = rta_readstr((attrs[IFLA_IFNAME]));
+    if (change == uint32_t(~0)) {
+      uint8_t* d = (uint8_t*)rta_readptr(attrs[IFLA_LINKINFO]);
+      size_t l = rta_payload(attrs[IFLA_LINKINFO]);
+      struct rtattr* sub[1000];
+      parse_rtattr(d, l, sub, sizeof(sub)/sizeof(sub[0]));
+      std::string tname = rta_readstr(sub[IFLA_INFO_KIND]);
+      std::string ope = nlmsg_type==RTM_NEWLINK?"add":"del";
+      str += strfmt("ip link %s %s type %s",
+          ope.c_str(), ifname.c_str(), tname.c_str());
+      if (tname == "vlan") {
+        uint32_t ii = rta_read32(attrs[IFLA_LINK]);
+        uint8_t* sd = (uint8_t*)rta_readptr(sub[IFLA_INFO_DATA]);
+        size_t sdl = rta_payload(sub[IFLA_INFO_DATA]);
+        struct rtattr* subsub[1000];
+        parse_rtattr(sd, sdl, subsub, sizeof(subsub)/sizeof(subsub[0]));
+        std::string lname = ifindex2str(ii);
+        uint16_t id = rta_read16(subsub[IFLA_VLAN_ID]);
+        str += strfmt(" link %s id %u", lname.c_str(), id);
+      } else if (tname == "dummy") {
+        // nothing
+      } else {
+        str += " UNKNOWNOPT???";
+      }
+    } else {
+      str += strfmt("modify ");
+    }
+    return str;
+  }
 }; /* struct link */
 
 struct ifaddr {
@@ -197,13 +229,13 @@ struct neigh {
     parse_rtattr(NDM_RTA(ndm), rta_len, attrs,
         sizeof(attrs)/sizeof(attrs[0]));
 
-    if (attrs[ NDA_LLADDR]) {
+    if (attrs[NDA_LLADDR]) {
       struct rtattr* rta = attrs[NDA_LLADDR];
       assert(rta->rta_len == 10);
       uint8_t* ptr = (uint8_t*)(rta+1);
       memcpy(lladdr, ptr, sizeof(lladdr));
     }
-    if (attrs[ NDA_DST]) {
+    if (attrs[NDA_DST]) {
       struct rtattr* rta = attrs[NDA_DST];
       uint8_t* addr_ptr = (uint8_t*)(rta+1);
       size_t addr_len = rta->rta_len - sizeof(*rta);
@@ -225,9 +257,17 @@ struct neigh {
 }; /* struct neigh */
 
 static int ip_link_add(const link* link)
-{ printf("NEWLINK  [%s]\n", link->summary().c_str()); return -1; }
+{
+  printf("NEWLINK  [%s]\n", link->summary().c_str());
+  printf("   CLI --> %s\n", link->to_iproute2_cli(RTM_NEWLINK).c_str());
+  return -1;
+}
 static int ip_link_del(const link* link)
-{ printf("DELLINK  [%s]\n", link->summary().c_str()); return -1; }
+{
+  printf("DELLINK  [%s]\n", link->summary().c_str());
+  printf("   CLI --> %s\n", link->to_iproute2_cli(RTM_DELLINK).c_str());
+  return -1;
+}
 static int ip_addr_add(const ifaddr* addr)
 { printf("NEWADDR  [%s]\n", addr->summary().c_str()); return -1; }
 static int ip_addr_del(const ifaddr* addr)
