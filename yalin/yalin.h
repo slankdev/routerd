@@ -67,8 +67,9 @@ inetpton(const void* ptr, int afi)
 inline static std::string
 ifindex2str(uint32_t ifindex)
 {
-  char str[100];
-  return if_indextoname(ifindex, str);
+  char str[IF_NAMESIZE];
+  char* ret = if_indextoname(ifindex, str);
+  return ret?ret:"none";
 }
 
 inline static size_t

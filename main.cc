@@ -38,20 +38,8 @@ struct link {
   }
   std::string summary() const
   {
-    std::string str = strfmt("if=%u type=%u change=0x%x flags=0x%x",
-                            ifindex, type, change, flags);
-    if (attrs[IFLA_LINKINFO]) {
-      struct rtattr* sub[1000];
-      parse_rtattr(
-          RTA_DATA(attrs[IFLA_LINKINFO]),
-          RTA_PAYLOAD(attrs[IFLA_LINKINFO]),
-          sub, sizeof(sub)/sizeof(sub[0]));
-
-      if (sub[IFLA_INFO_KIND]) {
-        str += std::string(" ") + rta_readstr(sub[IFLA_INFO_KIND]);
-      }
-    }
-    return str;
+    return strfmt("if=%u type=%u change=0x%x flags=0x%x",
+              ifindex, type, change, flags);
   }
   std::string to_iproute2_cli(uint16_t nlmsg_type) const
   {
@@ -258,14 +246,14 @@ struct neigh {
 
 static int ip_link_add(const link* link)
 {
-  printf("NEWLINK  [%s]\n", link->summary().c_str());
-  printf("   CLI --> %s\n", link->to_iproute2_cli(RTM_NEWLINK).c_str());
+  printf("NEWLINK  [%s]", link->summary().c_str());
+  printf(" --> %s\n", link->to_iproute2_cli(RTM_NEWLINK).c_str());
   return -1;
 }
 static int ip_link_del(const link* link)
 {
-  printf("DELLINK  [%s]\n", link->summary().c_str());
-  printf("   CLI --> %s\n", link->to_iproute2_cli(RTM_DELLINK).c_str());
+  printf("DELLINK  [%s]", link->summary().c_str());
+  printf(" --> %s\n", link->to_iproute2_cli(RTM_DELLINK).c_str());
   return -1;
 }
 static int ip_addr_add(const ifaddr* addr)
