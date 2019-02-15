@@ -20,40 +20,47 @@ union addr_t {
   uint8_t raw[16];
 };
 
-struct link {
-  uint32_t ifindex;
-  uint32_t type;
-  uint32_t change;
-  uint32_t flags;
+struct rta_array {
+ private:
   struct rtattr* attrs[50000];
+ public:
+  rta_array(struct rtattr* rta_head, size_t rta_len)
+  {
+    memset(attrs, 0, sizeof(attrs));
+    parse_rtattr(rta_head, rta_len, attrs,
+        sizeof(attrs)/sizeof(attrs[0]));
+  }
+  const struct rtattr* get(uint16_t type) const
+  { return attrs[type]; }
+};
+
+struct link {
   const struct ifinfomsg* ifi;
   size_t len;
+  rta_array* rtas;
 
   link(const struct ifinfomsg* ifm, size_t rta_len)
   {
     ifi = ifm;
     len = rta_len;
-    ifindex = ifm->ifi_index;
-    type = ifm->ifi_type;
-    change = ifm->ifi_change;
-    flags = ifm->ifi_flags;
-
-    memset(attrs, 0x0, sizeof(attrs));
-    parse_rtattr(IFLA_RTA(ifm), rta_len, attrs,
-        sizeof(attrs)/sizeof(attrs[0]));
+    rtas = new rta_array(IFLA_RTA(ifm), rta_len);
   }
   std::string summary() const
   {
     return strfmt("if=%u type=%u change=0x%x flags=0x%x",
-              ifindex, type, change, flags);
+              ifi->ifi_index, ifi->ifi_type,
+              ifi->ifi_change, ifi->ifi_flags);
   }
   std::string to_iproute2_cli(uint16_t nlmsg_type) const
   {
     std::string str;
-    std::string ifname = rta_readstr((attrs[IFLA_IFNAME]));
-    if (~change == 0) { // change is 0xff..ff
-      uint8_t* d = (uint8_t*)rta_readptr(attrs[IFLA_LINKINFO]);
-      size_t l = rta_payload(attrs[IFLA_LINKINFO]);
+    std::string ifname = rta_readstr((rtas->get(IFLA_IFNAME)));
+    uint32_t ifindex = ifi->ifi_index;
+    uint32_t flags = ifi->ifi_flags;
+    uint32_t change = ifi->ifi_change;
+    if (~ifi->ifi_change == 0) { // change is 0xff..ff
+      uint8_t* d = (uint8_t*)rta_readptr(rtas->get(IFLA_LINKINFO));
+      size_t l = rta_payload(rtas->get(IFLA_LINKINFO));
       struct rtattr* sub[50000];
       parse_rtattr(d, l, sub, sizeof(sub)/sizeof(sub[0]));
       std::string tname = rta_readstr(sub[IFLA_INFO_KIND]);
@@ -61,7 +68,7 @@ struct link {
       str += strfmt("ip link %s %s type %s",
           ope.c_str(), ifname.c_str(), tname.c_str());
       if (tname == "vlan") {
-        uint32_t ii = rta_read32(attrs[IFLA_LINK]);
+        uint32_t ii = rta_read32(rtas->get(IFLA_LINK));
         uint8_t* sd = (uint8_t*)rta_readptr(sub[IFLA_INFO_DATA]);
         size_t sdl = rta_payload(sub[IFLA_INFO_DATA]);
         struct rtattr* subsub[50000];
@@ -82,26 +89,18 @@ struct link {
         str += " UNKNOWNOPT???";
       }
     } else if (change == 0) {
-      str += std::string("Unknwon link-state change (ex. master/slave/mtu)");
-      printf("comparing with cache...\n");
-      const struct ifinfomsg* cache = netlink_cache_get_link(nlc, ifindex);
-      const size_t cache_len = netlink_cachelen_get_link(nlc, ifindex);
-      if (cache) printf("  --> cache found!!\n");
-      else printf("  --> cache not found...\n");
-
-      auto f = [](const struct ifinfomsg* m, size_t l) {
-        std::string str = ifinfomsg_summary(m) + "\n";
-        size_t rta_len = l;
-        for (struct rtattr* rta = IFLA_RTA(m);
-             RTA_OK(rta, rta_len); rta = RTA_NEXT(rta, rta_len)) {
-          std::string attr_str = ifinfomsg_rtattr_summary(rta);
-          if (attr_str != "")
-            str += "  " + attr_str + "\n";
+      const struct ifinfomsg* _cache = netlink_cache_get_link(nlc, ifindex);
+      const size_t _cache_len = netlink_cachelen_get_link(nlc, ifindex);
+      if (_cache) {
+        rta_array cache(IFLA_RTA(_cache), _cache_len);
+        std::string lname = ifindex2str(ifi->ifi_index);
+        auto old_mtu = rta_read32(cache.get(IFLA_MTU));
+        auto new_mtu = rta_read32(rtas->get(IFLA_MTU));
+        if (old_mtu != new_mtu) {
+          str += strfmt("ip link set %s mtu %u",
+              lname.c_str(), new_mtu);
         }
-        return str;
-      };
-      printf("CACHE\n%s\n", f(cache, cache_len).c_str());
-      printf("CURRR\n%s\n", f(ifi, len).c_str());
+      }
 
     } else {
       str += strfmt("ip link set dev %s ", ifname.c_str());
