@@ -26,9 +26,13 @@ struct link {
   uint32_t change;
   uint32_t flags;
   struct rtattr* attrs[50000];
+  const struct ifinfomsg* ifi;
+  size_t len;
 
   link(const struct ifinfomsg* ifm, size_t rta_len)
   {
+    ifi = ifm;
+    len = rta_len;
     ifindex = ifm->ifi_index;
     type = ifm->ifi_type;
     change = ifm->ifi_change;
@@ -81,8 +85,24 @@ struct link {
       str += std::string("Unknwon link-state change (ex. master/slave/mtu)");
       printf("comparing with cache...\n");
       const struct ifinfomsg* cache = netlink_cache_get_link(nlc, ifindex);
+      const size_t cache_len = netlink_cachelen_get_link(nlc, ifindex);
       if (cache) printf("  --> cache found!!\n");
       else printf("  --> cache not found...\n");
+
+      auto f = [](const struct ifinfomsg* m, size_t l) {
+        std::string str = ifinfomsg_summary(m) + "\n";
+        size_t rta_len = l;
+        for (struct rtattr* rta = IFLA_RTA(m);
+             RTA_OK(rta, rta_len); rta = RTA_NEXT(rta, rta_len)) {
+          std::string attr_str = ifinfomsg_rtattr_summary(rta);
+          if (attr_str != "")
+            str += "  " + attr_str + "\n";
+        }
+        return str;
+      };
+      printf("CACHE\n%s\n", f(cache, cache_len).c_str());
+      printf("CURRR\n%s\n", f(ifi, len).c_str());
+
     } else {
       str += strfmt("ip link set dev %s ", ifname.c_str());
       if (change) {

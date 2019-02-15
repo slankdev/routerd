@@ -536,6 +536,20 @@ netlink_cache_get_link(netlink_cache_t* nlc, uint16_t index)
   return nullptr;
 }
 
+static inline size_t
+netlink_cachelen_get_link(netlink_cache_t* nlc, uint16_t index)
+{
+  const size_t n_links = nlc->links.size();
+  for (size_t i=0; i<n_links; i++) {
+    const struct ifinfomsg* ifi =
+      (const struct ifinfomsg*)nlc->links[i].data();
+    // printf("--- ifindex:%u ---\n", ifi->ifi_index);
+    if (ifi->ifi_index == index)
+      return nlc->links[i].size();
+  }
+  return 0;
+}
+
 static inline void
 netlink_cache_update_link(netlink_cache_t* nlc,
     const struct ifinfomsg* ifm, size_t rta_len)

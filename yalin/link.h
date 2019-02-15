@@ -543,6 +543,9 @@ ifinfomsg_rtattr_summary(const struct rtattr* rta)
     case IFLA_CARRIER_DOWN_COUNT:
     case IFLA_NUM_RX_QUEUES:
     {
+      if (rta->rta_len != 8)
+        printf("type=%u rta_len=%u\n",
+            rta->rta_type, rta->rta_len);
       assert(rta->rta_len == 8);
       uint32_t num = *(uint32_t*)(rta+1);
       return hdr + strfmt("%u", num);
