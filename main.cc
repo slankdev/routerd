@@ -102,7 +102,6 @@ struct link {
           str += strfmt("ip link set %s mtu %u", lname.c_str(), new_mtu);
           // str += strfmt(" (old:%u)", old_mtu)
         }
-
         uint8_t* old_addr = (uint8_t*)rta_readptr(cache.get(IFLA_ADDRESS));
         uint8_t* new_addr = (uint8_t*)rta_readptr(rtas->get(IFLA_ADDRESS));
         if (memcmp(old_addr, new_addr, 6) != 0) {
@@ -114,7 +113,6 @@ struct link {
           //         old_addr[0], old_addr[1], old_addr[2],
           //         old_addr[3], old_addr[4], old_addr[5]);
         }
-
         netlink_cache_update_link(nlc, ifi, len);
       }
 
