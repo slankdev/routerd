@@ -10,6 +10,8 @@
 #include <arpa/inet.h>
 #include "yalin/yalin.h"
 
+netlink_cache_t* nlc;
+
 namespace routerd {
 
 union addr_t {
@@ -78,6 +80,9 @@ struct link {
     } else if (change == 0) {
       str += std::string("Unknwon link-state change (ex. master/slave/mtu)");
       printf("comparing with cache...\n");
+      const struct ifinfomsg* cache = netlink_cache_get_link(nlc, ifindex);
+      if (cache) printf("  --> cache found!!\n");
+      else printf("  --> cache not found...\n");
     } else {
       str += strfmt("ip link set dev %s ", ifname.c_str());
       if (change) {
@@ -390,7 +395,7 @@ main(int argc, char **argv)
   if (nl == NULL)
     return 1;
 
-  netlink_cache_t* nlc = netlink_cache_alloc(nl);
+  nlc = netlink_cache_alloc(nl);
   if (nl == NULL)
     return 1;
 
@@ -398,15 +403,14 @@ main(int argc, char **argv)
   printf("link: %zd\n", nlc->links.size());
   for (size_t i=0; i<nlc->links.size(); i++) {
     auto& raw = nlc->links[i];
-    const struct nlmsghdr* hdr = (const struct nlmsghdr*)raw.data();
-    const struct ifinfomsg* ifi = (struct ifinfomsg*)(hdr + 1);
-    const size_t rta_len = IFA_PAYLOAD(hdr);
+    const struct ifinfomsg* ifi = (struct ifinfomsg*)raw.data();
+    const size_t rta_len = raw.size();
     routerd::link l(ifi, rta_len);
     printf("link[%zd] --> %s\n", i, l.summary().c_str());
   }
   printf("---Cache-INFO-END-----\n");
 
-  int ret = netlink_listen(nl, routerd::monitor, nlc);
+  int ret = netlink_listen(nl, routerd::monitor, nullptr);
   if (ret < 0)
     return 1;
 

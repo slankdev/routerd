@@ -44,6 +44,7 @@
 #define NETLINK_EXT_ACK 11
 #endif
 
+
 inline static std::string
 strfmt(const char* fmt, ...)
 {
@@ -251,6 +252,10 @@ typedef struct netlink_cache_s {
 } netlink_cache_t;
 
 static inline void
+netlink_cache_update_link(netlink_cache_t* nlc,
+    const struct ifinfomsg* ifm, size_t rta_len);
+
+static inline void
 netlink_dump_link(netlink_t* nl)
 {
   /*
@@ -292,9 +297,9 @@ cache_callback(const struct sockaddr_nl *who,
     case RTM_NEWLINK:
     case RTM_DELLINK:
     {
-      buffer buf;
-      buf.memcpy(n, n->nlmsg_len);
-      nlc->links.push_back(buf);
+      const struct ifinfomsg* ifi = (struct ifinfomsg*)(n + 1);
+      const size_t ifa_payload_len = IFA_PAYLOAD(n);
+      netlink_cache_update_link(nlc, ifi, ifa_payload_len);
       break;
     }
   }
@@ -515,6 +520,40 @@ netlink_cache_alloc(netlink_t* nl)
   netlink_dump_link(nl);
   netlink_listen(nl, cache_callback, nlc);
   return nlc;
+}
+
+static inline const ifinfomsg*
+netlink_cache_get_link(netlink_cache_t* nlc, uint16_t index)
+{
+  const size_t n_links = nlc->links.size();
+  for (size_t i=0; i<n_links; i++) {
+    const struct ifinfomsg* ifi =
+      (const struct ifinfomsg*)nlc->links[i].data();
+    // printf("--- ifindex:%u ---\n", ifi->ifi_index);
+    if (ifi->ifi_index == index)
+      return ifi;
+  }
+  return nullptr;
+}
+
+static inline void
+netlink_cache_update_link(netlink_cache_t* nlc,
+    const struct ifinfomsg* ifm, size_t rta_len)
+{
+  const size_t n_links = nlc->links.size();
+
+  /* update */
+  for (size_t i=0; i<n_links; i++) {
+    const struct ifinfomsg* ifi =
+      (const struct ifinfomsg*)nlc->links[i].data();
+    if (ifi->ifi_index == ifm->ifi_index)
+      nlc->links[i].memcpy(ifm, rta_len);
+  }
+
+  /* add new entry */
+  buffer buf;
+  buf.memcpy(ifm, rta_len);
+  nlc->links.push_back(buf);
 }
 
 #endif /* _YALIN_H_ */
