@@ -89,17 +89,33 @@ struct link {
         str += " UNKNOWNOPT???";
       }
     } else if (change == 0) {
+
       const struct ifinfomsg* _cache = netlink_cache_get_link(nlc, ifindex);
       const size_t _cache_len = netlink_cachelen_get_link(nlc, ifindex);
       if (_cache) {
         rta_array cache(IFLA_RTA(_cache), _cache_len);
         std::string lname = ifindex2str(ifi->ifi_index);
+
         auto old_mtu = rta_read32(cache.get(IFLA_MTU));
         auto new_mtu = rta_read32(rtas->get(IFLA_MTU));
         if (old_mtu != new_mtu) {
-          str += strfmt("ip link set %s mtu %u",
-              lname.c_str(), new_mtu);
+          str += strfmt("ip link set %s mtu %u", lname.c_str(), new_mtu);
+          // str += strfmt(" (old:%u)", old_mtu)
         }
+
+        uint8_t* old_addr = (uint8_t*)rta_readptr(cache.get(IFLA_ADDRESS));
+        uint8_t* new_addr = (uint8_t*)rta_readptr(rtas->get(IFLA_ADDRESS));
+        if (memcmp(old_addr, new_addr, 6) != 0) {
+          str += strfmt("ip link set %s address "
+                  "%02x:%02x:%02x:%02x:%02x:%02x", lname.c_str(),
+                  new_addr[0], new_addr[1], new_addr[2],
+                  new_addr[3], new_addr[4], new_addr[5]);
+          // str += strfmt(" (old:%02x:%02x:%02x:%02x:%02x:%02x)",
+          //         old_addr[0], old_addr[1], old_addr[2],
+          //         old_addr[3], old_addr[4], old_addr[5]);
+        }
+
+        netlink_cache_update_link(nlc, ifi, len);
       }
 
     } else {
@@ -417,17 +433,6 @@ main(int argc, char **argv)
   nlc = netlink_cache_alloc(nl);
   if (nl == NULL)
     return 1;
-
-  printf("---Cache-INFO-BEGIN---\n");
-  printf("link: %zd\n", nlc->links.size());
-  for (size_t i=0; i<nlc->links.size(); i++) {
-    auto& raw = nlc->links[i];
-    const struct ifinfomsg* ifi = (struct ifinfomsg*)raw.data();
-    const size_t rta_len = raw.size();
-    routerd::link l(ifi, rta_len);
-    printf("link[%zd] --> %s\n", i, l.summary().c_str());
-  }
-  printf("---Cache-INFO-END-----\n");
 
   int ret = netlink_listen(nl, routerd::monitor, nullptr);
   if (ret < 0)

@@ -519,6 +519,17 @@ netlink_cache_alloc(netlink_t* nl)
   }
   netlink_dump_link(nl);
   netlink_listen(nl, cache_callback, nlc);
+
+  // printf("---Cache-INFO-BEGIN---\n");
+  // printf("link: %zd\n", nlc->links.size());
+  // for (size_t i=0; i<nlc->links.size(); i++) {
+  //   auto& raw = nlc->links[i];
+  //   const struct ifinfomsg* ifi = (struct ifinfomsg*)raw.data();
+  //   const size_t rta_len = raw.size();
+  //   slankdev::hexdump(stdout, ifi, rta_len);
+  // }
+  // printf("---Cache-INFO-END-----\n");
+
   return nlc;
 }
 
