@@ -32,3 +32,5 @@ re: clean all
 run:
 	sudo ./$(TARGET)
 
+gdb:
+	sudo gdb routerd.out

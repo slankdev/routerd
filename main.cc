@@ -160,85 +160,63 @@ struct ifaddr {
 }; /* struct ifaddr */
 
 struct route {
-  uint16_t table;
-  uint16_t oif_index;
-  uint16_t iif_index;
-  uint32_t priority;
-  uint16_t afi;
-  uint32_t dst_pref;
-  uint32_t src_pref;
-  uint32_t proto;
-  addr_t dst;
-  addr_t src;
-  addr_t gw;
-  struct rtattr* attrs[1000];
+  const struct rtmsg* rtm;
+  size_t len;
+  rta_array* rtas;
 
-  route(const struct rtmsg* rtm, size_t rta_len)
+  route(const struct rtmsg* rtm_, size_t rta_len)
   {
-    memset(this, 0, sizeof(*this));
-
-    afi       = rtm->rtm_family;
-    table     = rtm->rtm_table;
-    dst_pref  = rtm->rtm_dst_len;
-    src_pref  = rtm->rtm_src_len;
-    proto     = rtm->rtm_protocol;
-
-    memset(attrs, 0x0, sizeof(attrs));
-    parse_rtattr(RTM_RTA(rtm), rta_len, attrs,
-        sizeof(attrs)/sizeof(attrs[0]));
-
-    if (attrs[RTA_PRIORITY]) {
-      struct rtattr* rta = attrs[RTA_PRIORITY];
-      assert(rta->rta_len == 8);
-      uint32_t val = *(uint32_t*)(rta+1);
-      priority = val;
-    }
-    if (attrs[RTA_IIF]) {
-      struct rtattr* rta = attrs[RTA_IIF];
-      assert(rta->rta_len == 8);
-      uint32_t val = *(uint32_t*)(rta+1);
-      iif_index = val;
-    }
-    if (attrs[RTA_OIF]) {
-      struct rtattr* rta = attrs[RTA_OIF];
-      assert(rta->rta_len == 8);
-      uint32_t val = *(uint32_t*)(rta+1);
-      oif_index = val;
-    }
-    if (attrs[RTA_DST]) {
-      struct rtattr* rta = attrs[RTA_DST];
-      uint8_t* addr_ptr = (uint8_t*)(rta+1);
-      size_t addr_len = rta->rta_len - sizeof(*rta);
-      assert(addr_len==4 || addr_len==16);
-      if (addr_len == 4) memcpy(dst.raw, addr_ptr, addr_len);
-      if (addr_len == 16) memcpy(dst.raw, addr_ptr, addr_len);
-    }
-    if (attrs[RTA_SRC]) {
-      struct rtattr* rta = attrs[RTA_SRC];
-      uint8_t* addr_ptr = (uint8_t*)(rta+1);
-      size_t addr_len = rta->rta_len - sizeof(*rta);
-      assert(addr_len==4 || addr_len==16);
-      if (addr_len == 4) memcpy(src.raw, addr_ptr, addr_len);
-      if (addr_len == 16) memcpy(src.raw, addr_ptr, addr_len);
-    }
-    if (attrs[RTA_GATEWAY]) {
-      struct rtattr* rta = attrs[RTA_GATEWAY];
-      uint8_t* addr_ptr = (uint8_t*)(rta+1);
-      size_t addr_len = rta->rta_len - sizeof(*rta);
-      assert(addr_len==4 || addr_len==16);
-      if (addr_len == 4) memcpy(gw.raw, addr_ptr, addr_len);
-      if (addr_len == 16) memcpy(gw.raw, addr_ptr, addr_len);
-    }
+    this->rtm = rtm_;
+    this->len = rta_len;
+    this->rtas = new rta_array(RTM_RTA(rtm), len);
   }
   std::string summary() const
   {
-    std::string src_str = inetpton(src.raw, afi);
-    std::string dst_str = inetpton(dst.raw, afi);
-    std::string gw_str = inetpton(gw.raw, afi);
-    return strfmt("s=%s/%u d=%s/%u gw=%s iif=%u oif=%u "
-      "prio=%u tab=%u proto=%u",
-      src_str.c_str(), src_pref, dst_str.c_str(), dst_pref,
-      gw_str.c_str(), iif_index, oif_index, priority, table, proto);
+    return strfmt("afi=%u slen=%u dlen=%u tab=%u proto=%u",
+              rtm->rtm_family, rtm->rtm_src_len, rtm->rtm_dst_len,
+              rtm->rtm_table, rtm->rtm_protocol);
+  }
+  std::string to_iproute2_cli(uint16_t nlmsg_type) const
+  {
+    std::string src;
+    auto* src_rta = rtas->get(RTA_SRC);
+    if (src_rta) {
+      auto* ptr = (const void*)rta_readptr(src_rta);
+      if (ptr) src = inetpton(ptr, rtm->rtm_family);
+    }
+
+    std::string iif;
+    auto* iif_rta = rtas->get(RTA_IIF);
+    if (iif_rta) {
+      uint32_t index = rta_read32(iif_rta);
+      iif = ifindex2str(index);
+    }
+
+    std::string dst;
+    auto* dst_rta = rtas->get(RTA_DST);
+    if (dst_rta) {
+      auto* ptr = (const void*)rta_readptr(dst_rta);
+      if (ptr) dst = inetpton(ptr, rtm->rtm_family);
+    }
+
+    std::string gw;
+    auto* gw_rta = rtas->get(RTA_GATEWAY);
+    if (gw_rta) {
+      auto* ptr = (const void*)rta_readptr(gw_rta);
+      if (ptr) gw = inetpton(ptr, rtm->rtm_family);
+    }
+
+    std::string oif;
+    auto* oif_rta = rtas->get(RTA_OIF);
+    if (oif_rta) {
+      uint32_t index = rta_read32(oif_rta);
+      oif = ifindex2str(index);
+    }
+
+    return strfmt("ip -%u route %s %s/%d via %s dev %s",
+        rtm->rtm_family==AF_INET?4:6,
+        nlmsg_type==RTM_NEWROUTE?"add":"del",
+        dst.c_str(), rtm->rtm_dst_len, gw.c_str(), oif.c_str());
   }
 }; /* struct ifaddr */
 
@@ -313,9 +291,17 @@ static int ip_addr_del(const ifaddr* addr)
   return -1;
 }
 static int ip_route_add(const route* route)
-{ printf("NEWROUTE [%s]\n", route->summary().c_str()); return -1; }
+{
+  printf("NEWROUTE [%s]", route->summary().c_str());
+  printf(" --> %s\n", route->to_iproute2_cli(RTM_NEWROUTE).c_str());
+  return -1;
+}
 static int ip_route_del(const route* route)
-{ printf("DELROUTE [%s]\n", route->summary().c_str()); return -1; }
+{
+  printf("DELROUTE [%s]", route->summary().c_str());
+  printf(" --> %s\n", route->to_iproute2_cli(RTM_DELROUTE).c_str());
+  return -1;
+}
 static int ip_neigh_add(const neigh* nei)
 { printf("NEWNEIGH [%s]\n", nei->summary().c_str()); return -1; }
 static int ip_neigh_del(const neigh* nei)
@@ -403,9 +389,9 @@ monitor(const struct sockaddr_nl *who,
     case RTM_DELLINK: monitor_DELLINK(n); break;
     case RTM_NEWADDR: monitor_NEWADDR(n); break;
     case RTM_DELADDR: monitor_DELADDR(n); break;
-#if 0
     case RTM_NEWROUTE: monitor_NEWROUTE(n); break;
     case RTM_DELROUTE: monitor_DELROUTE(n); break;
+#if 0
     case RTM_NEWNEIGH: monitor_NEWNEIGH(n); break;
     case RTM_DELNEIGH: monitor_DELNEIGH(n); break;
 #endif
