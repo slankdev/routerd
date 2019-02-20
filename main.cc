@@ -132,42 +132,30 @@ struct link {
 }; /* struct link */
 
 struct ifaddr {
-  uint16_t ifindex;
-  uint16_t afi;
-  uint16_t prefix;
-  uint32_t flags;
-  addr_t addr;
-  struct rtattr* attrs[1000];
+  const struct ifaddrmsg* ifa;
+  size_t len;
+  rta_array* rtas;
 
-  ifaddr(const struct ifaddrmsg* ifa, size_t rta_len)
+  ifaddr(const struct ifaddrmsg* ifa_, size_t rta_len)
   {
-    ifindex = ifa->ifa_index;
-    afi     = ifa->ifa_family;
-    prefix  = ifa->ifa_prefixlen;
-
-    memset(attrs, 0x0, sizeof(attrs));
-    parse_rtattr(IFA_RTA(ifa), rta_len, attrs,
-        sizeof(attrs)/sizeof(attrs[0]));
-
-    if (attrs[IFA_ADDRESS]) {
-      struct rtattr* rta = attrs[IFA_ADDRESS];
-      uint8_t* addr_ptr = (uint8_t*)(rta+1);
-      size_t addr_len = rta->rta_len - sizeof(*rta);
-      assert(addr_len==4 || addr_len==16);
-      if (addr_len == 4) memcpy(addr.raw, addr_ptr, addr_len);
-      if (addr_len == 16) memcpy(addr.raw, addr_ptr, addr_len);
-    }
-    if (attrs[IFA_FLAGS]) {
-      struct rtattr* rta = attrs[IFA_ADDRESS];
-      uint32_t val = *(uint32_t*)(rta+1);
-      flags = val;
-    }
+    this->ifa = ifa_;
+    this->len = rta_len;
+    rtas = new rta_array(IFA_RTA(ifa), rta_len);
   }
   std::string summary() const
   {
-    std::string addrstr = inetpton(addr.raw, afi);
-    return strfmt("%s/%u if=%u 0x%x",
-        addrstr.c_str(), prefix, ifindex, flags);
+    return strfmt("if=%zd afi=%d prefixlen=%d",
+        ifa->ifa_index, ifa->ifa_family, ifa->ifa_prefixlen);
+  }
+  std::string to_iproute2_cli(uint16_t nlmsg_type) const
+  {
+    const uint8_t* addr_ptr = (const uint8_t*)rta_readptr(rtas->get(IFLA_ADDRESS));
+    std::string addr = inetpton(addr_ptr, ifa->ifa_family);
+    std::string ifname = ifindex2str(ifa->ifa_index);
+    return strfmt("ip -%d addr %s %s/%d dev %s",
+        ifa->ifa_family==AF_INET?4:6,
+        nlmsg_type==RTM_NEWADDR?"add":"del",
+        addr.c_str(), ifa->ifa_prefixlen, ifname.c_str());
   }
 }; /* struct ifaddr */
 
@@ -313,9 +301,17 @@ static int ip_link_del(const link* link)
   return -1;
 }
 static int ip_addr_add(const ifaddr* addr)
-{ printf("NEWADDR  [%s]\n", addr->summary().c_str()); return -1; }
+{
+  printf("NEWADDR  [%s]", addr->summary().c_str());
+  printf(" --> %s\n", addr->to_iproute2_cli(RTM_NEWADDR).c_str());
+  return -1;
+}
 static int ip_addr_del(const ifaddr* addr)
-{ printf("DELADDR  [%s]\n", addr->summary().c_str()); return -1; }
+{
+  printf("DELADDR  [%s]", addr->summary().c_str());
+  printf(" --> %s\n", addr->to_iproute2_cli(RTM_DELADDR).c_str());
+  return -1;
+}
 static int ip_route_add(const route* route)
 { printf("NEWROUTE [%s]\n", route->summary().c_str()); return -1; }
 static int ip_route_del(const route* route)
@@ -405,9 +401,9 @@ monitor(const struct sockaddr_nl *who,
   switch (n->nlmsg_type) {
     case RTM_NEWLINK: monitor_NEWLINK(n); break;
     case RTM_DELLINK: monitor_DELLINK(n); break;
-#if 0
     case RTM_NEWADDR: monitor_NEWADDR(n); break;
     case RTM_DELADDR: monitor_DELADDR(n); break;
+#if 0
     case RTM_NEWROUTE: monitor_NEWROUTE(n); break;
     case RTM_DELROUTE: monitor_DELROUTE(n); break;
     case RTM_NEWNEIGH: monitor_NEWNEIGH(n); break;
