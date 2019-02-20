@@ -199,13 +199,6 @@ struct route {
       if (ptr) dst = inetpton(ptr, rtm->rtm_family);
     }
 
-    std::string gw;
-    auto* gw_rta = rtas->get(RTA_GATEWAY);
-    if (gw_rta) {
-      auto* ptr = (const void*)rta_readptr(gw_rta);
-      if (ptr) gw = inetpton(ptr, rtm->rtm_family);
-    }
-
     std::string oif;
     auto* oif_rta = rtas->get(RTA_OIF);
     if (oif_rta) {
@@ -213,10 +206,63 @@ struct route {
       oif = ifindex2str(index);
     }
 
-    return strfmt("ip -%u route %s %s/%d via %s dev %s",
+    std::string gw;
+    auto* gw_rta = rtas->get(RTA_GATEWAY);
+    if (gw_rta) {
+      auto* ptr = (const void*)rta_readptr(gw_rta);
+      if (ptr) gw = inetpton(ptr, rtm->rtm_family);
+
+      return strfmt("ip -%u route %s %s/%d via %s dev %s",
+          rtm->rtm_family==AF_INET?4:6,
+          nlmsg_type==RTM_NEWROUTE?"add":"del",
+          dst.c_str(), rtm->rtm_dst_len, gw.c_str(), oif.c_str());
+    }
+
+    std::string encap;
+    auto* encap_rta = rtas->get(RTA_ENCAP_TYPE);
+    if (encap_rta) {
+      uint16_t encap_type = rta_read16(encap_rta);
+      if (encap_type == LWTUNNEL_ENCAP_SEG6) {
+
+        std::string mode;
+        std::string segs;
+        uint8_t* d = (uint8_t*)rta_readptr(rtas->get(RTA_ENCAP));
+        size_t l = rta_payload(rtas->get(RTA_ENCAP));
+        struct rtattr* sub[50000];
+        parse_rtattr(d, l, sub, sizeof(sub)/sizeof(sub[0]));
+        if (sub[SEG6_IPTUNNEL_SRH]) {
+          const struct seg6_iptunnel_encap* sie;
+          sie = (const struct seg6_iptunnel_encap*)(sub[SEG6_IPTUNNEL_SRH]+1);
+          switch (sie->mode) {
+            case SEG6_IPTUN_MODE_INLINE: mode = "inline"; break;
+            case SEG6_IPTUN_MODE_ENCAP: mode = "encap"; break;
+            case SEG6_IPTUN_MODE_L2ENCAP: mode = "l2encap"; break;
+          }
+
+          const struct ipv6_sr_hdr* srh = sie->srh;
+          const size_t n = srh->hdrlen/2;
+          for (size_t i=0; i<n; i++) {
+            const struct in6_addr* addr = &srh->segments[i];
+            const std::string str = inetpton(addr, AF_INET6);
+            segs += strfmt("%s%s", str.c_str(), i+1<n?",":"");
+          }
+        }
+
+        return strfmt("ip -%u route %s %s/%d encap seg6 mode %s segs %s dev %s",
+            rtm->rtm_family==AF_INET?4:6, nlmsg_type==RTM_NEWROUTE?"add":"del",
+            dst.c_str(), rtm->rtm_dst_len, mode.c_str(), segs.c_str(),
+            oif.c_str());
+
+      } else if (encap_type == LWTUNNEL_ENCAP_SEG6_LOCAL) {
+        return strfmt("seg6local");
+      }
+    }
+
+    /* assert */
+    return strfmt("ip -%u route %s %s/%d unknown-type",
         rtm->rtm_family==AF_INET?4:6,
         nlmsg_type==RTM_NEWROUTE?"add":"del",
-        dst.c_str(), rtm->rtm_dst_len, gw.c_str(), oif.c_str());
+        dst.c_str(), rtm->rtm_dst_len);
   }
 }; /* struct ifaddr */
 
