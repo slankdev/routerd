@@ -34,3 +34,16 @@ run:
 
 gdb:
 	sudo gdb routerd.out
+
+e:
+	sudo ip route add fc00:20::1 encap seg6local action End dev dum0
+	sudo ip route add fc00:20::2 encap seg6local action End.X nh6 2001:12::2 dev dum0
+	sudo ip route add fc00:20::3 encap seg6local action End.DX2 oif dum0 dev dum0
+	sudo ip route add fc00:20::4 encap seg6local action End.T table 100 dev dum0
+
+d:
+	sudo ip route del fc00:20::1 encap seg6local action End dev dum0
+	sudo ip route del fc00:20::2 encap seg6local action End.X nh6 2001:12::2 dev dum0
+	sudo ip route del fc00:20::3 encap seg6local action End.DX2 oif dum0 dev dum0
+	sudo ip route del fc00:20::4 encap seg6local action End.T table 100 dev dum0
+

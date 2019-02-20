@@ -254,7 +254,38 @@ struct route {
             oif.c_str());
 
       } else if (encap_type == LWTUNNEL_ENCAP_SEG6_LOCAL) {
-        return strfmt("seg6local");
+
+        uint8_t* d = (uint8_t*)rta_readptr(rtas->get(RTA_ENCAP));
+        size_t l = rta_payload(rtas->get(RTA_ENCAP));
+        struct rtattr* sub[50000];
+        parse_rtattr(d, l, sub, sizeof(sub)/sizeof(sub[0]));
+
+        std::string action;
+        if (sub[SEG6_LOCAL_ACTION]) {
+          const struct rtattr* rta = sub[SEG6_LOCAL_ACTION];
+          uint32_t num = rta_read32(rta);
+          action = strfmt("%s", SEG6_LOCAL_ACTION_to_str2(num));
+
+          if (num == SEG6_LOCAL_ACTION_END_X && sub[SEG6_LOCAL_NH6]) {
+            const struct rtattr* rta = sub[SEG6_LOCAL_NH6];
+            const void* addr_ptr = rta_readptr(rta);
+            action += strfmt(" nh6 %s", inetpton(addr_ptr, AF_INET6).c_str());
+          } else if (num == SEG6_LOCAL_ACTION_END_DX2 && sub[SEG6_LOCAL_OIF]) {
+            const struct rtattr* rta = sub[SEG6_LOCAL_OIF];
+            uint32_t index = rta_read32(rta);
+            action += strfmt(" oif %s", ifindex2str(index).c_str());
+          } else if (num == SEG6_LOCAL_ACTION_END_T && sub[SEG6_LOCAL_TABLE]) {
+            const struct rtattr* rta = sub[SEG6_LOCAL_OIF];
+            uint32_t table_id = rta_read32(rta);
+            action += strfmt(" table %d", table_id);
+          }
+        }
+
+        return strfmt("ip -%u route %s %s/%d encap seg6local action %s dev %s",
+            rtm->rtm_family==AF_INET?4:6, nlmsg_type==RTM_NEWROUTE?"add":"del",
+            dst.c_str(), rtm->rtm_dst_len, action.c_str(),
+            oif.c_str());
+
       }
     }
 

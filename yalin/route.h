@@ -68,6 +68,30 @@ lwtunnel_encap_types_to_str(uint16_t type)
 }
 
 inline static const char*
+SEG6_LOCAL_ACTION_to_str2(uint16_t act)
+{
+  switch (act) {
+    /* define at /usr/include/linux/seg6_local.h */
+    case SEG6_LOCAL_ACTION_UNSPEC      : return "unspec ";
+    case SEG6_LOCAL_ACTION_END         : return "end";
+    case SEG6_LOCAL_ACTION_END_X       : return "end.x";
+    case SEG6_LOCAL_ACTION_END_T       : return "end.t";
+    case SEG6_LOCAL_ACTION_END_DX2     : return "end.dx2";
+    case SEG6_LOCAL_ACTION_END_DX6     : return "end.dx6";
+    case SEG6_LOCAL_ACTION_END_DX4     : return "end.dx4";
+    case SEG6_LOCAL_ACTION_END_DT6     : return "end.dt6";
+    case SEG6_LOCAL_ACTION_END_DT4     : return "end.dt4";
+    case SEG6_LOCAL_ACTION_END_B6      : return "end.b6";
+    case SEG6_LOCAL_ACTION_END_B6_ENCAP: return "end.b6_encap";
+    case SEG6_LOCAL_ACTION_END_BM      : return "end.bm";
+    case SEG6_LOCAL_ACTION_END_S       : return "end.s";
+    case SEG6_LOCAL_ACTION_END_AS      : return "end.as";
+    case SEG6_LOCAL_ACTION_END_AM      : return "end.am";
+    default: return "SEG6_LOCAL_ACTION_UNKNOWN";
+  }
+}
+
+inline static const char*
 SEG6_LOCAL_ACTION_to_str(uint16_t act)
 {
   switch (act) {
