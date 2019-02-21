@@ -289,6 +289,7 @@ struct route {
       }
     }
 
+    return "";
     /* assert */
     return strfmt("ip -%u route %s %s/%d unknown-type",
         rtm->rtm_family==AF_INET?4:6,
@@ -345,38 +346,42 @@ struct neigh {
 
 static int ip_link_add(const link* link)
 {
-  printf("NEWLINK  [%s]", link->summary().c_str());
-  printf(" --> %s\n", link->to_iproute2_cli(RTM_NEWLINK).c_str());
+  // printf("NEWLINK  [%s]", link->summary().c_str());
+  std::string cli = link->to_iproute2_cli(RTM_NEWLINK).c_str();
+  if (cli.size() > 0) printf(" --> %s\n", cli.c_str());
   return -1;
 }
 static int ip_link_del(const link* link)
 {
-  printf("DELLINK  [%s]", link->summary().c_str());
-  printf(" --> %s\n", link->to_iproute2_cli(RTM_DELLINK).c_str());
+  // printf("DELLINK  [%s]", link->summary().c_str());
+  std::string cli = link->to_iproute2_cli(RTM_DELLINK).c_str();
+  if (cli.size() > 0) printf(" --> %s\n", cli.c_str());
   return -1;
 }
 static int ip_addr_add(const ifaddr* addr)
 {
-  printf("NEWADDR  [%s]", addr->summary().c_str());
+  // printf("NEWADDR  [%s]", addr->summary().c_str());
   printf(" --> %s\n", addr->to_iproute2_cli(RTM_NEWADDR).c_str());
   return -1;
 }
 static int ip_addr_del(const ifaddr* addr)
 {
-  printf("DELADDR  [%s]", addr->summary().c_str());
+  // printf("DELADDR  [%s]", addr->summary().c_str());
   printf(" --> %s\n", addr->to_iproute2_cli(RTM_DELADDR).c_str());
   return -1;
 }
 static int ip_route_add(const route* route)
 {
-  printf("NEWROUTE [%s]", route->summary().c_str());
-  printf(" --> %s\n", route->to_iproute2_cli(RTM_NEWROUTE).c_str());
+  // printf("NEWROUTE [%s]", route->summary().c_str());
+  std::string cli = route->to_iproute2_cli(RTM_NEWROUTE).c_str();
+  if (cli.size() > 0) printf(" --> %s\n", cli.c_str());
   return -1;
 }
 static int ip_route_del(const route* route)
 {
-  printf("DELROUTE [%s]", route->summary().c_str());
-  printf(" --> %s\n", route->to_iproute2_cli(RTM_DELROUTE).c_str());
+  // printf("DELROUTE [%s]", route->summary().c_str());
+  std::string cli = route->to_iproute2_cli(RTM_DELROUTE).c_str();
+  if (cli.size() > 0) printf(" --> %s\n", cli.c_str());
   return -1;
 }
 static int ip_neigh_add(const neigh* nei)
