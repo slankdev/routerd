@@ -1,10 +1,13 @@
 
 CXX = g++
-CXXFLAGS += -Wall -Werror -std=c++11 -I../../ -I../../libslankdev
+CXXFLAGS += -Wall -Werror -std=c++11
+CXXFLAGS += -I../../ -I../../libslankdev
 CXXFLAGS += -fsanitize=address
+CXXFLAGS += $(shell pkg-config json-c --cflags)
+LDFLAGS += $(shell pkg-config json-c --libs)
 LDFLAGS +=
 
-SRC = main.cc
+SRC = main.cc link.cc addr.cc route.cc neigh.cc
 OBJ = $(SRC:.cc=.o)
 TARGET = routerd.out
 
