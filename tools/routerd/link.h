@@ -17,6 +17,11 @@ extern netlink_cache_t* nlc;
 namespace routerd {
 
 struct link {
+ public:
+  const struct ifinfomsg* ifi;
+  size_t len;
+  rta_array* rtas;
+
  private:
   std::string to_iproute2_cli_adddel_link(uint16_t nlmsg_type) const
   {
@@ -113,10 +118,8 @@ struct link {
     }
     return str;
   }
+
  public:
-  const struct ifinfomsg* ifi;
-  size_t len;
-  rta_array* rtas;
 
   link(const struct ifinfomsg* ifm, size_t rta_len)
   {

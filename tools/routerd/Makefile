@@ -1,8 +1,7 @@
 
 CXX = g++
-CXXFLAGS += -Wall -Werror -std=c++11
-CXXFLAGS += -I../../ -I../../libslankdev
-CXXFLAGS += -fsanitize=address
+CXXFLAGS += -Wall -Werror -std=c++11 -g -O0
+CXXFLAGS += -I../../ -I../../libslankdev -static
 CXXFLAGS += $(shell pkg-config json-c --cflags)
 LDFLAGS += $(shell pkg-config json-c --libs)
 LDFLAGS +=
@@ -19,7 +18,10 @@ clean:
 
 re: clean all
 
-install:
+install: all
 	mkdir -p /usr/local/bin
 	cp $(TARGET) /usr/local/bin/routerd
+
+run: all
+	sudo ./$(TARGET)
 
