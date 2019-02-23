@@ -122,7 +122,8 @@ struct link {
         uint32_t affected_flag = ~uint32_t(0) & change;
         uint32_t destination_bit = flags & change;
         if (affected_flag & IFF_UP) str += destination_bit&affected_flag?"up":"down";
-        if (affected_flag & IFF_PROMISC) str += destination_bit&affected_flag?"promisc on":"promisc off";
+        if (affected_flag & IFF_PROMISC)
+          str += destination_bit&affected_flag?"promisc on":"promisc off";
       } else {
         str += "UNSUPPORTED...?";
       }
@@ -299,48 +300,47 @@ struct route {
 }; /* struct ifaddr */
 
 struct neigh {
-  uint32_t ifindex;
-  uint32_t afi;
-  addr_t addr;
-  uint8_t lladdr[6];
-  uint32_t state;
-  struct rtattr* attrs[1000];
+  const struct ndmsg* ndm;
+  size_t len;
+  rta_array* rtas;
 
-  neigh(const struct ndmsg* ndm, size_t rta_len)
+  neigh(const struct ndmsg* ndm_, size_t rta_len)
   {
-    memset(this, 0, sizeof(*this));
-    ifindex = ndm->ndm_ifindex;
-    afi = ndm->ndm_family;
-    state = ndm->ndm_state;
-
-    memset(attrs, 0x0, sizeof(attrs));
-    parse_rtattr(NDM_RTA(ndm), rta_len, attrs,
-        sizeof(attrs)/sizeof(attrs[0]));
-
-    if (attrs[NDA_LLADDR]) {
-      struct rtattr* rta = attrs[NDA_LLADDR];
-      assert(rta->rta_len == 10);
-      uint8_t* ptr = (uint8_t*)(rta+1);
-      memcpy(lladdr, ptr, sizeof(lladdr));
-    }
-    if (attrs[NDA_DST]) {
-      struct rtattr* rta = attrs[NDA_DST];
-      uint8_t* addr_ptr = (uint8_t*)(rta+1);
-      size_t addr_len = rta->rta_len - sizeof(*rta);
-      assert(addr_len==4 || addr_len==16);
-      if (addr_len == 4) memcpy(addr.raw, addr_ptr, addr_len);
-      if (addr_len == 16) memcpy(addr.raw, addr_ptr, addr_len);
-    }
+    this->ndm = ndm_;
+    this->len = rta_len;
+    this->rtas = new rta_array(NDM_RTA(ndm), len);
   }
   std::string summary() const
   {
-    std::string addr_str = inetpton(addr.raw, afi);
-    return strfmt("%s lladdr="
-        "%02x:%02x:%02x:%02x:%02x:%02x if=%u state=0x%x",
-        addr_str.c_str(),
-        lladdr[0], lladdr[1], lladdr[2],
-        lladdr[3], lladdr[4], lladdr[5],
-        ifindex, state);
+    return strfmt("afi=%u index=%u state=%u flag=0x%01x type=%u",
+        ndm->ndm_family, ndm->ndm_ifindex, ndm->ndm_state,
+        ndm->ndm_flags, ndm->ndm_type);
+  }
+  std::string to_iproute2_cli(uint16_t nlmsg_type) const
+  {
+    std::string lladdr;
+    if (rtas->get(NDA_LLADDR)) {
+      const struct rtattr* rta = rtas->get(NDA_LLADDR);
+      assert(rta->rta_len == 10);
+      uint8_t* ptr = (uint8_t*)(rta+1);
+      lladdr = strfmt("%02x:%02x:%02x:%02x:%02x:%02x",
+          ptr[0], ptr[1], ptr[2], ptr[3], ptr[4], ptr[5]);
+    }
+
+    std::string dst;
+    if (rtas->get(NDA_DST)) {
+      const struct rtattr* rta = rtas->get(NDA_DST);
+      uint8_t* addr_ptr = (uint8_t*)(rta+1);
+      size_t addr_len = rta->rta_len - sizeof(*rta);
+      assert(addr_len==4 || addr_len==16);
+      int afi = addr_len==4?AF_INET:AF_INET6;
+      dst = inetpton(addr_ptr, afi);
+    }
+
+    return strfmt("ip nei %s %s lladdr %s dev %s",
+        nlmsg_type==RTM_NEWNEIGH?"add":"del",
+        dst.c_str(), lladdr.c_str(),
+        ifindex2str(ndm->ndm_ifindex).c_str());
   }
 }; /* struct neigh */
 
@@ -385,9 +385,19 @@ static int ip_route_del(const route* route)
   return -1;
 }
 static int ip_neigh_add(const neigh* nei)
-{ printf("NEWNEIGH [%s]\n", nei->summary().c_str()); return -1; }
+{
+  // printf("NEWNEIGH [%s]\n", nei->summary().c_str());
+  std::string cli = nei->to_iproute2_cli(RTM_NEWNEIGH).c_str();
+  if (cli.size() > 0) printf(" --> %s\n", cli.c_str());
+  return -1;
+}
 static int ip_neigh_del(const neigh* nei)
-{ printf("DELNEIGH [%s]\n", nei->summary().c_str()); return -1; }
+{
+  // printf("DELNEIGH [%s]\n", nei->summary().c_str());
+  std::string cli = nei->to_iproute2_cli(RTM_DELNEIGH).c_str();
+  if (cli.size() > 0) printf(" --> %s\n", cli.c_str());
+  return -1;
+}
 
 inline static void
 monitor_NEWLINK(const struct nlmsghdr* hdr)
@@ -473,10 +483,8 @@ monitor(const struct sockaddr_nl *who,
     case RTM_DELADDR: monitor_DELADDR(n); break;
     case RTM_NEWROUTE: monitor_NEWROUTE(n); break;
     case RTM_DELROUTE: monitor_DELROUTE(n); break;
-#if 0
     case RTM_NEWNEIGH: monitor_NEWNEIGH(n); break;
     case RTM_DELNEIGH: monitor_DELNEIGH(n); break;
-#endif
     default: break;
   }
   return 0;
