@@ -35,6 +35,103 @@ struct rta_array {
 };
 
 struct link {
+ private:
+  std::string to_iproute2_cli_adddel_link(uint16_t nlmsg_type) const
+  {
+    std::string ifname;
+    if (rtas->get(IFLA_IFNAME)) {
+      const struct rtattr* rta = rtas->get(IFLA_IFNAME);
+      ifname = rta_readstr(rta);
+    }
+
+    assert(~ifi->ifi_change == 0);
+    std::string str;
+    uint8_t* d = (uint8_t*)rta_readptr(rtas->get(IFLA_LINKINFO));
+    size_t l = rta_payload(rtas->get(IFLA_LINKINFO));
+    struct rtattr* sub[50000];
+    parse_rtattr(d, l, sub, sizeof(sub)/sizeof(sub[0]));
+    std::string tname = rta_readstr(sub[IFLA_INFO_KIND]);
+    std::string ope = nlmsg_type==RTM_NEWLINK?"add":"del";
+    str += strfmt("ip link %s %s type %s",
+        ope.c_str(), ifname.c_str(), tname.c_str());
+    if (tname == "vlan") {
+      uint32_t ii = rta_read32(rtas->get(IFLA_LINK));
+      uint8_t* sd = (uint8_t*)rta_readptr(sub[IFLA_INFO_DATA]);
+      size_t sdl = rta_payload(sub[IFLA_INFO_DATA]);
+      struct rtattr* subsub[50000];
+      parse_rtattr(sd, sdl, subsub, sizeof(subsub)/sizeof(subsub[0]));
+      std::string lname = ifindex2str(ii);
+      uint16_t id = rta_read16(subsub[IFLA_VLAN_ID]);
+      str += strfmt(" link %s id %u", lname.c_str(), id);
+    } else if (tname == "dummy") {
+    } else if (tname == "bridge") {
+    } else if (tname == "vrf") {
+      uint8_t* sd = (uint8_t*)rta_readptr(sub[IFLA_INFO_DATA]);
+      size_t sdl = rta_payload(sub[IFLA_INFO_DATA]);
+      struct rtattr* subsub[50000];
+      parse_rtattr(sd, sdl, subsub, sizeof(subsub)/sizeof(subsub[0]));
+      uint32_t tableid = rta_read32(subsub[IFLA_VRF_TABLE]);
+      str += strfmt(" table %u", tableid);
+    } else {
+      str += " UNKNOWNOPT???";
+    }
+    return str;
+  }
+  std::string to_iproute2_cli_set_link(uint16_t nlmsg_type) const
+  {
+    std::string ifname;
+    if (rtas->get(IFLA_IFNAME)) {
+      const struct rtattr* rta = rtas->get(IFLA_IFNAME);
+      ifname = rta_readstr(rta);
+    }
+
+    std::string str;
+    const struct ifinfomsg* _cache = netlink_cache_get_link(nlc, ifi->ifi_index);
+    const size_t _cache_len = netlink_cachelen_get_link(nlc, ifi->ifi_index);
+    if (_cache) {
+      rta_array cache(IFLA_RTA(_cache), _cache_len);
+      std::string lname = ifindex2str(ifi->ifi_index);
+
+      auto old_mtu = rta_read32(cache.get(IFLA_MTU));
+      auto new_mtu = rta_read32(rtas->get(IFLA_MTU));
+      if (old_mtu != new_mtu) {
+        str += strfmt("ip link set %s mtu %u", lname.c_str(), new_mtu);
+      }
+      uint8_t* old_addr = (uint8_t*)rta_readptr(cache.get(IFLA_ADDRESS));
+      uint8_t* new_addr = (uint8_t*)rta_readptr(rtas->get(IFLA_ADDRESS));
+      if (memcmp(old_addr, new_addr, 6) != 0) {
+        str += strfmt("ip link set %s address "
+                "%02x:%02x:%02x:%02x:%02x:%02x", lname.c_str(),
+                new_addr[0], new_addr[1], new_addr[2],
+                new_addr[3], new_addr[4], new_addr[5]);
+      }
+      netlink_cache_update_link(nlc, ifi, len);
+    }
+    return str;
+  }
+  std::string to_iproute2_cli_set_link_flag(uint16_t nlmsg_type) const
+  {
+    std::string ifname;
+    if (rtas->get(IFLA_IFNAME)) {
+      const struct rtattr* rta = rtas->get(IFLA_IFNAME);
+      ifname = rta_readstr(rta);
+    }
+
+    uint32_t flags = ifi->ifi_flags;
+    uint32_t change = ifi->ifi_change;
+    std::string str = strfmt("ip link set dev %s ", ifname.c_str());
+    if (change) {
+      uint32_t affected_flag = ~uint32_t(0) & change;
+      uint32_t destination_bit = flags & change;
+      if (affected_flag & IFF_UP) str += destination_bit&affected_flag?"up":"down";
+      if (affected_flag & IFF_PROMISC)
+        str += destination_bit&affected_flag?"promisc on":"promisc off";
+    } else {
+      str += "UNSUPPORTED...?";
+    }
+    return str;
+  }
+ public:
   const struct ifinfomsg* ifi;
   size_t len;
   rta_array* rtas;
@@ -53,82 +150,9 @@ struct link {
   }
   std::string to_iproute2_cli(uint16_t nlmsg_type) const
   {
-    std::string str;
-    std::string ifname = rta_readstr((rtas->get(IFLA_IFNAME)));
-    uint32_t ifindex = ifi->ifi_index;
-    uint32_t flags = ifi->ifi_flags;
-    uint32_t change = ifi->ifi_change;
-    if (~ifi->ifi_change == 0) { // change is 0xff..ff
-      uint8_t* d = (uint8_t*)rta_readptr(rtas->get(IFLA_LINKINFO));
-      size_t l = rta_payload(rtas->get(IFLA_LINKINFO));
-      struct rtattr* sub[50000];
-      parse_rtattr(d, l, sub, sizeof(sub)/sizeof(sub[0]));
-      std::string tname = rta_readstr(sub[IFLA_INFO_KIND]);
-      std::string ope = nlmsg_type==RTM_NEWLINK?"add":"del";
-      str += strfmt("ip link %s %s type %s",
-          ope.c_str(), ifname.c_str(), tname.c_str());
-      if (tname == "vlan") {
-        uint32_t ii = rta_read32(rtas->get(IFLA_LINK));
-        uint8_t* sd = (uint8_t*)rta_readptr(sub[IFLA_INFO_DATA]);
-        size_t sdl = rta_payload(sub[IFLA_INFO_DATA]);
-        struct rtattr* subsub[50000];
-        parse_rtattr(sd, sdl, subsub, sizeof(subsub)/sizeof(subsub[0]));
-        std::string lname = ifindex2str(ii);
-        uint16_t id = rta_read16(subsub[IFLA_VLAN_ID]);
-        str += strfmt(" link %s id %u", lname.c_str(), id);
-      } else if (tname == "dummy") {
-      } else if (tname == "bridge") {
-      } else if (tname == "vrf") {
-        uint8_t* sd = (uint8_t*)rta_readptr(sub[IFLA_INFO_DATA]);
-        size_t sdl = rta_payload(sub[IFLA_INFO_DATA]);
-        struct rtattr* subsub[50000];
-        parse_rtattr(sd, sdl, subsub, sizeof(subsub)/sizeof(subsub[0]));
-        uint32_t tableid = rta_read32(subsub[IFLA_VRF_TABLE]);
-        str += strfmt(" table %u", tableid);
-      } else {
-        str += " UNKNOWNOPT???";
-      }
-    } else if (change == 0) {
-
-      const struct ifinfomsg* _cache = netlink_cache_get_link(nlc, ifindex);
-      const size_t _cache_len = netlink_cachelen_get_link(nlc, ifindex);
-      if (_cache) {
-        rta_array cache(IFLA_RTA(_cache), _cache_len);
-        std::string lname = ifindex2str(ifi->ifi_index);
-
-        auto old_mtu = rta_read32(cache.get(IFLA_MTU));
-        auto new_mtu = rta_read32(rtas->get(IFLA_MTU));
-        if (old_mtu != new_mtu) {
-          str += strfmt("ip link set %s mtu %u", lname.c_str(), new_mtu);
-          // str += strfmt(" (old:%u)", old_mtu)
-        }
-        uint8_t* old_addr = (uint8_t*)rta_readptr(cache.get(IFLA_ADDRESS));
-        uint8_t* new_addr = (uint8_t*)rta_readptr(rtas->get(IFLA_ADDRESS));
-        if (memcmp(old_addr, new_addr, 6) != 0) {
-          str += strfmt("ip link set %s address "
-                  "%02x:%02x:%02x:%02x:%02x:%02x", lname.c_str(),
-                  new_addr[0], new_addr[1], new_addr[2],
-                  new_addr[3], new_addr[4], new_addr[5]);
-          // str += strfmt(" (old:%02x:%02x:%02x:%02x:%02x:%02x)",
-          //         old_addr[0], old_addr[1], old_addr[2],
-          //         old_addr[3], old_addr[4], old_addr[5]);
-        }
-        netlink_cache_update_link(nlc, ifi, len);
-      }
-
-    } else {
-      str += strfmt("ip link set dev %s ", ifname.c_str());
-      if (change) {
-        uint32_t affected_flag = ~uint32_t(0) & change;
-        uint32_t destination_bit = flags & change;
-        if (affected_flag & IFF_UP) str += destination_bit&affected_flag?"up":"down";
-        if (affected_flag & IFF_PROMISC)
-          str += destination_bit&affected_flag?"promisc on":"promisc off";
-      } else {
-        str += "UNSUPPORTED...?";
-      }
-    }
-    return str;
+    if (~ifi->ifi_change == 0) return to_iproute2_cli_adddel_link(nlmsg_type);
+    else if (ifi->ifi_change == 0) return to_iproute2_cli_set_link(nlmsg_type);
+    else return to_iproute2_cli_set_link_flag(nlmsg_type);
   }
 }; /* struct link */
 
@@ -180,39 +204,38 @@ struct route {
   std::string to_iproute2_cli(uint16_t nlmsg_type) const
   {
     std::string src;
-    auto* src_rta = rtas->get(RTA_SRC);
-    if (src_rta) {
+    if (rtas->get(RTA_SRC)) {
+      auto* src_rta = rtas->get(RTA_SRC);
       auto* ptr = (const void*)rta_readptr(src_rta);
       if (ptr) src = inetpton(ptr, rtm->rtm_family);
     }
 
     std::string iif;
-    auto* iif_rta = rtas->get(RTA_IIF);
-    if (iif_rta) {
+    if (rtas->get(RTA_IIF)) {
+      auto* iif_rta = rtas->get(RTA_IIF);
       uint32_t index = rta_read32(iif_rta);
       iif = ifindex2str(index);
     }
 
     std::string dst;
-    auto* dst_rta = rtas->get(RTA_DST);
-    if (dst_rta) {
+    if (rtas->get(RTA_DST)) {
+      auto* dst_rta = rtas->get(RTA_DST);
       auto* ptr = (const void*)rta_readptr(dst_rta);
       if (ptr) dst = inetpton(ptr, rtm->rtm_family);
     }
 
     std::string oif;
-    auto* oif_rta = rtas->get(RTA_OIF);
-    if (oif_rta) {
+    if (rtas->get(RTA_OIF)) {
+      auto* oif_rta = rtas->get(RTA_OIF);
       uint32_t index = rta_read32(oif_rta);
       oif = ifindex2str(index);
     }
 
     std::string gw;
-    auto* gw_rta = rtas->get(RTA_GATEWAY);
-    if (gw_rta) {
+    if (rtas->get(RTA_GATEWAY)) {
+      auto* gw_rta = rtas->get(RTA_GATEWAY);
       auto* ptr = (const void*)rta_readptr(gw_rta);
       if (ptr) gw = inetpton(ptr, rtm->rtm_family);
-
       return strfmt("ip -%u route %s %s/%d via %s dev %s",
           rtm->rtm_family==AF_INET?4:6,
           nlmsg_type==RTM_NEWROUTE?"add":"del",
@@ -220,8 +243,8 @@ struct route {
     }
 
     std::string encap;
-    auto* encap_rta = rtas->get(RTA_ENCAP_TYPE);
-    if (encap_rta) {
+    if (rtas->get(RTA_ENCAP_TYPE)) {
+      auto* encap_rta = rtas->get(RTA_ENCAP_TYPE);
       uint16_t encap_type = rta_read16(encap_rta);
       if (encap_type == LWTUNNEL_ENCAP_SEG6) {
 
@@ -290,8 +313,6 @@ struct route {
       }
     }
 
-    return "";
-    /* assert */
     return strfmt("ip -%u route %s %s/%d unknown-type",
         rtm->rtm_family==AF_INET?4:6,
         nlmsg_type==RTM_NEWROUTE?"add":"del",
@@ -346,54 +367,46 @@ struct neigh {
 
 static int ip_link_add(const link* link)
 {
-  // printf("NEWLINK  [%s]", link->summary().c_str());
   std::string cli = link->to_iproute2_cli(RTM_NEWLINK).c_str();
   printf(" --> %s\n", cli.c_str());
   return -1;
 }
 static int ip_link_del(const link* link)
 {
-  // printf("DELLINK  [%s]", link->summary().c_str());
   std::string cli = link->to_iproute2_cli(RTM_DELLINK).c_str();
   if (cli.size() > 0) printf(" --> %s\n", cli.c_str());
   return -1;
 }
 static int ip_addr_add(const ifaddr* addr)
 {
-  // printf("NEWADDR  [%s]", addr->summary().c_str());
   printf(" --> %s\n", addr->to_iproute2_cli(RTM_NEWADDR).c_str());
   return -1;
 }
 static int ip_addr_del(const ifaddr* addr)
 {
-  // printf("DELADDR  [%s]", addr->summary().c_str());
   printf(" --> %s\n", addr->to_iproute2_cli(RTM_DELADDR).c_str());
   return -1;
 }
 static int ip_route_add(const route* route)
 {
-  // printf("NEWROUTE [%s]", route->summary().c_str());
   std::string cli = route->to_iproute2_cli(RTM_NEWROUTE).c_str();
   if (cli.size() > 0) printf(" --> %s\n", cli.c_str());
   return -1;
 }
 static int ip_route_del(const route* route)
 {
-  // printf("DELROUTE [%s]", route->summary().c_str());
   std::string cli = route->to_iproute2_cli(RTM_DELROUTE).c_str();
   if (cli.size() > 0) printf(" --> %s\n", cli.c_str());
   return -1;
 }
 static int ip_neigh_add(const neigh* nei)
 {
-  // printf("NEWNEIGH [%s]\n", nei->summary().c_str());
   std::string cli = nei->to_iproute2_cli(RTM_NEWNEIGH).c_str();
   if (cli.size() > 0) printf(" --> %s\n", cli.c_str());
   return -1;
 }
 static int ip_neigh_del(const neigh* nei)
 {
-  // printf("DELNEIGH [%s]\n", nei->summary().c_str());
   std::string cli = nei->to_iproute2_cli(RTM_DELNEIGH).c_str();
   if (cli.size() > 0) printf(" --> %s\n", cli.c_str());
   return -1;
