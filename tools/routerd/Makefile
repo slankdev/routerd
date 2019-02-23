@@ -6,7 +6,7 @@ CXXFLAGS += $(shell pkg-config json-c --cflags)
 LDFLAGS += $(shell pkg-config json-c --libs)
 LDFLAGS +=
 
-SRC = main.cc link.cc addr.cc route.cc neigh.cc
+SRC = main.cc link.cc addr.cc route.cc neigh.cc log.cc
 OBJ = $(SRC:.cc=.o)
 TARGET = routerd.out
 
