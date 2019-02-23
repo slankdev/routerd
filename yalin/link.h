@@ -379,7 +379,6 @@ ifinfomsg_rtattr_VRF_summary(const struct rtattr* rta)
   }
 }
 
-std::string tmp_kind;
 inline static std::string
 ifinfomsg_rtattr_VLAN_summary(const struct rtattr* rta)
 {
@@ -420,6 +419,7 @@ ifinfomsg_rtattr_LINKINFO_summary(const struct rtattr* rta)
 {
   std::string hdr = strfmt("0x%04x %-24s :: ",
       rta->rta_type, rta_type_IFLA_INFO_to_str(rta->rta_type));
+  std::string tmp_kind = "";
 
   switch (rta->rta_type) {
     case IFLA_INFO_KIND:
