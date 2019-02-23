@@ -9,30 +9,11 @@
 #include <algorithm>
 #include <arpa/inet.h>
 #include "yalin/yalin.h"
+#include "link.h"
 
 netlink_cache_t* nlc;
 
 namespace routerd {
-
-union addr_t {
-  uint32_t in4;
-  struct in6_addr in6;
-  uint8_t raw[16];
-};
-
-struct rta_array {
- private:
-  struct rtattr* attrs[50000];
- public:
-  rta_array(struct rtattr* rta_head, size_t rta_len)
-  {
-    memset(attrs, 0, sizeof(attrs));
-    parse_rtattr(rta_head, rta_len, attrs,
-        sizeof(attrs)/sizeof(attrs[0]));
-  }
-  const struct rtattr* get(uint16_t type) const
-  { return attrs[type]; }
-};
 
 struct link {
  private:

@@ -581,5 +581,20 @@ netlink_cache_update_link(netlink_cache_t* nlc,
   nlc->links.push_back(buf);
 }
 
+struct rta_array {
+ private:
+  struct rtattr* attrs[50000];
+ public:
+  rta_array(struct rtattr* rta_head, size_t rta_len)
+  {
+    memset(attrs, 0, sizeof(attrs));
+    parse_rtattr(rta_head, rta_len, attrs,
+        sizeof(attrs)/sizeof(attrs[0]));
+  }
+  const struct rtattr* get(uint16_t type) const
+  { return attrs[type]; }
+};
+
+
 #endif /* _YALIN_H_ */
 
