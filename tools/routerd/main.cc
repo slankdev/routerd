@@ -121,9 +121,9 @@ monitor(const struct sockaddr_nl *who,
 int
 main(int argc, char **argv)
 {
-  log_info("routerd start...\n");
-
   uint32_t groups = ~0U;
+  log_info("routerd-start: subscribe groups: 0x%08x<%s>\n",
+      groups, RTNLGRP_flags_to_str(groups).c_str());
   netlink_t* nl = netlink_open(groups, NETLINK_ROUTE);
   if (nl == NULL)
     return 1;

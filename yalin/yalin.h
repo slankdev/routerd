@@ -595,6 +595,43 @@ struct rta_array {
   { return attrs[type]; }
 };
 
+std::string RTNLGRP_flags_to_str(uint32_t f)
+{
+  std::string str;
+	if (f & RTNLGRP_NONE         ) str += "|NONE";
+	if (f & RTNLGRP_LINK         ) str += "|LINK";
+	if (f & RTNLGRP_NOTIFY       ) str += "|NOTIFY";
+	if (f & RTNLGRP_NEIGH        ) str += "|NEIGH";
+	if (f & RTNLGRP_TC           ) str += "|TC";
+	if (f & RTNLGRP_IPV4_IFADDR  ) str += "|IPV4_IFADDR";
+	if (f & RTNLGRP_IPV4_MROUTE  ) str += "|IPV4_MROUTE";
+	if (f & RTNLGRP_IPV4_ROUTE   ) str += "|IPV4_ROUTE";
+	if (f & RTNLGRP_IPV4_RULE    ) str += "|IPV4_RULE";
+	if (f & RTNLGRP_IPV6_IFADDR  ) str += "|IPV6_IFADDR";
+	if (f & RTNLGRP_IPV6_MROUTE  ) str += "|IPV6_MROUTE";
+	if (f & RTNLGRP_IPV6_ROUTE   ) str += "|IPV6_ROUTE";
+	if (f & RTNLGRP_IPV6_IFINFO  ) str += "|IPV6_IFINFO";
+	if (f & RTNLGRP_DECnet_IFADDR) str += "|DECnet_IFADDR";
+	if (f & RTNLGRP_NOP2         ) str += "|NOP2";
+	if (f & RTNLGRP_DECnet_ROUTE ) str += "|DECnet_ROUTE";
+	if (f & RTNLGRP_DECnet_RULE  ) str += "|DECnet_RULE";
+	if (f & RTNLGRP_NOP4         ) str += "|NOP4";
+	if (f & RTNLGRP_IPV6_PREFIX  ) str += "|IPV6_PREFIX";
+	if (f & RTNLGRP_IPV6_RULE    ) str += "|IPV6_RULE";
+	if (f & RTNLGRP_ND_USEROPT   ) str += "|ND_USEROPT";
+	if (f & RTNLGRP_PHONET_IFADDR) str += "|PHONET_IFADDR";
+	if (f & RTNLGRP_PHONET_ROUTE ) str += "|PHONET_ROUTE";
+	if (f & RTNLGRP_DCB          ) str += "|DCB";
+	if (f & RTNLGRP_IPV4_NETCONF ) str += "|IPV4_NETCONF";
+	if (f & RTNLGRP_IPV6_NETCONF ) str += "|IPV6_NETCONF";
+	if (f & RTNLGRP_MDB          ) str += "|MDB";
+	if (f & RTNLGRP_MPLS_ROUTE   ) str += "|MPLS_ROUTE";
+	if (f & RTNLGRP_NSID         ) str += "|NSID";
+	if (f & RTNLGRP_MPLS_NETCONF ) str += "|MPLS_NETCONF";
+	if (f & RTNLGRP_IPV4_MROUTE_R) str += "|IPV4_MROUTE_R";
+	if (f & RTNLGRP_IPV6_MROUTE_R) str += "|IPV6_MROUTE_R";
+  return str;
+}
 
 #endif /* _YALIN_H_ */
 
