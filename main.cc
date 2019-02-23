@@ -348,7 +348,7 @@ static int ip_link_add(const link* link)
 {
   // printf("NEWLINK  [%s]", link->summary().c_str());
   std::string cli = link->to_iproute2_cli(RTM_NEWLINK).c_str();
-  if (cli.size() > 0) printf(" --> %s\n", cli.c_str());
+  printf(" --> %s\n", cli.c_str());
   return -1;
 }
 static int ip_link_del(const link* link)
