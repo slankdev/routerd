@@ -9,6 +9,7 @@
 struct conf {
   std::vector<uint32_t> ignore_devices;
   bool debug;
+  bool debug_iproute2_cli;
   std::string json_str;
   static std::string file2str(const char* path)
   {
@@ -23,7 +24,7 @@ struct conf {
     }
     return str;
   }
-  conf(const char* path) : debug(false)
+  conf(const char* path) : debug(false), debug_iproute2_cli(false)
   {
     if (path) {
       log_info("config.json was found\n");
@@ -36,6 +37,14 @@ struct conf {
       if (ret1) {
         const bool b = json_object_get_boolean(jo1);
         debug = b;
+      }
+
+      /* debug_iproute2_cli */
+      json_object* jo3;
+      json_bool ret3 = json_object_object_get_ex(root, "debug_iproute2_cli", &jo3);
+      if (ret3) {
+        const bool b = json_object_get_boolean(jo3);
+        debug_iproute2_cli = b;
       }
 
       /* ignore_devices */
@@ -55,6 +64,7 @@ struct conf {
   void dump(FILE* fp) const
   {
     fprintf(fp, "conf->debug: %s\r\n", debug?"true":"false");
+    fprintf(fp, "conf->debug_iproute2_cli: %s\r\n", debug_iproute2_cli?"true":"false");
     fprintf(fp, "conf->ignore_devices: [");
     for (size_t i=0; i<ignore_devices.size(); i++)
       fprintf(fp, "%u%s", ignore_devices[i],
