@@ -595,7 +595,8 @@ struct rta_array {
   { return attrs[type]; }
 };
 
-std::string RTNLGRP_flags_to_str(uint32_t f)
+inline static std::string
+RTNLGRP_flags_to_str(uint32_t f)
 {
   std::string str;
 	if (f & RTNLGRP_NONE         ) str += "|NONE";

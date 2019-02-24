@@ -1,0 +1,4 @@
+{
+  "debug": true,
+  "ignore_devices": [ 2, 11 ]
+}

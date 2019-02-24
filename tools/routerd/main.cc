@@ -14,6 +14,7 @@
 #include "route.h"
 #include "neigh.h"
 #include "log.h"
+#include "config.h"
 
 netlink_cache_t* nlc;
 
@@ -121,6 +122,8 @@ monitor(const struct sockaddr_nl *who,
 int
 main(int argc, char **argv)
 {
+  conf conf("./root/etc/routerd/config.json");
+
   uint32_t groups = ~0U;
   log_info("routerd-start: subscribe groups: 0x%08x<%s>\n",
       groups, RTNLGRP_flags_to_str(groups).c_str());
