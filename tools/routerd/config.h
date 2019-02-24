@@ -24,8 +24,14 @@ struct conf {
     }
     return str;
   }
-  conf(const char* path) : debug(false), debug_iproute2_cli(false)
+  static conf& get_instance()
   {
+    static conf instance;
+    return instance;
+  }
+  void load_file(const char* path)
+  {
+    // const char* path = "/etc/routerd/config.json";
     if (path) {
       log_info("config.json was found\n");
       json_str = file2str(path);
@@ -61,6 +67,9 @@ struct conf {
       }
     }
   }
+ private:
+  conf() : debug(false), debug_iproute2_cli(false) {}
+ public:
   void dump(FILE* fp) const
   {
     fprintf(fp, "conf->debug: %s\r\n", debug?"true":"false");

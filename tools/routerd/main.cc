@@ -26,8 +26,11 @@ monitor_NEWLINK(const struct nlmsghdr* hdr)
   const struct ifinfomsg* ifi = (struct ifinfomsg*)(hdr + 1);
   const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
   routerd::link link(ifi, ifa_payload_len);
-  std::string cli = link.to_iproute2_cli(RTM_NEWLINK).c_str();
-  log_info(" --> %s\n", cli.c_str());
+
+  if (conf::get_instance().debug_iproute2_cli) {
+    std::string cli = link.to_iproute2_cli(RTM_NEWLINK).c_str();
+    log_info(" --> %s\n", cli.c_str());
+  }
 }
 
 inline static void
@@ -36,8 +39,11 @@ monitor_DELLINK(const struct nlmsghdr* hdr)
   const struct ifinfomsg* ifi = (struct ifinfomsg*)(hdr + 1);
   const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
   routerd::link link(ifi, ifa_payload_len);
-  std::string cli = link.to_iproute2_cli(RTM_DELLINK).c_str();
-  log_info(" --> %s\n", cli.c_str());
+
+  if (conf::get_instance().debug_iproute2_cli) {
+    std::string cli = link.to_iproute2_cli(RTM_DELLINK).c_str();
+    log_info(" --> %s\n", cli.c_str());
+  }
 }
 
 inline static void
@@ -46,7 +52,11 @@ monitor_NEWADDR(const struct nlmsghdr* hdr)
   const struct ifaddrmsg* ifa = (struct ifaddrmsg*)(hdr + 1);
   const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
   routerd::ifaddr addr(ifa, ifa_payload_len);
-  log_info(" --> %s\n", addr.to_iproute2_cli(RTM_NEWADDR).c_str());
+
+  if (conf::get_instance().debug_iproute2_cli) {
+    std::string cli = addr.to_iproute2_cli(RTM_NEWADDR).c_str();
+    log_info(" --> %s\n", cli.c_str());
+  }
 }
 
 inline static void
@@ -55,7 +65,11 @@ monitor_DELADDR(const struct nlmsghdr* hdr)
   const struct ifaddrmsg* ifa = (struct ifaddrmsg*)(hdr + 1);
   const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
   routerd::ifaddr addr(ifa, ifa_payload_len);
-  log_info(" --> %s\n", addr.to_iproute2_cli(RTM_DELADDR).c_str());
+
+  if (conf::get_instance().debug_iproute2_cli) {
+    std::string cli = addr.to_iproute2_cli(RTM_DELADDR).c_str();
+    log_info(" --> %s\n", cli.c_str());
+  }
 }
 
 inline static void
@@ -64,8 +78,11 @@ monitor_NEWROUTE(const struct nlmsghdr* hdr)
   const struct rtmsg* rtm = (struct rtmsg*)(hdr + 1);
   const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
   routerd::route route(rtm, ifa_payload_len);
-  std::string cli = route.to_iproute2_cli(RTM_NEWROUTE).c_str();
-  log_info(" --> %s\n", cli.c_str());
+
+  if (conf::get_instance().debug_iproute2_cli) {
+    std::string cli = route.to_iproute2_cli(RTM_NEWROUTE).c_str();
+    log_info(" --> %s\n", cli.c_str());
+  }
 }
 
 inline static void
@@ -74,8 +91,11 @@ monitor_DELROUTE(const struct nlmsghdr* hdr)
   const struct rtmsg* rtm = (struct rtmsg*)(hdr + 1);
   const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
   routerd::route route(rtm, ifa_payload_len);
-  std::string cli = route.to_iproute2_cli(RTM_DELROUTE).c_str();
-  log_info(" --> %s\n", cli.c_str());
+
+  if (conf::get_instance().debug_iproute2_cli) {
+    std::string cli = route.to_iproute2_cli(RTM_DELROUTE).c_str();
+    log_info(" --> %s\n", cli.c_str());
+  }
 }
 
 inline static void
@@ -84,8 +104,11 @@ monitor_NEWNEIGH(const struct nlmsghdr* hdr)
   struct ndmsg* ndm = (struct ndmsg*)(hdr + 1);
   const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
   routerd::neigh nei(ndm, ifa_payload_len);
-  std::string cli = nei.to_iproute2_cli(RTM_NEWNEIGH).c_str();
-  log_info(" --> %s\n", cli.c_str());
+
+  if (conf::get_instance().debug_iproute2_cli) {
+    std::string cli = nei.to_iproute2_cli(RTM_NEWNEIGH).c_str();
+    log_info(" --> %s\n", cli.c_str());
+  }
 }
 
 inline static void
@@ -94,8 +117,12 @@ monitor_DELNEIGH(const struct nlmsghdr* hdr)
   struct ndmsg* ndm = (struct ndmsg*)(hdr + 1);
   const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
   routerd::neigh nei(ndm, ifa_payload_len);
-  std::string cli = nei.to_iproute2_cli(RTM_DELNEIGH).c_str();
-  log_info(" --> %s\n", cli.c_str());
+
+  if (conf::get_instance().debug_iproute2_cli) {
+    std::string cli = nei.to_iproute2_cli(RTM_DELNEIGH).c_str();
+    log_info(" --> %s\n", cli.c_str());
+  }
+
 }
 
 inline static int
@@ -122,11 +149,13 @@ monitor(const struct sockaddr_nl *who,
 int
 main(int argc, char **argv)
 {
-  conf conf("/etc/routerd/config.json");
+  conf& conf = conf::get_instance();
+  conf.load_file("/etc/routerd/config.json");
   conf.dump(stdout);
 
   uint32_t groups = ~0U;
-  log_info("routerd-start: subscribe groups: 0x%08x<%s>\n",
+  log_info("routerd-start\n");
+  log_info("subscribe groups: 0x%08x<%s>\n",
       groups, RTNLGRP_flags_to_str(groups).c_str());
   netlink_t* nl = netlink_open(groups, NETLINK_ROUTE);
   if (nl == NULL)
