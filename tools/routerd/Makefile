@@ -20,7 +20,18 @@ re: clean all
 
 install: all
 	mkdir -p /usr/local/bin
+	mkdir -p /etc/routerd
+	mkdir -p /etc/systemd/system
 	cp $(TARGET) /usr/local/bin/routerd
+	cp -f /root/etc/routerd/config.json /etc/routerd/config.json
+	cp -f /root/etc/systemd/system/routerd.service /etc/systemd/system/routerd.service
+	systemctl daemon-reload
+
+uninstall:
+	rm -f /usr/local/bin/routerd
+	rm -f /etc/routerd/config.json
+	rm -f /etc/systemd/system/routerd.service
+	systemctl daemon-reload
 
 run: all
 	sudo ./$(TARGET)

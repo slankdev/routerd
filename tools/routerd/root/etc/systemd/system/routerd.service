@@ -1,0 +1,11 @@
+[Unit]
+Description=Routerd: monitoring netlink for special d-plane
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/routerd
+TimeoutSec=3min
+
+[Install]
+WantedBy=multi-user.target
