@@ -1,5 +1,24 @@
 .DS_Store
 
+# Debian package
+debhelper-build-stamp
+.DS_Store
+.debhelper
+*.deb
+*.ddeb
+*.dsc
+*.build
+*.buildinfo
+*.changes
+*.tar.gz
+*.log
+*.substvars
+/.vagrant
+/*/debian/routerd
+/*/debian/files
+/*/routerd
+/tutorial-1/packageroot/usr
+
 # Prerequisites
 *.d
 

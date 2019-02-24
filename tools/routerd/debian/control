@@ -1,0 +1,11 @@
+Source: routerd
+Priority: optional
+Maintainer: Hiroki Shirokura <slankdev@coe.ad.jp>
+Build-Depends: debhelper (>=5), libjson-c-dev (>= 0.12.1-1.3)
+Standards-Version: 0.0.0
+Homepage: https://github.com/slankdev
+
+Package: routerd
+Architecture: any
+Depends:
+Description: netlink monitor for special d-plane

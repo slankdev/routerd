@@ -1,0 +1,28 @@
+#!/usr/bin/make -f
+%:
+	dh $@
+
+# include /usr/share/cdbs/1/rules/debhelper.mk
+# include /usr/share/cdbs/1/class/autotools.mk
+#
+# DEB_INSTALL_DIRS_groonga = /usr/bin
+#
+# install/srdump::
+# 	cp -ar debian/tmp/usr/bin/* debian/srdump/usr/bin/
+
+override_dh_auto_install:
+	mkdir -p `pwd`/debian/routerd/etc/routerd
+	mkdir -p `pwd`/debian/routerd/etc/systemd/system
+	install -D -m 0755 routerd.out `pwd`/debian/routerd/usr/local/bin/routerd
+	cp -f root/etc/routerd/config.json `pwd`/debian/routerd/etc/routerd/config.json
+	cp -f root/etc/systemd/system/routerd.service `pwd`/debian/routerd/etc/systemd/system/routerd.service
+	# systemctl daemon-reload
+
+# uninstall:
+# 	rm -f /usr/local/bin/routerd
+# 	rm -f /etc/routerd/config.json
+# 	rm -f /etc/systemd/system/routerd.service
+# 	systemctl daemon-reload
+
+override_dh_usrlocal:
+	install -D -m 0755 routerd.out `pwd`/debian/routerd/usr/local/bin/routerd
