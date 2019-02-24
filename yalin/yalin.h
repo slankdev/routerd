@@ -285,9 +285,9 @@ netlink_dump_link(netlink_t* nl)
 }
 
 inline static int
-cache_callback(const struct sockaddr_nl *who,
-         struct rtnl_ctrl_data* _dum_,
-         struct nlmsghdr *n, void *arg)
+cache_callback(const struct sockaddr_nl *who __attribute__((unused)),
+         struct rtnl_ctrl_data* _dum_ __attribute__((unused)),
+         struct nlmsghdr *n, void *arg __attribute__((unused)))
 {
   netlink_cache_t* nlc = (netlink_cache_t*)arg;
   if (n->nlmsg_type == NLMSG_DONE) {
@@ -379,7 +379,8 @@ static inline int
 netlink_listen(netlink_t *rtnl,
     rtnl_listen_filter_t handler, void *jarg)
 {
-  struct sockaddr_nl sa = { .nl_family = AF_NETLINK };
+  struct sockaddr_nl sa;
+  sa.nl_family = AF_NETLINK;
   struct iovec iov;
   struct msghdr msg;
   memset(&msg, 0x0, sizeof(struct msghdr));
@@ -439,9 +440,9 @@ nlmsghdr_summary(const struct nlmsghdr* hdr)
 }
 
 inline static int
-rtnl_summary(const struct sockaddr_nl *who,
-         struct rtnl_ctrl_data* _dum_,
-         struct nlmsghdr *n, void *arg)
+rtnl_summary(const struct sockaddr_nl *who __attribute__((unused)),
+         struct rtnl_ctrl_data* _dum_ __attribute__((unused)),
+         struct nlmsghdr *n, void *arg __attribute__((unused)))
 {
   std::string str = nlmsghdr_summary(n) + " :: ";
   switch (n->nlmsg_type) {

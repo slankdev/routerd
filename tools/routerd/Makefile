@@ -1,10 +1,10 @@
 
 CXX = g++
-CXXFLAGS += -Wall -Werror -std=c++11 -g -O0
+CXXFLAGS += -Wall -Werror -Wextra
+CXXFLAGS += -std=c++11 -g -O0
 CXXFLAGS += -I../../ -I../../libslankdev -static
 CXXFLAGS += $(shell pkg-config json-c --cflags)
 LDFLAGS += $(shell pkg-config json-c --libs)
-LDFLAGS +=
 
 SRC = main.cc link.cc addr.cc route.cc neigh.cc log.cc
 OBJ = $(SRC:.cc=.o)

@@ -66,6 +66,7 @@ struct link {
   }
   std::string to_iproute2_cli_set_link(uint16_t nlmsg_type) const
   {
+    assert(nlmsg_type == RTM_NEWLINK);
     std::string ifname;
     if (rtas->get(IFLA_IFNAME)) {
       const struct rtattr* rta = rtas->get(IFLA_IFNAME);
@@ -98,6 +99,7 @@ struct link {
   }
   std::string to_iproute2_cli_set_link_flag(uint16_t nlmsg_type) const
   {
+    assert(nlmsg_type == RTM_NEWLINK);
     std::string ifname;
     if (rtas->get(IFLA_IFNAME)) {
       const struct rtattr* rta = rtas->get(IFLA_IFNAME);

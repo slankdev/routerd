@@ -126,9 +126,9 @@ monitor_DELNEIGH(const struct nlmsghdr* hdr)
 }
 
 inline static int
-monitor(const struct sockaddr_nl *who,
-         struct rtnl_ctrl_data* _dum_,
-         struct nlmsghdr *n, void *arg)
+monitor(const struct sockaddr_nl *who [[gnu::unused]],
+         struct rtnl_ctrl_data* _dum_ [[gnu::unused]],
+         struct nlmsghdr *n, void *arg [[gnu::unused]])
 {
   switch (n->nlmsg_type) {
     case RTM_NEWLINK: monitor_NEWLINK(n); break;
@@ -147,7 +147,7 @@ monitor(const struct sockaddr_nl *who,
 } /* namespace routerd */
 
 int
-main(int argc, char **argv)
+main()
 {
   conf& conf = conf::get_instance();
   conf.load_file("/etc/routerd/config.json");
