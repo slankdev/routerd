@@ -23,8 +23,8 @@ install: all
 	mkdir -p /etc/routerd
 	mkdir -p /etc/systemd/system
 	cp $(TARGET) /usr/local/bin/routerd
-	cp -f /root/etc/routerd/config.json /etc/routerd/config.json
-	cp -f /root/etc/systemd/system/routerd.service /etc/systemd/system/routerd.service
+	cp -f root/etc/routerd/config.json /etc/routerd/config.json
+	cp -f root/etc/systemd/system/routerd.service /etc/systemd/system/routerd.service
 	systemctl daemon-reload
 
 uninstall:

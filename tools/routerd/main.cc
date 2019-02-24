@@ -122,7 +122,7 @@ monitor(const struct sockaddr_nl *who,
 int
 main(int argc, char **argv)
 {
-  conf conf("./root/etc/routerd/config.json");
+  conf conf("/etc/routerd/config.json");
   conf.dump(stdout);
 
   uint32_t groups = ~0U;
