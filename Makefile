@@ -28,26 +28,20 @@ install: all
 	cp -f root/etc/systemd/system/routerd.service /etc/systemd/system/routerd.service
 	systemctl daemon-reload
 
-uninstall:
-	rm -f /usr/local/bin/routerd
-	rm -f /etc/routerd/config.json
-	rm -f /etc/systemd/system/routerd.service
-	systemctl daemon-reload
-
 run: all
 	sudo ./$(TARGET)
 
 clean_debian:
-	rm -f tools/routerd-dbgsym_*.ddeb
-	rm -f tools/routerd_*.dsc
-	rm -f tools/routerd_*.tar.gz
-	rm -f tools/routerd_*.build
-	rm -f tools/routerd_*.buildinfo
-	rm -f tools/routerd_*.changes
-	rm -f tools/routerd_*.deb
-	rm -f tools/routerd/debian/routerd.substvars
-	rm -f tools/routerd/debian/debhelper-build-stamp
-	rm -rf tools/routerd/debian/routerd
+	rm -f  ../routerd-dbgsym_*.ddeb
+	rm -f  ../routerd_*.dsc
+	rm -f  ../routerd_*.tar.gz
+	rm -f  ../routerd_*.build
+	rm -f  ../routerd_*.buildinfo
+	rm -f  ../routerd_*.changes
+	rm -f  ../routerd_*.deb
+	rm -f  ../routerd/debian/routerd.substvars
+	rm -f  ../routerd/debian/debhelper-build-stamp
+	rm -rf ../routerd/debian/routerd
 
 install_tools:
 	make -C tools/nldump install
@@ -57,7 +51,6 @@ install_tools_docker:
 	make -C tools/nldump install_docker
 	make -C tools/nlsniff install_docker
 
-clean_tools:
-	make -C tools/nldump clean
-	make -C tools/nlsniff clean
+debian_package:
+	debuild -uc -us
 
