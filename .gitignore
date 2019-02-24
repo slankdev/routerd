@@ -17,6 +17,7 @@ debhelper-build-stamp
 /*/debian/routerd
 /*/debian/files
 /*/routerd
+/*/debian/output
 /tutorial-1/packageroot/usr
 
 # Prerequisites
