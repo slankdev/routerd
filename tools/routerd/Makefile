@@ -1,8 +1,9 @@
 
 CXX = g++
+PREFIX = ../..
+CXXFLAGS += -I$(PREFIX)/include -I$(PREFIX)/libslankdev
 CXXFLAGS += -Wall -Werror -Wextra
-CXXFLAGS += -std=c++11 -g -O0
-CXXFLAGS += -I../../ -I../../libslankdev -static
+CXXFLAGS += -std=c++11 -g -O0 -static
 CXXFLAGS += $(shell pkg-config json-c --cflags)
 LDFLAGS += $(shell pkg-config json-c --libs)
 
