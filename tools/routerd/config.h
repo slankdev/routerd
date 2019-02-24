@@ -9,6 +9,7 @@
 struct conf {
   std::vector<uint32_t> ignore_devices;
   bool debug;
+  std::string json_str;
   static std::string file2str(const char* path)
   {
     slankdev::filefd file;
@@ -22,12 +23,41 @@ struct conf {
     }
     return str;
   }
-  conf(const char* path)
+  conf(const char* path) : debug(false)
   {
     if (path) {
       log_info("config.json was found\n");
-      std::string json_str = file2str(path);
-      printf("%s", json_str.c_str());
+      json_str = file2str(path);
+      json_object* root = json_tokener_parse(json_str.c_str());
+
+      /* debug */
+      json_object* jo1;
+      json_bool ret1 = json_object_object_get_ex(root, "debug", &jo1);
+      if (ret1) {
+        const bool b = json_object_get_boolean(jo1);
+        debug = b;
+      }
+
+      /* ignore_devices */
+      json_object* jo2;
+      json_bool ret2 = json_object_object_get_ex(root, "ignore_devices", &jo2);
+      if (ret2) {
+        const size_t n_devs = json_object_array_length(jo2);
+        ignore_devices.resize(n_devs);
+        for (size_t i=0; i<n_devs; i++) {
+          json_object* jo = json_object_array_get_idx(jo2, i);
+          const size_t index = json_object_get_int(jo);
+          ignore_devices[i] = index;
+        }
+      }
     }
+  }
+  void dump(FILE* fp) const
+  {
+    fprintf(fp, "conf->debug: %s\r\n", debug?"true":"false");
+    fprintf(fp, "conf->ignore_devices: [");
+    for (size_t i=0; i<ignore_devices.size(); i++)
+      fprintf(fp, "%u%s", ignore_devices[i],
+          i+1<ignore_devices.size()?", ":"]\r\n");
   }
 };

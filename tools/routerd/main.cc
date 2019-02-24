@@ -123,6 +123,7 @@ int
 main(int argc, char **argv)
 {
   conf conf("./root/etc/routerd/config.json");
+  conf.dump(stdout);
 
   uint32_t groups = ~0U;
   log_info("routerd-start: subscribe groups: 0x%08x<%s>\n",
