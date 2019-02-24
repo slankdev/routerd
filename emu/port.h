@@ -57,7 +57,7 @@ struct port {
   void discard_mbuf(mbuf* m)
   {
     counter.discard ++;
-    printf("discard\n");
+    // printf("discard\n");
     delete m;
   }
   void enqueue_phy(mbuf* m)
