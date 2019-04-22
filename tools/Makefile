@@ -1,4 +1,8 @@
 
+build:
+	make -C nldump
+	make -C nlsniff
+
 install:
 	make -C nldump install
 	make -C nlsniff install
