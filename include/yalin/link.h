@@ -139,7 +139,7 @@ rta_type_VXLAN_to_str(uint16_t type)
     case IFLA_VXLAN_COLLECT_METADATA: return "IFLA_VXLAN_COLLECT_METADATA";
     case IFLA_VXLAN_LABEL: return "IFLA_VXLAN_LABEL";
     case IFLA_VXLAN_GPE: return "IFLA_VXLAN_GPE";
-    case IFLA_VXLAN_FAN_MAP: return "IFLA_VXLAN_FAN_MAP";
+    // case IFLA_VXLAN_FAN_MAP: return "IFLA_VXLAN_FAN_MAP";
     default: return "IFLA_BR_XXXXXXXXUNKNOWN";
   }
 }
@@ -249,7 +249,7 @@ ifinfomsg_rtattr_VXLAN_summary(const struct rtattr* rta)
     case IFLA_VXLAN_GBP:
     case IFLA_VXLAN_REMCSUM_NOPARTIAL:
     case IFLA_VXLAN_GPE:
-    case IFLA_VXLAN_FAN_MAP:
+    // case IFLA_VXLAN_FAN_MAP:
     default:
     {
       std::string val;
