@@ -40,7 +40,6 @@ SRC += lib/vty.c \
 					 lib/pid_output.c \
 					 lib/graph.c \
 					 lib/json.c \
-					 lib/stream.c \
 					 lib/lib_errors.c \
 					 lib/sockopt.c \
 					 # end
