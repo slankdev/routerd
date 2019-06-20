@@ -1954,6 +1954,12 @@ DEFUN(config_no_domainname,
 	return cmd_domainname_set(NULL);
 }
 
+int cmd_password_set(const char *password)
+{
+	host.password = strdup(password);
+	return CMD_SUCCESS;
+}
+
 int cmd_hostname_set(const char *hostname)
 {
 	XFREE(MTYPE_HOST, host.name);
