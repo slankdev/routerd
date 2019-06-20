@@ -28,7 +28,6 @@
 #include "getopt.h"
 #include "module.h"
 #include "hook.h"
-#include "northbound.h"
 
 #ifdef __cplusplus
 extern "C" {

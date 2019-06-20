@@ -2,12 +2,6 @@
 CFLAGS += -I./lib -I. -D_GNU_SOURCE $(shell pkg-config --cflags glib-2.0) -g -O0
 CFLAGS += -DSYSCONFDIR=\"/etc/\" -DHAVE_CONFIG_H
 SRC += lib/vty.c \
-					 lib/northbound.c \
-					 lib/northbound_cli.c \
-					 lib/northbound_db.c \
-					 lib/yang.c \
-					 lib/yang_translator.c \
-					 lib/yang_wrappers.c \
 					 lib/printf/vfprintf.c \
 					 lib/printf/glue.c \
 					 lib/printf/printf-pos.c \

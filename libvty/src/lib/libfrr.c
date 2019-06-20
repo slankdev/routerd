@@ -36,9 +36,6 @@
 #include "module.h"
 #include "network.h"
 #include "lib_errors.h"
-#include "db.h"
-#include "northbound_cli.h"
-#include "northbound_db.h"
 #include "debug.h"
 
 DEFINE_HOOK(frr_late_init, (struct thread_master * tm), (tm))

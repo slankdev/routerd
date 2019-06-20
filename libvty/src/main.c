@@ -197,8 +197,6 @@ int main(int argc, char **argv)
   vty_init(master, false);
   vty_serv_sock(NULL, 9077, "/var/run/frr/slank.vty");
   memory_init();
-  yang_init();
-  nb_init(master, NULL, 0);
   install_commands(argc, argv);
 
   /* Fetch next active thread. */

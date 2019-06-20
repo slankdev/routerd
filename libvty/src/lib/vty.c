@@ -41,7 +41,6 @@
 #include "libfrr.h"
 #include "frrstr.h"
 #include "lib_errors.h"
-#include "northbound_cli.h"
 #include "printfrr.h"
 
 #include <arpa/telnet.h>
@@ -1658,7 +1657,6 @@ static struct vty *vty_new_init(int vty_sock)
 	vty->xpath_index = 0;
 	memset(vty->xpath, 0, sizeof(vty->xpath));
 	vty->private_config = false;
-	vty->candidate_config = vty_shared_candidate_config;
 	vector_set_index(vtyvec, vty_sock, vty);
 	vty->status = VTY_NORMAL;
 	vty->lines = -1;
@@ -2314,95 +2312,6 @@ static int vty_timeout(struct thread *thread)
 	return 0;
 }
 
-/* Read up configuration file from file_name. */
-static void vty_read_file(struct nb_config *config, FILE *confp)
-{
-	int ret;
-	struct vty *vty;
-	struct vty_error *ve;
-	struct listnode *node;
-	unsigned int line_num = 0;
-
-	vty = vty_new();
-	/* vty_close won't close stderr;  if some config command prints
-	 * something it'll end up there.  (not ideal; it'd be beter if output
-	 * from a file-load went to logging instead.  Also note that if this
-	 * function is called after daemonizing, stderr will be /dev/null.)
-	 *
-	 * vty->fd will be -1 from vty_new()
-	 */
-	vty->wfd = STDERR_FILENO;
-	vty->type = VTY_FILE;
-	vty->node = CONFIG_NODE;
-	vty->config = true;
-	if (config)
-		vty->candidate_config = config;
-	else {
-		vty->private_config = true;
-		vty->candidate_config = nb_config_new(NULL);
-	}
-
-	/* Execute configuration file */
-	ret = config_from_file(vty, confp, &line_num);
-
-	/* Flush any previous errors before printing messages below */
-	buffer_flush_all(vty->obuf, vty->wfd);
-
-	if (!((ret == CMD_SUCCESS) || (ret == CMD_ERR_NOTHING_TODO))) {
-		const char *message = NULL;
-		char *nl;
-
-		switch (ret) {
-		case CMD_ERR_AMBIGUOUS:
-			message = "Ambiguous command";
-			break;
-		case CMD_ERR_NO_MATCH:
-			message = "No such command";
-			break;
-		case CMD_WARNING:
-			message = "Command returned Warning";
-			break;
-		case CMD_WARNING_CONFIG_FAILED:
-			message = "Command returned Warning Config Failed";
-			break;
-		case CMD_ERR_INCOMPLETE:
-			message = "Command returned Incomplete";
-			break;
-		case CMD_ERR_EXEED_ARGC_MAX:
-			message =
-				"Command exceeded maximum number of Arguments";
-			break;
-		default:
-			message = "Command returned unhandled error message";
-			break;
-		}
-
-		for (ALL_LIST_ELEMENTS_RO(vty->error, node, ve)) {
-			nl = strchr(ve->error_buf, '\n');
-			if (nl)
-				*nl = '\0';
-			flog_err(EC_LIB_VTY, "ERROR: %s on config line %u: %s",
-				 message, ve->line_num, ve->error_buf);
-		}
-	}
-
-	/*
-	 * Automatically commit the candidate configuration after
-	 * reading the configuration file.
-	 */
-	if (config == NULL && vty->candidate_config
-	    && frr_get_cli_mode() == FRR_CLI_TRANSACTIONAL) {
-		ret = nb_candidate_commit(vty->candidate_config, NB_CLIENT_CLI,
-					  vty, true, "Read configuration file",
-					  NULL);
-		if (ret != NB_OK && ret != NB_ERR_NO_CHANGES)
-			zlog_err("%s: failed to read configuration file.",
-				 __func__);
-	}
-
-	vty_close(vty);
-}
-
 static FILE *vty_use_backup_config(const char *fullpath)
 {
 	char *fullpath_sav, *fullpath_tmp;
@@ -2458,121 +2367,6 @@ static FILE *vty_use_backup_config(const char *fullpath)
 	return ret;
 }
 
-/* Read up configuration file from file_name. */
-bool vty_read_config(struct nb_config *config, const char *config_file,
-		     char *config_default_dir)
-{
-	char cwd[MAXPATHLEN];
-	FILE *confp = NULL;
-	const char *fullpath;
-	char *tmp = NULL;
-	bool read_success = false;
-
-	/* If -f flag specified. */
-	if (config_file != NULL) {
-		if (!IS_DIRECTORY_SEP(config_file[0])) {
-			if (getcwd(cwd, MAXPATHLEN) == NULL) {
-				flog_err_sys(
-					EC_LIB_SYSTEM_CALL,
-					"%s: failure to determine Current Working Directory %d!",
-					__func__, errno);
-				goto tmp_free_and_out;
-			}
-			tmp = XMALLOC(MTYPE_TMP,
-				      strlen(cwd) + strlen(config_file) + 2);
-			sprintf(tmp, "%s/%s", cwd, config_file);
-			fullpath = tmp;
-		} else
-			fullpath = config_file;
-
-		confp = fopen(fullpath, "r");
-
-		if (confp == NULL) {
-			flog_warn(
-				EC_LIB_BACKUP_CONFIG,
-				"%s: failed to open configuration file %s: %s, checking backup",
-				__func__, fullpath, safe_strerror(errno));
-
-			confp = vty_use_backup_config(fullpath);
-			if (confp)
-				flog_warn(
-					EC_LIB_BACKUP_CONFIG,
-					"WARNING: using backup configuration file!");
-			else {
-				flog_err(
-					EC_LIB_VTY,
-					"%s: can't open configuration file [%s]",
-					__func__, config_file);
-				goto tmp_free_and_out;
-			}
-		}
-	} else {
-
-		host_config_set(config_default_dir);
-
-#ifdef VTYSH
-		int ret;
-		struct stat conf_stat;
-
-		/* !!!!PLEASE LEAVE!!!!
-		 * This is NEEDED for use with vtysh -b, or else you can get
-		 * a real configuration food fight with a lot garbage in the
-		 * merged configuration file it creates coming from the per
-		 * daemon configuration files.  This also allows the daemons
-		 * to start if there default configuration file is not
-		 * present or ignore them, as needed when using vtysh -b to
-		 * configure the daemons at boot - MAG
-		 */
-
-		/* Stat for vtysh Zebra.conf, if found startup and wait for
-		 * boot configuration
-		 */
-
-		if (strstr(config_default_dir, "vtysh") == NULL) {
-			ret = stat(integrate_default, &conf_stat);
-			if (ret >= 0) {
-				read_success = true;
-				goto tmp_free_and_out;
-			}
-		}
-#endif /* VTYSH */
-		confp = fopen(config_default_dir, "r");
-		if (confp == NULL) {
-			flog_err(
-				EC_LIB_SYSTEM_CALL,
-				"%s: failed to open configuration file %s: %s, checking backup",
-				__func__, config_default_dir,
-				safe_strerror(errno));
-
-			confp = vty_use_backup_config(config_default_dir);
-			if (confp) {
-				flog_warn(
-					EC_LIB_BACKUP_CONFIG,
-					"WARNING: using backup configuration file!");
-				fullpath = config_default_dir;
-			} else {
-				flog_err(EC_LIB_VTY,
-					 "can't open configuration file [%s]",
-					 config_default_dir);
-				goto tmp_free_and_out;
-			}
-		} else
-			fullpath = config_default_dir;
-	}
-
-	vty_read_file(config, confp);
-	read_success = true;
-
-	fclose(confp);
-
-	host_config_set(fullpath);
-
-tmp_free_and_out:
-	XFREE(MTYPE_TMP, tmp);
-
-	return read_success;
-}
-
 /* Small utility function which output log to the VTY. */
 void vty_log(const char *level, const char *proto_str, const char *msg,
 	     struct timestamp_control *ctl)
@@ -2621,7 +2415,7 @@ void vty_log_fixed(char *buf, size_t len)
 
 int vty_config_enter(struct vty *vty, bool private_config, bool exclusive)
 {
-	if (exclusive && nb_running_lock(NB_CLIENT_CLI, vty)) {
+	if (exclusive) {
 		vty_out(vty, "%% Configuration is locked by other client\n");
 		return CMD_WARNING;
 	}
@@ -2631,23 +2425,6 @@ int vty_config_enter(struct vty *vty, bool private_config, bool exclusive)
 	vty->private_config = private_config;
 	vty->xpath_index = 0;
 
-	pthread_rwlock_rdlock(&running_config->lock);
-	{
-		if (private_config) {
-			vty->candidate_config = nb_config_dup(running_config);
-			vty->candidate_config_base =
-				nb_config_dup(running_config);
-			vty_out(vty,
-				"Warning: uncommitted changes will be discarded on exit.\n\n");
-		} else {
-			vty->candidate_config = vty_shared_candidate_config;
-			if (frr_get_cli_mode() == FRR_CLI_TRANSACTIONAL)
-				vty->candidate_config_base =
-					nb_config_dup(running_config);
-		}
-	}
-	pthread_rwlock_unlock(&running_config->lock);
-
 	return CMD_SUCCESS;
 }
 
@@ -2655,24 +2432,8 @@ void vty_config_exit(struct vty *vty)
 {
 	/* Check if there's a pending confirmed commit. */
 	if (vty->t_confirmed_commit_timeout) {
-		vty_out(vty,
-			"WARNING: exiting with a pending confirmed commit. Rolling back to previous configuration.\n\n");
-		nb_cli_confirmed_commit_rollback(vty);
-		nb_cli_confirmed_commit_clean(vty);
+		vty_out(vty, "WARNING: exiting with a pending confirmed commit. Rolling back to previous configuration.\n\n");
 	}
-
-	(void)nb_running_unlock(NB_CLIENT_CLI, vty);
-
-	if (vty->candidate_config) {
-		if (vty->private_config)
-			nb_config_free(vty->candidate_config);
-		vty->candidate_config = NULL;
-	}
-	if (vty->candidate_config_base) {
-		nb_config_free(vty->candidate_config_base);
-		vty->candidate_config_base = NULL;
-	}
-
 	vty->config = false;
 }
 

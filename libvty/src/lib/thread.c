@@ -34,6 +34,7 @@
 #include "jhash.h"
 #include "frratomic.h"
 #include "lib_errors.h"
+#include "linklist.h"
 
 DEFINE_MTYPE_STATIC(LIB, THREAD, "Thread")
 DEFINE_MTYPE_STATIC(LIB, THREAD_MASTER, "Thread master")

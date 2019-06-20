@@ -45,7 +45,6 @@
 #include "jhash.h"
 #include "hook.h"
 #include "lib_errors.h"
-#include "northbound_cli.h"
 #include "config.h"
 
 DEFINE_MTYPE(LIB, HOST, "Host config")
@@ -1040,11 +1039,6 @@ static int cmd_execute_command_real(vector vline, enum cmd_filter_type filter,
 			/* Clear array of enqueued configuration changes. */
 			vty->num_cfg_changes = 0;
 			memset(&vty->cfg_changes, 0, sizeof(vty->cfg_changes));
-
-			/* Regenerate candidate configuration. */
-			if (frr_get_cli_mode() == FRR_CLI_CLASSIC)
-				nb_config_replace(vty->candidate_config,
-						  running_config, true);
 		}
 
 		ret = matched_element->func(matched_element, vty, argc, argv);
@@ -1693,17 +1687,6 @@ static int vty_write_config(struct vty *vty)
 	vty_out(vty, "frr version %s\n", FRR_VER_SHORT);
 	vty_out(vty, "frr defaults %s\n", DFLT_NAME);
 	vty_out(vty, "!\n");
-
-	pthread_rwlock_rdlock(&running_config->lock);
-	{
-		for (i = 0; i < vector_active(cmdvec); i++)
-			if ((node = vector_slot(cmdvec, i)) && node->func
-			    && (node->vtysh || vty->type != VTY_SHELL)) {
-				if ((*node->func)(vty))
-					vty_out(vty, "!\n");
-			}
-	}
-	pthread_rwlock_unlock(&running_config->lock);
 
 	if (vty->type == VTY_TERM) {
 		vty_out(vty, "end\n");
@@ -2748,8 +2731,6 @@ void install_default(enum node_type node)
 	install_element(node, &show_running_config_cmd);
 
 	install_element(node, &autocomplete_cmd);
-
-	nb_cli_install_default(node);
 }
 
 /* Initialize command interface. Install basic nodes and commands.

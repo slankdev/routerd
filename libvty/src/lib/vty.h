@@ -29,7 +29,6 @@
 #include "sockunion.h"
 #include "qobj.h"
 #include "compiler.h"
-#include "northbound.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,7 +37,7 @@ extern "C" {
 #define VTY_BUFSIZ 4096
 #define VTY_MAXHIST 20
 #define VTY_MAXDEPTH 8
-
+#define XPATH_MAXLEN 256
 #define VTY_MAXCFGCHANGES 8
 
 struct vty_error {
@@ -48,7 +47,6 @@ struct vty_error {
 
 struct vty_cfg_change {
 	char xpath[XPATH_MAXLEN];
-	enum nb_operation operation;
 	const char *value;
 };
 
