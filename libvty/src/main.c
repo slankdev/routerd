@@ -39,6 +39,11 @@ static void vty_do_exit(int isexit)
 		exit(0);
 }
 
+// static void
+// extra_enable_telnet_vty(struct vty *vty, uint16_t port_id)
+// {
+// }
+
 /* main routine. */
 int main(int argc, char **argv)
 {
