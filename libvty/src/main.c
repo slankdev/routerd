@@ -176,27 +176,6 @@ int dump_args(struct vty *vty, const char *descr, int argc,
   return CMD_SUCCESS;
 }
 
-static void vty_do_exit(int isexit)
-{
-  printf("\nend.\n");
-  cmd_terminate();
-  vty_terminate();
-  nb_terminate();
-  yang_terminate();
-  thread_master_free(master);
-  closezlog();
-
-  log_memstats(stderr, "testcli");
-  if (!isexit)
-    exit(0);
-}
-
-// static void
-// extra_enable_telnet_vty(struct vty *vty, uint16_t port_id)
-// {
-// }
-
-/* main routine. */
 int main(int argc, char **argv)
 {
   /* Set umask before anything for security */
@@ -226,7 +205,6 @@ int main(int argc, char **argv)
   struct thread thread;
   while (thread_fetch(master, &thread))
     thread_call(&thread);
-
   exit(0);
 }
 
