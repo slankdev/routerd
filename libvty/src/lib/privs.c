@@ -24,7 +24,6 @@
 #include "log.h"
 #include "privs.h"
 #include "memory.h"
-#include "lib_errors.h"
 #include "lib/queue.h"
 
 DEFINE_MTYPE_STATIC(LIB, PRIVS, "Privilege information")
@@ -305,7 +304,7 @@ zebra_privs_current_t zprivs_state_caps(void)
 				 zprivs_state.syscaps_p->caps[i], CAP_EFFECTIVE,
 				 &val)) {
 			flog_err(
-				EC_LIB_SYSTEM_CALL,
+				0,
 				"zprivs_state_caps: could not cap_get_flag, %s",
 				safe_strerror(errno));
 			return ZPRIVS_UNKNOWN;

@@ -40,7 +40,6 @@ SRC += lib/vty.c \
 					 lib/pid_output.c \
 					 lib/graph.c \
 					 lib/json.c \
-					 lib/lib_errors.c \
 					 lib/sockopt.c \
 					 # end
 LDFLAGS += -lpthread -ljson-c -lyang -lm $(shell pkg-config --libs glib-2.0) -ldl -lcrypt -lunwind

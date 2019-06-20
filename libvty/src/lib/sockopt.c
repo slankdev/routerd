@@ -27,7 +27,6 @@
 #include "log.h"
 #include "sockopt.h"
 #include "sockunion.h"
-#include "lib_errors.h"
 
 void setsockopt_so_recvbuf(int sock, int size)
 {
@@ -38,7 +37,7 @@ void setsockopt_so_recvbuf(int sock, int size)
 		size /= 2;
 
 	if (size != orig_req)
-		flog_err(EC_LIB_SOCKET,
+		flog_err(0,
 			 "%s: fd %d: SO_RCVBUF set to %d (requested %d)",
 			 __func__, sock, size, orig_req);
 }
@@ -52,7 +51,7 @@ void setsockopt_so_sendbuf(const int sock, int size)
 		size /= 2;
 
 	if (size != orig_req)
-		flog_err(EC_LIB_SOCKET,
+		flog_err(0,
 			 "%s: fd %d: SO_SNDBUF set to %d (requested %d)",
 			 __func__, sock, size, orig_req);
 }
@@ -64,7 +63,7 @@ int getsockopt_so_sendbuf(const int sock)
 	int ret = getsockopt(sock, SOL_SOCKET, SO_SNDBUF, (char *)&optval,
 			     &optlen);
 	if (ret < 0) {
-		flog_err_sys(EC_LIB_SYSTEM_CALL,
+		flog_err_sys(0,
 			     "fd %d: can't getsockopt SO_SNDBUF: %d (%s)", sock,
 			     errno, safe_strerror(errno));
 		return ret;
@@ -94,13 +93,13 @@ int setsockopt_ipv6_pktinfo(int sock, int val)
 	ret = setsockopt(sock, IPPROTO_IPV6, IPV6_RECVPKTINFO, &val,
 			 sizeof(val));
 	if (ret < 0)
-		flog_err(EC_LIB_SOCKET,
+		flog_err(0,
 			 "can't setsockopt IPV6_RECVPKTINFO : %s",
 			 safe_strerror(errno));
 #else  /*RFC2292*/
 	ret = setsockopt(sock, IPPROTO_IPV6, IPV6_PKTINFO, &val, sizeof(val));
 	if (ret < 0)
-		flog_err(EC_LIB_SOCKET, "can't setsockopt IPV6_PKTINFO : %s",
+		flog_err(0, "can't setsockopt IPV6_PKTINFO : %s",
 			 safe_strerror(errno));
 #endif /* INIA_IPV6 */
 	return ret;
@@ -117,7 +116,7 @@ int setsockopt_ipv6_checksum(int sock, int val)
 	ret = setsockopt(sock, IPPROTO_IPV6, IPV6_CHECKSUM, &val, sizeof(val));
 #endif /* GNU_LINUX */
 	if (ret < 0)
-		flog_err(EC_LIB_SOCKET, "can't setsockopt IPV6_CHECKSUM");
+		flog_err(0, "can't setsockopt IPV6_CHECKSUM");
 	return ret;
 }
 
@@ -129,7 +128,7 @@ int setsockopt_ipv6_multicast_hops(int sock, int val)
 	ret = setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &val,
 			 sizeof(val));
 	if (ret < 0)
-		flog_err(EC_LIB_SOCKET, "can't setsockopt IPV6_MULTICAST_HOPS");
+		flog_err(0, "can't setsockopt IPV6_MULTICAST_HOPS");
 	return ret;
 }
 
@@ -141,7 +140,7 @@ int setsockopt_ipv6_unicast_hops(int sock, int val)
 	ret = setsockopt(sock, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &val,
 			 sizeof(val));
 	if (ret < 0)
-		flog_err(EC_LIB_SOCKET, "can't setsockopt IPV6_UNICAST_HOPS");
+		flog_err(0, "can't setsockopt IPV6_UNICAST_HOPS");
 	return ret;
 }
 
@@ -153,11 +152,11 @@ int setsockopt_ipv6_hoplimit(int sock, int val)
 	ret = setsockopt(sock, IPPROTO_IPV6, IPV6_RECVHOPLIMIT, &val,
 			 sizeof(val));
 	if (ret < 0)
-		flog_err(EC_LIB_SOCKET, "can't setsockopt IPV6_RECVHOPLIMIT");
+		flog_err(0, "can't setsockopt IPV6_RECVHOPLIMIT");
 #else /*RFC2292*/
 	ret = setsockopt(sock, IPPROTO_IPV6, IPV6_HOPLIMIT, &val, sizeof(val));
 	if (ret < 0)
-		flog_err(EC_LIB_SOCKET, "can't setsockopt IPV6_HOPLIMIT");
+		flog_err(0, "can't setsockopt IPV6_HOPLIMIT");
 #endif
 	return ret;
 }
@@ -170,7 +169,7 @@ int setsockopt_ipv6_multicast_loop(int sock, int val)
 	ret = setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &val,
 			 sizeof(val));
 	if (ret < 0)
-		flog_err(EC_LIB_SOCKET, "can't setsockopt IPV6_MULTICAST_LOOP");
+		flog_err(0, "can't setsockopt IPV6_MULTICAST_LOOP");
 	return ret;
 }
 
@@ -191,7 +190,7 @@ int setsockopt_ipv6_tclass(int sock, int tclass)
 	ret = setsockopt(sock, IPPROTO_IPV6, IPV6_TCLASS, &tclass,
 			 sizeof(tclass));
 	if (ret < 0)
-		flog_err(EC_LIB_SOCKET,
+		flog_err(0,
 			 "Can't set IPV6_TCLASS option for fd %d to %#x: %s",
 			 sock, tclass, safe_strerror(errno));
 #endif
@@ -395,7 +394,7 @@ int setsockopt_ipv4_multicast_loop(int sock, uint8_t val)
 	ret = setsockopt(sock, IPPROTO_IP, IP_MULTICAST_LOOP, (void *)&val,
 			 sizeof(val));
 	if (ret < 0)
-		flog_err(EC_LIB_SOCKET, "can't setsockopt IP_MULTICAST_LOOP");
+		flog_err(0, "can't setsockopt IP_MULTICAST_LOOP");
 
 	return ret;
 }
@@ -407,13 +406,13 @@ static int setsockopt_ipv4_ifindex(int sock, ifindex_t val)
 #if defined(IP_PKTINFO)
 	if ((ret = setsockopt(sock, IPPROTO_IP, IP_PKTINFO, &val, sizeof(val)))
 	    < 0)
-		flog_err(EC_LIB_SOCKET,
+		flog_err(0,
 			 "Can't set IP_PKTINFO option for fd %d to %d: %s",
 			 sock, val, safe_strerror(errno));
 #elif defined(IP_RECVIF)
 	if ((ret = setsockopt(sock, IPPROTO_IP, IP_RECVIF, &val, sizeof(val)))
 	    < 0)
-		flog_err(EC_LIB_SOCKET,
+		flog_err(0,
 			 "Can't set IP_RECVIF option for fd %d to %d: %s", sock,
 			 val, safe_strerror(errno));
 #else
@@ -433,7 +432,7 @@ int setsockopt_ipv4_tos(int sock, int tos)
 
 	ret = setsockopt(sock, IPPROTO_IP, IP_TOS, &tos, sizeof(tos));
 	if (ret < 0)
-		flog_err(EC_LIB_SOCKET,
+		flog_err(0,
 			 "Can't set IP_TOS option for fd %d to %#x: %s", sock,
 			 tos, safe_strerror(errno));
 	return ret;
@@ -452,7 +451,7 @@ int setsockopt_ifindex(int af, int sock, ifindex_t val)
 		ret = setsockopt_ipv6_pktinfo(sock, val);
 		break;
 	default:
-		flog_err(EC_LIB_DEVELOPMENT,
+		flog_err(0,
 			 "setsockopt_ifindex: unknown address family %d", af);
 	}
 	return ret;
@@ -542,7 +541,7 @@ ifindex_t getsockopt_ifindex(int af, struct msghdr *msgh)
 		return (getsockopt_ipv6_ifindex(msgh));
 		break;
 	default:
-		flog_err(EC_LIB_DEVELOPMENT,
+		flog_err(0,
 			 "getsockopt_ifindex: unknown address family %d", af);
 		return 0;
 	}
@@ -695,7 +694,7 @@ int sockopt_tcp_signature_ext(int sock, union sockunion *su, uint16_t prefixlen,
 			ret = 0;
 		else
 			flog_err_sys(
-				EC_LIB_SYSTEM_CALL,
+				0,
 				"sockopt_tcp_signature: setsockopt(%d): %s",
 				sock, safe_strerror(errno));
 	}

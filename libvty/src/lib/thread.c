@@ -33,7 +33,6 @@
 #include "network.h"
 #include "hash.h"
 #include "frratomic.h"
-#include "lib_errors.h"
 #include "linklist.h"
 
 DEFINE_MTYPE_STATIC(LIB, THREAD, "Thread")
@@ -1292,7 +1291,7 @@ static int thread_process_io_helper(struct thread_master *m,
 
 	if (!thread) {
 		if ((actual_state & (POLLHUP|POLLIN)) != POLLHUP)
-			flog_err(EC_LIB_NO_THREAD,
+			flog_err(0,
 				 "Attempting to process an I/O event but for fd: %d(%d) no thread to handle this!\n",
 				 m->handler.pfds[pos].fd, actual_state);
 		return 0;
@@ -1498,7 +1497,7 @@ struct thread *thread_fetch(struct thread_master *m, struct thread *fetch)
 			}
 
 			/* else die */
-			flog_err(EC_LIB_SYSTEM_CALL, "poll() error: %s",
+			flog_err(0, "poll() error: %s",
 				 safe_strerror(errno));
 			pthread_mutex_unlock(&m->mtx);
 			fetch = NULL;
@@ -1642,7 +1641,7 @@ void thread_call(struct thread *thread)
 		 * to fix.
 		 */
 		flog_warn(
-			EC_LIB_SLOW_THREAD,
+			0,
 			"SLOW THREAD: task %s (%lx) ran for %lums (cpu time %lums)",
 			thread->funcname, (unsigned long)thread->func,
 			realtime / 1000, cputime / 1000);

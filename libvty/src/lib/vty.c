@@ -39,7 +39,6 @@
 #include "network.h"
 #include "libfrr.h"
 #include "frrstr.h"
-#include "lib_errors.h"
 #include "printfrr.h"
 
 #include <arpa/telnet.h>
@@ -289,63 +288,6 @@ done:
 	return len;
 }
 
-static int vty_log_out(struct vty *vty, const char *level,
-		       const char *proto_str, const char *msg,
-		       struct timestamp_control *ctl)
-{
-	int ret;
-	int len;
-	char buf[1024];
-
-	if (!ctl->already_rendered) {
-		ctl->len = quagga_timestamp(ctl->precision, ctl->buf,
-					    sizeof(ctl->buf));
-		ctl->already_rendered = 1;
-	}
-	if (ctl->len + 1 >= sizeof(buf))
-		return -1;
-	memcpy(buf, ctl->buf, len = ctl->len);
-	buf[len++] = ' ';
-	buf[len] = '\0';
-
-	if (level)
-		ret = snprintf(buf + len, sizeof(buf) - len, "%s: %s: ", level,
-			       proto_str);
-	else
-		ret = snprintf(buf + len, sizeof(buf) - len, "%s: ", proto_str);
-	if ((ret < 0) || ((size_t)(len += ret) >= sizeof(buf)))
-		return -1;
-
-	if (((ret = snprintf(buf + len, sizeof(buf) - len, "%s", msg)) < 0)
-	    || ((size_t)((len += ret) + 2) > sizeof(buf)))
-		return -1;
-
-	buf[len++] = '\r';
-	buf[len++] = '\n';
-
-	if (write(vty->wfd, buf, len) < 0) {
-		if (ERRNO_IO_RETRY(errno))
-			/* Kernel buffer is full, probably too much debugging
-			   output, so just
-			   drop the data and ignore. */
-			return -1;
-		/* Fatal I/O error. */
-		vty->monitor =
-			0; /* disable monitoring to avoid infinite recursion */
-		flog_err(EC_LIB_SOCKET,
-			 "%s: write failed to vty client fd %d, closing: %s",
-			 __func__, vty->fd, safe_strerror(errno));
-		buffer_reset(vty->obuf);
-		buffer_reset(vty->lbuf);
-		/* cannot call vty_close, because a parent routine may still try
-		   to access the vty struct */
-		vty->status = VTY_CLOSE;
-		shutdown(vty->fd, SHUT_RDWR);
-		return -1;
-	}
-	return 0;
-}
-
 /* Output current time to the vty. */
 void vty_time_print(struct vty *vty, int cr)
 {
@@ -534,31 +476,10 @@ static int vty_command(struct vty *vty, char *buf)
 		zlog_notice("%s%s", prompt_str, buf);
 	}
 
-#ifdef CONSUMED_TIME_CHECK
-	{
-		RUSAGE_T before;
-		RUSAGE_T after;
-		unsigned long realtime, cputime;
-
-		GETRUSAGE(&before);
-#endif /* CONSUMED_TIME_CHECK */
-
 		ret = cmd_execute(vty, buf, NULL, 0);
 
 		/* Get the name of the protocol if any */
 		protocolname = frr_protoname;
-
-#ifdef CONSUMED_TIME_CHECK
-		GETRUSAGE(&after);
-		if ((realtime = thread_consumed_time(&after, &before, &cputime))
-		    > CONSUMED_TIME_CHECK)
-			/* Warn about CPU hog that must be fixed. */
-			flog_warn(
-				EC_LIB_SLOW_THREAD,
-				"SLOW COMMAND: command took %lums (cpu time %lums): %s",
-				realtime / 1000, cputime / 1000, buf);
-	}
-#endif /* CONSUMED_TIME_CHECK */
 
 	if (ret != CMD_SUCCESS)
 		switch (ret) {
@@ -1263,15 +1184,13 @@ static int vty_telnet_option(struct vty *vty, unsigned char *buf, int nbytes)
 		switch (vty->sb_buf[0]) {
 		case TELOPT_NAWS:
 			if (vty->sb_len != TELNET_NAWS_SB_LEN)
-				flog_err(
-					EC_LIB_SYSTEM_CALL,
+				flog_err(0,
 					"RFC 1073 violation detected: telnet NAWS option "
 					"should send %d characters, but we received %lu",
 					TELNET_NAWS_SB_LEN,
 					(unsigned long)vty->sb_len);
 			else if (sizeof(vty->sb_buf) < TELNET_NAWS_SB_LEN)
-				flog_err(
-					EC_LIB_DEVELOPMENT,
+				flog_err(0,
 					"Bug detected: sizeof(vty->sb_buf) %lu < %d, too small to handle the telnet NAWS option",
 					(unsigned long)sizeof(vty->sb_buf),
 					TELNET_NAWS_SB_LEN);
@@ -1386,8 +1305,7 @@ static int vty_read(struct thread *thread)
 			}
 			vty->monitor = 0; /* disable monitoring to avoid
 					     infinite recursion */
-			flog_err(
-				EC_LIB_SOCKET,
+			flog_err(0,
 				"%s: read error on vty client fd %d, closing: %s",
 				__func__, vty->fd, safe_strerror(errno));
 			buffer_reset(vty->obuf);
@@ -1843,7 +1761,7 @@ static int vty_accept(struct thread *thread)
 	/* We can handle IPv4 or IPv6 socket. */
 	vty_sock = sockunion_accept(accept_sock, &su);
 	if (vty_sock < 0) {
-		flog_err(EC_LIB_SOCKET, "can't accept vty socket : %s",
+		flog_err(0, "can't accept vty socket : %s",
 			 safe_strerror(errno));
 		return -1;
 	}
@@ -1919,7 +1837,7 @@ static void vty_serv_sock_addrinfo(const char *hostname, unsigned short port)
 	ret = getaddrinfo(hostname, port_str, &req, &ainfo);
 
 	if (ret != 0) {
-		flog_err_sys(EC_LIB_SYSTEM_CALL, "getaddrinfo failed: %s",
+		flog_err_sys(0, "getaddrinfo failed: %s",
 			     gai_strerror(ret));
 		exit(1);
 	}
@@ -1980,7 +1898,7 @@ static void vty_serv_un(const char *path)
 	/* Make UNIX domain socket. */
 	sock = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sock < 0) {
-		flog_err_sys(EC_LIB_SOCKET,
+		flog_err_sys(0,
 			     "Cannot create unix stream socket: %s",
 			     safe_strerror(errno));
 		return;
@@ -2000,7 +1918,7 @@ static void vty_serv_un(const char *path)
 
 	ret = bind(sock, (struct sockaddr *)&serv, len);
 	if (ret < 0) {
-		flog_err_sys(EC_LIB_SOCKET, "Cannot bind path %s: %s", path,
+		flog_err_sys(0, "Cannot bind path %s: %s", path,
 			     safe_strerror(errno));
 		close(sock); /* Avoid sd leak. */
 		return;
@@ -2008,7 +1926,7 @@ static void vty_serv_un(const char *path)
 
 	ret = listen(sock, 5);
 	if (ret < 0) {
-		flog_err_sys(EC_LIB_SOCKET, "listen(fd %d) failed: %s", sock,
+		flog_err_sys(0, "listen(fd %d) failed: %s", sock,
 			     safe_strerror(errno));
 		close(sock); /* Avoid sd leak. */
 		return;
@@ -2024,7 +1942,7 @@ static void vty_serv_un(const char *path)
 	if ((int)ids.gid_vty > 0) {
 		/* set group of socket */
 		if (chown(path, -1, ids.gid_vty)) {
-			flog_err_sys(EC_LIB_SYSTEM_CALL,
+			flog_err_sys(0,
 				     "vty_serv_un: could chown socket, %s",
 				     safe_strerror(errno));
 		}
@@ -2054,14 +1972,14 @@ static int vtysh_accept(struct thread *thread)
 		      (socklen_t *)&client_len);
 
 	if (sock < 0) {
-		flog_err(EC_LIB_SOCKET, "can't accept vty socket : %s",
+		flog_err(0, "can't accept vty socket : %s",
 			 safe_strerror(errno));
 		return -1;
 	}
 
 	if (set_nonblocking(sock) < 0) {
 		flog_err(
-			EC_LIB_SOCKET,
+			0,
 			"vtysh_accept: could not set vty socket %d to non-blocking, %s, closing",
 			sock, safe_strerror(errno));
 		close(sock);
@@ -2093,7 +2011,7 @@ static int vtysh_flush(struct vty *vty)
 	case BUFFER_ERROR:
 		vty->monitor =
 			0; /* disable monitoring to avoid infinite recursion */
-		flog_err(EC_LIB_SOCKET, "%s: write error to fd %d, closing",
+		flog_err(0, "%s: write error to fd %d, closing",
 			 __func__, vty->fd);
 		buffer_reset(vty->lbuf);
 		buffer_reset(vty->obuf);
@@ -2129,7 +2047,7 @@ static int vtysh_read(struct thread *thread)
 			vty->monitor = 0; /* disable monitoring to avoid
 					     infinite recursion */
 			flog_err(
-				EC_LIB_SOCKET,
+				0,
 				"%s: read failed on vtysh client fd %d, closing: %s",
 				__func__, sock, safe_strerror(errno));
 		}
@@ -2364,52 +2282,6 @@ static FILE *vty_use_backup_config(const char *fullpath)
 	free(fullpath_sav);
 	free(fullpath_tmp);
 	return ret;
-}
-
-/* Small utility function which output log to the VTY. */
-void vty_log(const char *level, const char *proto_str, const char *msg,
-	     struct timestamp_control *ctl)
-{
-	unsigned int i;
-	struct vty *vty;
-
-	if (!vtyvec)
-		return;
-
-	for (i = 0; i < vector_active(vtyvec); i++)
-		if ((vty = vector_slot(vtyvec, i)) != NULL)
-			if (vty->monitor)
-				vty_log_out(vty, level, proto_str, msg, ctl);
-}
-
-/* Async-signal-safe version of vty_log for fixed strings. */
-void vty_log_fixed(char *buf, size_t len)
-{
-	unsigned int i;
-	struct iovec iov[2];
-	char crlf[4] = "\r\n";
-
-	/* vty may not have been initialised */
-	if (!vtyvec)
-		return;
-
-	iov[0].iov_base = buf;
-	iov[0].iov_len = len;
-	iov[1].iov_base = crlf;
-	iov[1].iov_len = 2;
-
-	for (i = 0; i < vector_active(vtyvec); i++) {
-		struct vty *vty;
-		if (((vty = vector_slot(vtyvec, i)) != NULL) && vty->monitor)
-			/* N.B. We don't care about the return code, since
-			   process is
-			   most likely just about to die anyway. */
-			if (writev(vty->wfd, iov, 2) == -1) {
-				fprintf(stderr, "Failure to writev: %d\n",
-					errno);
-				exit(-1);
-			}
-	}
 }
 
 int vty_config_enter(struct vty *vty, bool private_config, bool exclusive)
@@ -2860,13 +2732,13 @@ static void vty_save_cwd(void)
 		 * Hence not worrying about it too much.
 		 */
 		if (!chdir(SYSCONFDIR)) {
-			flog_err_sys(EC_LIB_SYSTEM_CALL,
+			flog_err_sys(0,
 				     "Failure to chdir to %s, errno: %d",
 				     SYSCONFDIR, errno);
 			exit(-1);
 		}
 		if (getcwd(vty_cwd, sizeof(vty_cwd)) == NULL) {
-			flog_err_sys(EC_LIB_SYSTEM_CALL,
+			flog_err_sys(0,
 				     "Failure to getcwd, errno: %d", errno);
 			exit(-1);
 		}

@@ -28,7 +28,6 @@
 #include "log_int.h"
 #include "memory.h"
 #include "command.h"
-#include "lib_errors.h"
 #include "printfrr.h"
 
 #ifndef SUNOS_5
@@ -584,7 +583,7 @@ void zlog_backtrace(int priority)
 	size = backtrace(array, array_size(array));
 	if (size <= 0 || (size_t)size > array_size(array)) {
 		flog_err_sys(
-			EC_LIB_SYSTEM_CALL,
+			0,
 			"Cannot get backtrace, returned invalid # of frames %d "
 			"(valid range is between 1 and %lu)",
 			size, (unsigned long)(array_size(array)));
@@ -592,7 +591,7 @@ void zlog_backtrace(int priority)
 	}
 	zlog(priority, "Backtrace for %d stack frames:", size);
 	if (!(strings = backtrace_symbols(array, size))) {
-		flog_err_sys(EC_LIB_SYSTEM_CALL,
+		flog_err_sys(0,
 			     "Cannot get backtrace symbols (out of memory?)");
 		for (i = 0; i < size; i++)
 			zlog(priority, "[bt %d] %p", i, array[i]);
@@ -668,7 +667,7 @@ void _zlog_assert_failed(const char *assertion, const char *file,
 
 void memory_oom(size_t size, const char *name)
 {
-	flog_err_sys(EC_LIB_SYSTEM_CALL,
+	flog_err_sys(0,
 		     "out of memory: failed to allocate %zu bytes for %s"
 		     "object",
 		     size, name);
@@ -822,7 +821,7 @@ int zlog_rotate(void)
 			pthread_mutex_unlock(&loglock);
 
 			flog_err_sys(
-				EC_LIB_SYSTEM_CALL,
+				0,
 				"Log rotate failed: cannot open file %s for append: %s",
 				zl->filename, safe_strerror(save_errno));
 			ret = -1;
@@ -901,6 +900,14 @@ void zlog_hexdump(const void *mem, unsigned int len)
 	}
 	zlog_debug("\n%s", buf);
 }
+
+void
+vty_log(const char *level,
+    const char *proto_str, const char *msg,
+    struct timestamp_control *ctl) {}
+
+void
+vty_log_fixed(char *buf, size_t len) {}
 
 const char *zlog_sanitize(char *buf, size_t bufsz, const void *in, size_t inlen)
 {

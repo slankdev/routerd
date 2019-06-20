@@ -22,7 +22,6 @@
 #include <sigevent.h>
 #include <log.h>
 #include <memory.h>
-#include <lib_errors.h>
 
 #ifdef SA_SIGINFO
 #ifdef HAVE_UCONTEXT_H
@@ -84,7 +83,7 @@ int quagga_sigevent_process(void)
 	sigdelset(&newmask, SIGKILL);
 
 	if ((sigprocmask(SIG_BLOCK, &newmask, &oldmask)) < 0) {
-		flog_err_sys(EC_LIB_SYSTEM_CALL,
+		flog_err_sys(0,
 			     "quagga_signal_timer: couldnt block signals!");
 		return -1;
 	}
@@ -335,7 +334,7 @@ static void trap_default_signals(void)
 				if (sigaction(sigmap[i].sigs[j], &act, NULL)
 				    < 0)
 					flog_err(
-						EC_LIB_SYSTEM_CALL,
+						0,
 						"Unable to set signal handler for signal %d: %s",
 						sigmap[i].sigs[j],
 						safe_strerror(errno));

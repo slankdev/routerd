@@ -35,7 +35,6 @@
 #include "log_int.h"
 #include "module.h"
 #include "network.h"
-#include "lib_errors.h"
 #include "debug.h"
 
 const char frr_sysconfdir[] = SYSCONFDIR;
@@ -465,14 +464,14 @@ static void frr_mkdir(const char *path, bool strip)
 		if (errno == EEXIST)
 			return;
 
-		flog_err(EC_LIB_SYSTEM_CALL, "failed to mkdir \"%s\": %s", path,
+		flog_err(0, "failed to mkdir \"%s\": %s", path,
 			 strerror(errno));
 		return;
 	}
 
 	zprivs_get_ids(&ids);
 	if (chown(path, ids.uid_normal, ids.gid_normal))
-		flog_err(EC_LIB_SYSTEM_CALL, "failed to chown \"%s\": %s", path,
+		flog_err(0, "failed to chown \"%s\": %s", path,
 			 strerror(errno));
 }
 
@@ -525,7 +524,7 @@ static void frr_terminal_close(int isexit)
 
 	nullfd = open("/dev/null", O_RDONLY | O_NOCTTY);
 	if (nullfd == -1) {
-		flog_err_sys(EC_LIB_SYSTEM_CALL,
+		flog_err_sys(0,
 			     "%s: failed to open /dev/null: %s", __func__,
 			     safe_strerror(errno));
 	} else {

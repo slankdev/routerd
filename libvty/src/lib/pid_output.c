@@ -24,7 +24,6 @@
 #include <log.h>
 #include "version.h"
 #include "network.h"
-#include "lib_errors.h"
 
 #define PIDFILE_MASK 0644
 
@@ -42,7 +41,7 @@ pid_t pid_output(const char *path)
 	oldumask = umask(0777 & ~PIDFILE_MASK);
 	fd = open(path, O_RDWR | O_CREAT, PIDFILE_MASK);
 	if (fd < 0) {
-		flog_err_sys(EC_LIB_SYSTEM_CALL,
+		flog_err_sys(0,
 			     "Can't create pid lock file %s (%s), exiting",
 			     path, safe_strerror(errno));
 		umask(oldumask);
@@ -59,7 +58,7 @@ pid_t pid_output(const char *path)
 		lock.l_whence = SEEK_SET;
 
 		if (fcntl(fd, F_SETLK, &lock) < 0) {
-			flog_err_sys(EC_LIB_SYSTEM_CALL,
+			flog_err_sys(0,
 				     "Could not lock pid_file %s (%s), exiting.  Please ensure that the daemon is not already running",
 				     path, safe_strerror(errno));
 			exit(1);
@@ -69,12 +68,11 @@ pid_t pid_output(const char *path)
 		pidsize = strlen(buf);
 		if ((tmp = write(fd, buf, pidsize)) != (int)pidsize)
 			flog_err_sys(
-				EC_LIB_SYSTEM_CALL,
+				0,
 				"Could not write pid %d to pid_file %s, rc was %d: %s",
 				(int)pid, path, tmp, safe_strerror(errno));
 		else if (ftruncate(fd, pidsize) < 0)
-			flog_err_sys(
-				EC_LIB_SYSTEM_CALL,
+			flog_err_sys(0,
 				"Could not truncate pid_file %s to %u bytes: %s",
 				path, (unsigned int)pidsize,
 				safe_strerror(errno));

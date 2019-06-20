@@ -43,7 +43,6 @@
 #include "defaults.h"
 #include "libfrr.h"
 #include "hash.h"
-#include "lib_errors.h"
 #include "config.h"
 
 DEFINE_MTYPE(LIB, HOST, "Host config")
@@ -2344,7 +2343,7 @@ static int set_log_file(struct vty *vty, const char *fname, int loglevel)
 		cwd[MAXPATHLEN] = '\0';
 
 		if (getcwd(cwd, MAXPATHLEN) == NULL) {
-			flog_err_sys(EC_LIB_SYSTEM_CALL,
+			flog_err_sys(0,
 				     "config_log_file: Unable to alloc mem!");
 			return CMD_WARNING_CONFIG_FAILED;
 		}
