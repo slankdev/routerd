@@ -65,7 +65,7 @@ SRC += lib/vty.c \
 					 # end
 LDFLAGS += -lpthread -ljson-c -lyang -lm $(shell pkg-config --libs glib-2.0) -ldl -lcrypt -lunwind
 
-SRC += main.c test_cli.c
+SRC += main.c
 OBJ = $(SRC:.c=.o)
 TARGET = a.out
 
