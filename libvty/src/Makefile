@@ -8,9 +8,8 @@ SRC += lib/vty.c \
 					 lib/prefix.c \
 					 lib/memory.c \
 					 lib/command.c \
-					 lib/hash.c \
-					 lib/jhash.c \
 					 lib/termtable.c \
+					 lib/hash.c \
 					 lib/linklist.c \
 					 lib/libfrr.c \
 					 lib/thread.c \
@@ -38,7 +37,6 @@ SRC += lib/vty.c \
 					 lib/command_lex.c \
 					 lib/workqueue.c \
 					 lib/ferr.c \
-					 lib/hook.c \
 					 lib/pid_output.c \
 					 lib/graph.c \
 					 lib/json.c \

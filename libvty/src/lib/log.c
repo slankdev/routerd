@@ -29,7 +29,6 @@
 #include "memory.h"
 #include "command.h"
 #include "lib_errors.h"
-#include "lib/hook.h"
 #include "printfrr.h"
 
 #ifndef SUNOS_5
@@ -47,10 +46,6 @@
 #endif
 
 DEFINE_MTYPE_STATIC(LIB, ZLOG, "Logging")
-
-/* hook for external logging */
-DEFINE_HOOK(zebra_ext_log, (int priority, const char *format, va_list args),
-	    (priority, format, args));
 
 static int logfile_fd = -1; /* Used in signal handler. */
 
@@ -213,9 +208,6 @@ void vzlog(int priority, const char *format, va_list args)
 	tsctl.already_rendered = 0;
 	struct zlog *zl = zlog_default;
 	char buf[256], *msg;
-
-	/* call external hook */
-	hook_call(zebra_ext_log, priority, format, args);
 
 	msg = vasnprintfrr(MTYPE_TMP, buf, sizeof(buf), format, args);
 

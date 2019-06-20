@@ -27,15 +27,10 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdarg.h>
-#include "lib/hook.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/* Hook for external logging function */
-DECLARE_HOOK(zebra_ext_log, (int priority, const char *format, va_list args),
-	     (priority, format, args));
 
 /* Here is some guidance on logging levels to use:
  *

@@ -27,7 +27,6 @@
 
 #include "ferr.h"
 #include "vty.h"
-#include "jhash.h"
 #include "memory.h"
 #include "hash.h"
 #include "command.h"

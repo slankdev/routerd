@@ -25,7 +25,7 @@
 #include "hash.h"
 #include "log.h"
 #include "qobj.h"
-#include "jhash.h"
+#include "hash.h"
 
 static uint32_t qobj_hash(const struct qobj_node *node)
 {

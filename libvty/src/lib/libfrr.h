@@ -27,7 +27,6 @@
 #include "log.h"
 #include "getopt.h"
 #include "module.h"
-#include "hook.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -124,41 +123,25 @@ struct frr_daemon_info {
 
 extern void frr_init_vtydir(void);
 extern void frr_preinit(struct frr_daemon_info *daemon, int argc, char **argv);
-extern void frr_opt_add(const char *optstr, const struct option *longopts,
-			const char *helpstr);
+extern void frr_opt_add(const char *optstr, const struct option *longopts, const char *helpstr);
 extern int frr_getopt(int argc, char *const argv[], int *longindex);
 extern void frr_help_exit(int status);
-
 extern struct thread_master *frr_init(void);
 extern const char *frr_get_progname(void);
 extern enum frr_cli_mode frr_get_cli_mode(void);
-
-DECLARE_HOOK(frr_late_init, (struct thread_master * tm), (tm))
 extern void frr_config_fork(void);
-
 extern void frr_run(struct thread_master *master);
 extern void frr_detach(void);
-
-extern bool frr_zclient_addr(struct sockaddr_storage *sa, socklen_t *sa_len,
-			     const char *path);
-
-/* these two are before the protocol daemon does its own shutdown
- * it's named this way being the counterpart to frr_late_init */
-DECLARE_KOOH(frr_early_fini, (), ())
+extern bool frr_zclient_addr(struct sockaddr_storage *sa, socklen_t *sa_len, const char *path);
 extern void frr_early_fini(void);
-/* and these two are after the daemon did its own cleanup */
-DECLARE_KOOH(frr_fini, (), ())
 extern void frr_fini(void);
-
 extern char config_default[512];
 extern char frr_zclientpath[256];
 extern const char frr_sysconfdir[];
 extern char frr_vtydir[256];
 extern const char frr_moduledir[];
-
 extern char frr_protoname[];
 extern char frr_protonameinst[];
-
 extern bool debug_memstats_at_exit;
 
 #ifdef __cplusplus

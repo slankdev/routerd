@@ -25,7 +25,7 @@
 #include "sockunion.h"
 #include "memory.h"
 #include "log.h"
-#include "jhash.h"
+#include "hash.h"
 #include "lib_errors.h"
 
 DEFINE_MTYPE_STATIC(LIB, SOCKUNION, "Socket union")

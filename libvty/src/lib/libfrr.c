@@ -38,10 +38,6 @@
 #include "lib_errors.h"
 #include "debug.h"
 
-DEFINE_HOOK(frr_late_init, (struct thread_master * tm), (tm))
-DEFINE_KOOH(frr_early_fini, (), ())
-DEFINE_KOOH(frr_fini, (), ())
-
 const char frr_sysconfdir[] = SYSCONFDIR;
 char frr_vtydir[256];
 #ifdef HAVE_SQLITE3

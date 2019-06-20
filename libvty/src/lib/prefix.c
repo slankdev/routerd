@@ -26,7 +26,7 @@
 #include "sockunion.h"
 #include "memory.h"
 #include "log.h"
-#include "jhash.h"
+#include "hash.h"
 #include "lib_errors.h"
 #include "printfrr.h"
 

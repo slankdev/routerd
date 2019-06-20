@@ -31,7 +31,7 @@
 #include "command.h"
 #include "sigevent.h"
 #include "network.h"
-#include "jhash.h"
+#include "hash.h"
 #include "frratomic.h"
 #include "lib_errors.h"
 #include "linklist.h"

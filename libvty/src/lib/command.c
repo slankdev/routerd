@@ -42,8 +42,7 @@
 #include "qobj.h"
 #include "defaults.h"
 #include "libfrr.h"
-#include "jhash.h"
-#include "hook.h"
+#include "hash.h"
 #include "lib_errors.h"
 #include "config.h"
 
@@ -1150,39 +1149,6 @@ int cmd_execute_command_strict(vector vline, struct vty *vty,
 }
 
 /*
- * Hook for preprocessing command string before executing.
- *
- * All subscribers are called with the raw command string that is to be
- * executed. If any changes are to be made, a new string should be allocated
- * with MTYPE_TMP and *cmd_out updated to point to this new string. The caller
- * is then responsible for freeing this string.
- *
- * All processing functions must be mutually exclusive in their action, i.e. if
- * one subscriber decides to modify the command, all others must not modify it
- * when called. Feeding the output of one processing command into a subsequent
- * one is not supported.
- *
- * This hook is intentionally internal to the command processing system.
- *
- * cmd_in
- *    The raw command string.
- *
- * cmd_out
- *    The result of any processing.
- */
-DECLARE_HOOK(cmd_execute,
-	     (struct vty *vty, const char *cmd_in, char **cmd_out),
-	     (vty, cmd_in, cmd_out));
-DEFINE_HOOK(cmd_execute, (struct vty *vty, const char *cmd_in, char **cmd_out),
-	    (vty, cmd_in, cmd_out));
-
-/* Hook executed after a CLI command. */
-DECLARE_KOOH(cmd_execute_done, (struct vty *vty, const char *cmd_exec),
-	     (vty, cmd_exec));
-DEFINE_KOOH(cmd_execute_done, (struct vty *vty, const char *cmd_exec),
-	    (vty, cmd_exec));
-
-/*
  * cmd_execute hook subscriber to handle `|` actions.
  */
 static int handle_pipe_action(struct vty *vty, const char *cmd_in,
@@ -1247,7 +1213,6 @@ int cmd_execute(struct vty *vty, const char *cmd,
 	const char *cmd_exec;
 	vector vline;
 
-	hook_call(cmd_execute, vty, cmd, &cmd_out);
 	cmd_exec = cmd_out ? (const char *)cmd_out : cmd;
 
 	vline = cmd_make_strvec(cmd_exec);
@@ -1259,10 +1224,7 @@ int cmd_execute(struct vty *vty, const char *cmd,
 		ret = CMD_SUCCESS;
 	}
 
-	hook_call(cmd_execute_done, vty, cmd_exec);
-
 	XFREE(MTYPE_TMP, cmd_out);
-
 	return ret;
 }
 
@@ -2746,10 +2708,6 @@ void cmd_init(int terminal)
 	uname(&names);
 	qobj_init();
 
-	/* register command preprocessors */
-	hook_register(cmd_execute, handle_pipe_action);
-	hook_register(cmd_execute_done, handle_pipe_action_done);
-
 	varhandlers = list_new();
 
 	/* Allocate initial top vector of commands. */
@@ -2864,9 +2822,6 @@ void cmd_init(int terminal)
 void cmd_terminate(void)
 {
 	struct cmd_node *cmd_node;
-
-	hook_unregister(cmd_execute, handle_pipe_action);
-	hook_unregister(cmd_execute_done, handle_pipe_action_done);
 
 	if (cmdvec) {
 		for (unsigned int i = 0; i < vector_active(cmdvec); i++)
