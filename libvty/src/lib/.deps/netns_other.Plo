@@ -1,0 +1,3 @@
+lib/netns_other.lo: lib/netns_other.c /usr/include/stdc-predef.h
+
+/usr/include/stdc-predef.h:
