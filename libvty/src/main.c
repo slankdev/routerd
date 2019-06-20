@@ -221,14 +221,12 @@ int main(int argc, char **argv)
   yang_init();
   nb_init(master, NULL, 0);
   install_commands(argc, argv);
-  /* vty_stdio(vty_do_exit); */
 
   /* Fetch next active thread. */
   struct thread thread;
   while (thread_fetch(master, &thread))
     thread_call(&thread);
 
-  /* Not reached. */
   exit(0);
 }
 
