@@ -1,5 +1,5 @@
 
-CFLAGS += -I./lib -I. -D_GNU_SOURCE $(shell pkg-config --cflags glib-2.0)
+CFLAGS += -I./lib -I. -D_GNU_SOURCE $(shell pkg-config --cflags glib-2.0) -g -O0
 CFLAGS += -DSYSCONFDIR=\"/etc/\" -DHAVE_CONFIG_H
 SRC += lib/vty.c \
 					 lib/northbound.c \
@@ -36,9 +36,6 @@ SRC += lib/vty.c \
 					 lib/privs.c \
 					 lib/buffer.c \
 					 lib/qobj.c \
-					 lib/vrf.c \
-					 lib/netns_linux.c \
-					 lib/netns_other.c \
 					 lib/typesafe.c \
 					 lib/table.c \
 					 lib/command_graph.c \
@@ -50,11 +47,7 @@ SRC += lib/vty.c \
 					 lib/hook.c \
 					 lib/pid_output.c \
 					 lib/graph.c \
-					 lib/if.c \
-					 lib/nexthop.c \
-					 lib/nexthop_group.c \
 					 lib/json.c \
-					 lib/zclient.c \
 					 lib/stream.c \
 					 lib/lib_errors.c \
 					 lib/sockopt.c \
