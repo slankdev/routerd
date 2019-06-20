@@ -354,9 +354,6 @@ struct in_pktinfo {
  */
 #include "compiler.h"
 
-/* Zebra route's types are defined in route_types.h */
-#include "route_types.h"
-
 #define strmatch(a,b) (!strcmp((a), (b)))
 
 #ifndef INADDR_LOOPBACK

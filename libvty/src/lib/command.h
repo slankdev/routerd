@@ -24,7 +24,6 @@
 
 #include "vector.h"
 #include "vty.h"
-#include "lib/route_types.h"
 #include "graph.h"
 #include "memory.h"
 #include "hash.h"

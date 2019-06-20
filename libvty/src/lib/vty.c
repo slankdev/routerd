@@ -34,7 +34,6 @@
 #include "memory.h"
 #include "log.h"
 #include "prefix.h"
-#include "filter.h"
 #include "vty.h"
 #include "privs.h"
 #include "network.h"
