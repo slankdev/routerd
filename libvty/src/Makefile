@@ -9,6 +9,10 @@ SRC += lib/vty.c \
 					 lib/northbound_db.c \
 					 lib/yang.c \
 					 lib/yang_translator.c \
+					 lib/yang_wrappers.c \
+					 lib/printf/vfprintf.c \
+					 lib/printf/glue.c \
+					 lib/printf/printf-pos.c \
 					 lib/prefix.c \
 					 lib/memory.c \
 					 lib/command.c \
@@ -20,14 +24,10 @@ SRC += lib/vty.c \
 					 lib/thread.c \
 					 lib/network.c \
 					 lib/pqueue.c \
-					 lib/yang_wrappers.c \
 					 lib/sigevent.c \
 					 lib/frrstr.c \
 					 lib/vector.c \
 					 lib/log.c \
-					 lib/printf/vfprintf.c \
-					 lib/printf/glue.c \
-					 lib/printf/printf-pos.c \
 					 lib/memory_vty.c \
 					 lib/openbsd-tree.c \
 					 lib/strlcpy.c \
