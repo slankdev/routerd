@@ -1,8 +1,6 @@
 
-FRR_ROOT = ./
-CFLAGS += -I$(FRR_ROOT)/lib -I$(FRR_ROOT) -D_GNU_SOURCE $(shell pkg-config --cflags glib-2.0)
+CFLAGS += -I./lib -I. -D_GNU_SOURCE $(shell pkg-config --cflags glib-2.0)
 CFLAGS += -DSYSCONFDIR=\"/etc/\" -DHAVE_CONFIG_H
-# LDFLAGS += -lfrr
 SRC += lib/vty.c \
 					 lib/northbound.c \
 					 lib/northbound_cli.c \
