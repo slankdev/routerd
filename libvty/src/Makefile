@@ -1,70 +1,71 @@
 
 FRR_ROOT = ./
 CFLAGS += -I$(FRR_ROOT)/lib -I$(FRR_ROOT) -D_GNU_SOURCE $(shell pkg-config --cflags glib-2.0)
+CFLAGS += -DSYSCONFDIR=\"/etc/\" -DHAVE_CONFIG_H
 # LDFLAGS += -lfrr
-LDFLAGS += lib/vty.o \
-					 lib/northbound.o \
-					 lib/northbound_cli.o \
-					 lib/northbound_db.o \
-					 lib/yang.o \
-					 lib/yang_translator.o \
-					 lib/prefix.o \
-					 lib/memory.o \
-					 lib/command.o \
-					 lib/hash.o \
-					 lib/jhash.o \
-					 lib/termtable.o \
-					 lib/linklist.o \
-					 lib/libfrr.o \
-					 lib/thread.o \
-					 lib/network.o \
-					 lib/pqueue.o \
-					 lib/yang_wrappers.o \
-					 lib/sigevent.o \
-					 lib/frrstr.o \
-					 lib/vector.o \
-					 lib/log.o \
-					 lib/printf/vfprintf.o \
-					 lib/printf/glue.o \
-					 lib/printf/printf-pos.o \
-					 lib/memory_vty.o \
-					 lib/openbsd-tree.o \
-					 lib/strlcpy.o \
-					 lib/strlcat.o \
-					 lib/module.o \
-					 lib/debug.o \
-					 lib/sockunion.o \
-					 lib/privs.o \
-					 lib/buffer.o \
-					 lib/qobj.o \
-					 lib/vrf.o \
-					 lib/netns_linux.o \
-					 lib/netns_other.o \
-					 lib/filter.o \
-					 lib/routemap.o \
-					 lib/typesafe.o \
-					 lib/table.o \
-					 lib/command_graph.o \
-					 lib/command_match.o \
-					 lib/command_parse.o \
-					 lib/command_lex.o \
-					 lib/workqueue.o \
-					 lib/ferr.o \
-					 lib/hook.o \
-					 lib/pid_output.o \
-					 lib/graph.o \
-					 lib/if.o \
-					 lib/nexthop.o \
-					 lib/nexthop_group.o \
-					 lib/json.o \
-					 lib/zclient.o \
-					 lib/stream.o \
-					 lib/lib_errors.o \
-					 lib/sockopt.o \
+SRC += lib/vty.c \
+					 lib/northbound.c \
+					 lib/northbound_cli.c \
+					 lib/northbound_db.c \
+					 lib/yang.c \
+					 lib/yang_translator.c \
+					 lib/prefix.c \
+					 lib/memory.c \
+					 lib/command.c \
+					 lib/hash.c \
+					 lib/jhash.c \
+					 lib/termtable.c \
+					 lib/linklist.c \
+					 lib/libfrr.c \
+					 lib/thread.c \
+					 lib/network.c \
+					 lib/pqueue.c \
+					 lib/yang_wrappers.c \
+					 lib/sigevent.c \
+					 lib/frrstr.c \
+					 lib/vector.c \
+					 lib/log.c \
+					 lib/printf/vfprintf.c \
+					 lib/printf/glue.c \
+					 lib/printf/printf-pos.c \
+					 lib/memory_vty.c \
+					 lib/openbsd-tree.c \
+					 lib/strlcpy.c \
+					 lib/strlcat.c \
+					 lib/module.c \
+					 lib/debug.c \
+					 lib/sockunion.c \
+					 lib/privs.c \
+					 lib/buffer.c \
+					 lib/qobj.c \
+					 lib/vrf.c \
+					 lib/netns_linux.c \
+					 lib/netns_other.c \
+					 lib/filter.c \
+					 lib/routemap.c \
+					 lib/typesafe.c \
+					 lib/table.c \
+					 lib/command_graph.c \
+					 lib/command_match.c \
+					 lib/command_parse.c \
+					 lib/command_lex.c \
+					 lib/workqueue.c \
+					 lib/ferr.c \
+					 lib/hook.c \
+					 lib/pid_output.c \
+					 lib/graph.c \
+					 lib/if.c \
+					 lib/nexthop.c \
+					 lib/nexthop_group.c \
+					 lib/json.c \
+					 lib/zclient.c \
+					 lib/stream.c \
+					 lib/lib_errors.c \
+					 lib/sockopt.c \
 					 # end
 LDFLAGS += -lpthread -ljson-c -lyang -lm $(shell pkg-config --libs glib-2.0) -ldl -lcrypt -lunwind
 
-SRC = main.c test_cli.c
+SRC += main.c test_cli.c
 OBJ = $(SRC:.c=.o)
 TARGET = a.out
 

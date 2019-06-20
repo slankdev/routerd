@@ -19,6 +19,7 @@
 
 #include <zebra.h>
 
+#include "config.h"
 #include "log.h"
 #include "lib_errors.h"
 #include "yang.h"

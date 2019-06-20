@@ -39,7 +39,7 @@ DECLARE_MTYPE(HASH_BACKET)
 #define HASHWALK_CONTINUE 0
 #define HASHWALK_ABORT -1
 
-#if CONFDATE > 20200225
+#if 20190620 > 20200225
 CPP_NOTICE("hash.h: time to remove hash_backet #define")
 #endif
 #define hash_backet hash_bucket

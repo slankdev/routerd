@@ -47,6 +47,7 @@
 #include "hook.h"
 #include "lib_errors.h"
 #include "northbound_cli.h"
+#include "config.h"
 
 DEFINE_MTYPE(LIB, HOST, "Host config")
 DEFINE_MTYPE(LIB, COMPLETION, "Completion item")
@@ -1784,7 +1785,7 @@ static int file_write_config(struct vty *vty)
 			config_file_tmp);
 		goto finished;
 	}
-	if (fchmod(fd, CONFIGFILE_MASK) != 0) {
+	if (fchmod(fd, 0640) != 0) {
 		vty_out(vty, "Can't chmod configuration file %s: %s (%d).\n",
 			config_file_tmp, safe_strerror(errno), errno);
 		goto finished;

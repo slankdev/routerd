@@ -22,7 +22,7 @@
 #endif
 
 #ifndef FRR_AUTOCONF_ATOMIC
-// #error autoconf checks for atomic functions were not properly run
+#error autoconf checks for atomic functions were not properly run
 #endif
 
 /* ISO C11 */
@@ -218,7 +218,7 @@ typedef std::atomic<uint_fast32_t>	atomic_uint_fast32_t;
 	})
 
 #else /* !HAVE___ATOMIC && !HAVE_STDATOMIC_H */
-// #error no atomic functions...
+#error no atomic functions...
 #endif
 
 #ifdef _ATOMIC_WANT_TYPEDEFS
@@ -230,14 +230,13 @@ typedef std::atomic<uint_fast32_t>	atomic_uint_fast32_t;
 typedef _Atomic bool		atomic_bool;
 typedef _Atomic size_t		atomic_size_t;
 typedef _Atomic uint_fast32_t	atomic_uint_fast32_t;
-
-#else
-
-#include <stdint.h>
-#include <stdbool.h>
-typedef _Atomic bool		atomic_bool;
-typedef _Atomic size_t		atomic_size_t;
-typedef _Atomic uint_fast32_t	atomic_uint_fast32_t;
 #endif
+
+// #else
+// #include <stdint.h>
+// #include <stdbool.h>
+// typedef _Atomic bool		atomic_bool;
+// typedef _Atomic size_t		atomic_size_t;
+// typedef _Atomic uint_fast32_t	atomic_uint_fast32_t;
 
 #endif /* _FRRATOMIC_H */

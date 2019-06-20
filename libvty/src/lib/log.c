@@ -23,6 +23,7 @@
 
 #include <zebra.h>
 
+#include "config.h"
 #include "zclient.h"
 #include "log.h"
 #include "log_int.h"

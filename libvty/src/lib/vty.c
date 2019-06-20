@@ -2386,7 +2386,7 @@ static FILE *vty_use_backup_config(const char *fullpath)
 	if (tmp < 0)
 		goto out_close_sav;
 
-	if (fchmod(tmp, CONFIGFILE_MASK) != 0)
+	if (fchmod(tmp, 0640) != 0)
 		goto out_close;
 
 	while ((c = read(sav, buffer, 512)) > 0) {

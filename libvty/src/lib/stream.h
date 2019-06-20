@@ -153,7 +153,7 @@ extern void stream_free(struct stream *);
 extern struct stream *stream_copy(struct stream *, struct stream *src);
 extern struct stream *stream_dup(struct stream *);
 
-#if CONFDATE > 20190821
+#if 20190620 > 20190821
 CPP_NOTICE("lib: time to remove stream_resize_orig")
 #endif
 extern size_t stream_resize_orig(struct stream *s, size_t newsize);

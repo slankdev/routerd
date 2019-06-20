@@ -19,6 +19,7 @@
 
 #include <zebra.h>
 
+#include "config.h"
 #include "libfrr.h"
 #include "version.h"
 #include "log.h"
