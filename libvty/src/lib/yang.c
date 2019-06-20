@@ -637,7 +637,7 @@ struct ly_ctx *yang_ctx_new_setup(void)
 	ctx = ly_ctx_new(yang_models_path, LY_CTX_DISABLE_SEARCHDIR_CWD);
 	if (!ctx)
 		return NULL;
-	ly_ctx_set_module_imp_clb(ctx, yang_module_imp_clb, NULL);
+	/* ly_ctx_set_module_imp_clb(ctx, yang_module_imp_clb, NULL); */
 	return ctx;
 }
 
@@ -654,7 +654,7 @@ void yang_init(void)
 		exit(1);
 	}
 
-	yang_translator_init();
+	/* yang_translator_init(); */
 }
 
 void yang_terminate(void)
