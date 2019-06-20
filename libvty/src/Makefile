@@ -39,8 +39,6 @@ SRC += lib/vty.c \
 					 lib/vrf.c \
 					 lib/netns_linux.c \
 					 lib/netns_other.c \
-					 lib/filter.c \
-					 lib/routemap.c \
 					 lib/typesafe.c \
 					 lib/table.c \
 					 lib/command_graph.c \

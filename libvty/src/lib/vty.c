@@ -1855,6 +1855,7 @@ static int vty_accept(struct thread *thread)
 
 	sockunion2hostprefix(&su, &p);
 
+#if 0
 	/* VTY's accesslist apply. */
 	if (p.family == AF_INET && vty_accesslist_name) {
 		if ((acl = access_list_lookup(AFI_IP, vty_accesslist_name))
@@ -1885,6 +1886,7 @@ static int vty_accept(struct thread *thread)
 			return 0;
 		}
 	}
+#endif
 
 	on = 1;
 	ret = setsockopt(vty_sock, IPPROTO_TCP, TCP_NODELAY, (char *)&on,
