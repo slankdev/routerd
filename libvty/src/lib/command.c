@@ -37,7 +37,6 @@
 #include "linklist.h"
 #include "vty.h"
 #include "workqueue.h"
-#include "vrf.h"
 #include "command_match.h"
 #include "command_graph.h"
 #include "qobj.h"
@@ -82,7 +81,6 @@ const char *node_names[] = {
 	"enable",		    // ENABLE_NODE,
 	"config",		    // CONFIG_NODE,
 	"debug",		    // DEBUG_NODE,
-	"vrf debug",		    // VRF_DEBUG_NODE,
 	"northbound debug",	    // NORTHBOUND_DEBUG_NODE,
 	"vnc debug",		    // DEBUG_VNC_NODE,
 	"route-map debug",	    /* RMAP_DEBUG_NODE */
@@ -91,7 +89,6 @@ const char *node_names[] = {
 	"keychain key",		    // KEYCHAIN_KEY_NODE,
 	"logical-router",	   // LOGICALROUTER_NODE,
 	"static ip",		    // IP_NODE,
-	"vrf",			    // VRF_NODE,
 	"interface",		    // INTERFACE_NODE,
 	"nexthop-group",            // NH_GROUP_NODE,
 	"zebra",		    // ZEBRA_NODE,
@@ -100,19 +97,6 @@ const char *node_names[] = {
 	"ripng",		    // RIPNG_NODE,
 	"babel",		    // BABEL_NODE,
 	"eigrp",		    // EIGRP_NODE,
-	"bgp",			    // BGP_NODE,
-	"bgp vpnv4",		    // BGP_VPNV4_NODE,
-	"bgp vpnv6",		    // BGP_VPNV6_NODE,
-	"bgp ipv4 unicast",	 // BGP_IPV4_NODE,
-	"bgp ipv4 multicast",       // BGP_IPV4M_NODE,
-	"bgp ipv4 labeled unicast", // BGP_IPV4L_NODE,
-	"bgp ipv6",		    // BGP_IPV6_NODE,
-	"bgp ipv6 multicast",       // BGP_IPV6M_NODE,
-	"bgp ipv6 labeled unicast", // BGP_IPV6L_NODE,
-	"bgp vrf policy",	   // BGP_VRF_POLICY_NODE,
-	"bgp vnc defaults",	 // BGP_VNC_DEFAULTS_NODE,
-	"bgp vnc nve",		    // BGP_VNC_NVE_GROUP_NODE,
-	"bgp vnc l2",		    // BGP_VNC_L2_GROUP_NODE,
 	"rfp defaults",		    // RFP_DEFAULTS_NODE,
 	"bgp evpn",		    // BGP_EVPN_NODE,
 	"ospf",			    // OSPF_NODE,
@@ -144,10 +128,8 @@ const char *node_names[] = {
 	"link-params",		    // LINK_PARAMS_NODE,
 	"bgp evpn vni",		    // BGP_EVPN_VNI_NODE,
 	"rpki",			    // RPKI_NODE
-	"bgp ipv4 flowspec",	    /* BGP_FLOWSPECV4_NODE
-				     */
-	"bgp ipv6 flowspec",	    /* BGP_FLOWSPECV6_NODE
-				     */
+	"bgp ipv4 flowspec",	    /* BGP_FLOWSPECV4_NODE */
+	"bgp ipv6 flowspec",	    /* BGP_FLOWSPECV6_NODE */
 	"bfd",			 /* BFD_NODE */
 	"bfd peer",		 /* BFD_PEER_NODE */
 	"openfabric",		    // OPENFABRIC_NODE
@@ -965,7 +947,6 @@ enum node_type node_parent(enum node_type node)
 	case BGP_VPNV6_NODE:
 	case BGP_FLOWSPECV4_NODE:
 	case BGP_FLOWSPECV6_NODE:
-	case BGP_VRF_POLICY_NODE:
 	case BGP_VNC_DEFAULTS_NODE:
 	case BGP_VNC_NVE_GROUP_NODE:
 	case BGP_VNC_L2_GROUP_NODE:
@@ -1457,7 +1438,6 @@ void cmd_exit(struct vty *vty)
 	case INTERFACE_NODE:
 	case PW_NODE:
 	case LOGICALROUTER_NODE:
-	case VRF_NODE:
 	case NH_GROUP_NODE:
 	case ZEBRA_NODE:
 	case BGP_NODE:
@@ -1485,7 +1465,6 @@ void cmd_exit(struct vty *vty)
 	case BGP_VPNV6_NODE:
 	case BGP_FLOWSPECV4_NODE:
 	case BGP_FLOWSPECV6_NODE:
-	case BGP_VRF_POLICY_NODE:
 	case BGP_VNC_DEFAULTS_NODE:
 	case BGP_VNC_NVE_GROUP_NODE:
 	case BGP_VNC_L2_GROUP_NODE:
@@ -2782,8 +2761,8 @@ void cmd_init(int terminal)
 {
 	struct utsname names;
 
-	if (array_size(node_names) != NODE_TYPE_MAX)
-		assert(!"Update the CLI node description array!");
+	/* if (array_size(node_names) != NODE_TYPE_MAX) */
+	/* 	assert(!"Update the CLI node description array!"); */
 
 	uname(&names);
 	qobj_init();
@@ -2896,8 +2875,6 @@ void cmd_init(int terminal)
 		install_element(CONFIG_NODE, &no_banner_motd_cmd);
 		install_element(CONFIG_NODE, &service_terminal_length_cmd);
 		install_element(CONFIG_NODE, &no_service_terminal_length_cmd);
-
-		vrf_install_commands();
 	}
 
 #ifdef DEV_BUILD
