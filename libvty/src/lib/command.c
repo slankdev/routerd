@@ -2269,9 +2269,7 @@ void cmd_init(int terminal)
 		/* install_element(ENABLE_NODE, &config_logmsg_cmd); */
 
 		install_default(CONFIG_NODE);
-
 		thread_cmd_init();
-		hash_cmd_init();
 	}
 
 	install_element(CONFIG_NODE, &hostname_cmd);

@@ -24,7 +24,7 @@
 #include "hash.h"
 #include "memory.h"
 #include "linklist.h"
-#include "termtable.h"
+/* #include "termtable.h" */
 #include "vty.h"
 #include "command.h"
 
@@ -325,121 +325,6 @@ void hash_free(struct hash *hash)
 
 	XFREE(MTYPE_HASH_INDEX, hash->index);
 	XFREE(MTYPE_HASH, hash);
-}
-
-
-/* CLI commands ------------------------------------------------------------ */
-
-DEFUN_NOSH(show_hash_stats,
-           show_hash_stats_cmd,
-           "show debugging hashtable [statistics]",
-           SHOW_STR
-           DEBUG_STR
-           "Statistics about hash tables\n"
-           "Statistics about hash tables\n")
-{
-	struct hash *h;
-	struct listnode *ln;
-	struct ttable *tt = ttable_new(&ttable_styles[TTSTYLE_BLANK]);
-
-	ttable_add_row(tt, "Hash table|Buckets|Entries|Empty|LF|SD|FLF|SD");
-	tt->style.cell.lpad = 2;
-	tt->style.cell.rpad = 1;
-	tt->style.corner = '+';
-	ttable_restyle(tt);
-	ttable_rowseps(tt, 0, BOTTOM, true, '-');
-
-	/* Summary statistics calculated are:
-	 *
-	 * - Load factor: This is the number of elements in the table divided
-	 *   by the number of buckets. Since this hash table implementation
-	 *   uses chaining, this value can be greater than 1.
-	 *   This number provides information on how 'full' the table is, but
-	 *   does not provide information on how evenly distributed the
-	 *   elements are.
-	 *   Notably, a load factor >= 1 does not imply that every bucket has
-	 *   an element; with a pathological hash function, all elements could
-	 *   be in a single bucket.
-	 *
-	 * - Full load factor: this is the number of elements in the table
-	 *   divided by the number of buckets that have some elements in them.
-	 *
-	 * - Std. Dev.: This is the standard deviation calculated from the
-	 *   relevant load factor. If the load factor is the mean of number of
-	 *   elements per bucket, the standard deviation measures how much any
-	 *   particular bucket is likely to deviate from the mean.
-	 *   As a rule of thumb this number should be less than 2, and ideally
-	 *   <= 1 for optimal performance. A number larger than 3 generally
-	 *   indicates a poor hash function.
-	 */
-
-	double lf;    // load factor
-	double flf;   // full load factor
-	double var;   // overall variance
-	double fvar;  // full variance
-	double stdv;  // overall stddev
-	double fstdv; // full stddev
-
-	long double x2;   // h->count ^ 2
-	long double ldc;  // (long double) h->count
-	long double full; // h->size - h->stats.empty
-	long double ssq;  // ssq casted to long double
-
-	pthread_mutex_lock(&_hashes_mtx);
-	if (!_hashes) {
-		pthread_mutex_unlock(&_hashes_mtx);
-		ttable_del(tt);
-		vty_out(vty, "No hash tables in use.\n");
-		return CMD_SUCCESS;
-	}
-
-	for (ALL_LIST_ELEMENTS_RO(_hashes, ln, h)) {
-		if (!h->name)
-			continue;
-
-		ssq = (long double)h->stats.ssq;
-		x2 = h->count * h->count;
-		ldc = (long double)h->count;
-		full = h->size - h->stats.empty;
-		lf = h->count / (double)h->size;
-		flf = full ? h->count / (double)(full) : 0;
-		var = ldc ? (1.0 / ldc) * (ssq - x2 / ldc) : 0;
-		fvar = full ? (1.0 / full) * (ssq - x2 / full) : 0;
-		var = (var < .0001) ? 0 : var;
-		fvar = (fvar < .0001) ? 0 : fvar;
-		stdv = sqrt(var);
-		fstdv = sqrt(fvar);
-
-		ttable_add_row(tt, "%s|%d|%ld|%.0f%%|%.2lf|%.2lf|%.2lf|%.2lf",
-			       h->name, h->size, h->count,
-			       (h->stats.empty / (double)h->size) * 100, lf,
-			       stdv, flf, fstdv);
-	}
-	pthread_mutex_unlock(&_hashes_mtx);
-
-	/* display header */
-	char header[] = "Showing hash table statistics";
-	vty_out(vty, "%s\n", header);
-
-	vty_out(vty, "# allocated: %d\n", _hashes->count);
-	vty_out(vty, "# named:     %d\n\n", tt->nrows - 1);
-
-	if (tt->nrows > 1) {
-		ttable_colseps(tt, 0, RIGHT, true, '|');
-		char *table = ttable_dump(tt, "\n");
-		vty_out(vty, "%s\n", table);
-		XFREE(MTYPE_TMP, table);
-	} else
-		vty_out(vty, "No named hash tables to display.\n");
-
-	ttable_del(tt);
-
-	return CMD_SUCCESS;
-}
-
-void hash_cmd_init(void)
-{
-	install_element(ENABLE_NODE, &show_hash_stats_cmd);
 }
 
 /* The golden ration: an arbitrary value */

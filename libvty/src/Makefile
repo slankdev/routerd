@@ -7,7 +7,6 @@ SRC += lib/vty.c \
 					 lib/printf/printf-pos.c \
 					 lib/prefix.c \
 					 lib/memory.c \
-					 lib/termtable.c \
 					 lib/hash.c \
 					 lib/linklist.c \
 					 lib/thread.c \
