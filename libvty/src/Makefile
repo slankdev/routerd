@@ -24,7 +24,6 @@ SRC += lib/vty.c \
 					 lib/buffer.c \
 					 lib/qobj.c \
 					 lib/typesafe.c \
-					 lib/table.c \
 					 lib/command.c \
 					 lib/command_graph.c \
 					 lib/command_match.c \
