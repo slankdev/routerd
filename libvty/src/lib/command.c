@@ -141,8 +141,6 @@ struct host host; /* Host information structure. */
 
 const char *cmd_hostname_get(void)
 { return host.name; }
-const char *cmd_domainname_get(void)
-{ return host.domainname; }
 int cmd_password_set(const char *password)
 {
   host.password = strdup(password);
@@ -1471,39 +1469,6 @@ DEFUN_HIDDEN(show_cli_graph,
   return CMD_SUCCESS;
 }
 
-int cmd_domainname_set(const char *domainname)
-{
-  host.domainname = strdup(domainname);
-  return CMD_SUCCESS;
-}
-
-/* Hostname configuration */
-DEFUN(config_domainname,
-      domainname_cmd,
-      "domainname WORD",
-      "Set system's domain name\n"
-      "This system's domain name\n")
-{
-  struct cmd_token *word = argv[1];
-
-  if (!isalpha((int)word->arg[0])) {
-    vty_out(vty, "Please specify string starting with alphabet\n");
-    return CMD_WARNING_CONFIG_FAILED;
-  }
-
-  return cmd_domainname_set(word->arg);
-}
-
-DEFUN(config_no_domainname,
-      no_domainname_cmd,
-      "no domainname [DOMAINNAME]",
-      NO_STR
-      "Reset system's domain name\n"
-      "domain name of this router\n")
-{
-  return cmd_domainname_set(NULL);
-}
-
 /* Hostname configuration */
 DEFUN (config_hostname,
        hostname_cmd,
@@ -1898,7 +1863,6 @@ void cmd_init()
 
   /* Default host value settings. */
   host.name = XSTRDUP(MTYPE_HOST, names.nodename);
-  host.domainname = NULL;
   host.password = NULL;
   host.enable = NULL;
   host.logfile = NULL;
@@ -1933,8 +1897,6 @@ void cmd_init()
   install_element(ENABLE_NODE, &config_terminal_cmd);
   install_element(CONFIG_NODE, &hostname_cmd);
   install_element(CONFIG_NODE, &no_hostname_cmd);
-  install_element(CONFIG_NODE, &domainname_cmd);
-  install_element(CONFIG_NODE, &no_domainname_cmd);
   install_element(CONFIG_NODE, &frr_version_defaults_cmd);
   install_element(CONFIG_NODE, &password_cmd);
   install_element(CONFIG_NODE, &no_password_cmd);
@@ -1968,7 +1930,6 @@ void cmd_terminate(void)
   }
 
   XFREE(MTYPE_HOST, host.name);
-  XFREE(MTYPE_HOST, host.domainname);
   XFREE(MTYPE_HOST, host.password);
   XFREE(MTYPE_HOST, host.password_encrypt);
   XFREE(MTYPE_HOST, host.enable);

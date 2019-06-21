@@ -52,9 +52,6 @@ struct host {
 	/* Host name of this router. */
 	char *name;
 
-	/* Domainname of this router */
-	char *domainname;
-
 	/* Password for vty interface. */
 	char *password;
 	char *password_encrypt;
@@ -473,11 +470,9 @@ extern void cmd_terminate(void);
 extern void cmd_exit(struct vty *vty);
 extern int cmd_list_cmds(struct vty *vty, int do_permute);
 
-extern int cmd_domainname_set(const char *domainname);
 extern int cmd_password_set(const char *password);
 extern int cmd_hostname_set(const char *hostname);
 extern const char *cmd_hostname_get(void);
-extern const char *cmd_domainname_get(void);
 
 extern vector completions_to_vec(struct list *completions);
 

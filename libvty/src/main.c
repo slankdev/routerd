@@ -77,7 +77,6 @@ void *th(void *ptr)
   cmd_init();
   cmd_password_set("slank");
   cmd_hostname_set("test");
-  cmd_domainname_set("test.domain");
   vty_init(master, false);
   vty_serv_sock(NULL, 9077, "/var/run/frr/slank.vty");
   install_commands();
