@@ -706,17 +706,6 @@ char **cmd_complete_command(vector vline, struct vty *vty, int *status)
   return ret;
 }
 
-/* return parent node */
-/* MUST eventually converge on CONFIG_NODE */
-enum node_type node_parent(enum node_type node)
-{
-  assert(node > CONFIG_NODE);
-  switch (node) {
-  default:
-    return CONFIG_NODE;
-  }
-}
-
 /* Execute command by argument vline vector. */
 static int cmd_execute_command_real(vector vline, enum cmd_filter_type filter,
             struct vty *vty,
@@ -1110,11 +1099,10 @@ void cmd_exit(struct vty *vty)
     vty_config_exit(vty);
     break;
   case VTY_NODE:
-  case NETLINK_NODE:
     vty->node = CONFIG_NODE;
-    vty_config_enter(vty, false, false);
     break;
   default:
+    vty->node = node_parent(vty->node);
     break;
   }
 

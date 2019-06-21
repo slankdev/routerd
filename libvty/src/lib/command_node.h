@@ -26,9 +26,10 @@ enum node_type {
   CONFIG_NODE,            /* Config node. Default mode of config file. */
   DEBUG_NODE,             /* Debug node. */
   VTY_NODE,               // VTY_NODE
-  NETLINK_NODE,           // netlink
-  NODE_TYPE_MAX,          /* maximum */
+  _NODE_TYPE_MAX,        /* initial maximum */
 };
+extern size_t NODE_TYPE_MAX;
+#define NODE_TYPE_LIMIT 256
 
 extern const char *node_names[];
 
@@ -46,6 +47,18 @@ struct cmd_node {
   vector cmd_vector;         /* Vector of this node's command list. */
   struct hash *cmd_hash;     /* Hashed index of command node list, for de-dupping primarily */
 };
+
+/*
+ * CAUSION!!
+ * This is not thread safe function.
+ */
+int alloc_new_node_id(const char* name, int parent);
+
+/*
+ * return parent node
+ * MUST eventually converge on CONFIG_NODE
+ */
+int node_parent(int node);
 
 #ifdef __cplusplus
 }
