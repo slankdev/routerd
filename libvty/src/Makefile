@@ -21,7 +21,6 @@ SRC += lib/vty.c \
 					 lib/strlcpy.c \
 					 lib/strlcat.c \
 					 lib/module.c \
-					 lib/debug.c \
 					 lib/sockunion.c \
 					 lib/privs.c \
 					 lib/buffer.c \
@@ -33,7 +32,6 @@ SRC += lib/vty.c \
 					 lib/command_match.c \
 					 lib/command_parse.c \
 					 lib/command_lex.c \
-					 lib/ferr.c \
 					 lib/graph.c \
 					 lib/json.c \
 					 lib/sockopt.c \
