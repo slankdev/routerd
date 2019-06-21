@@ -1134,50 +1134,19 @@ DEFUN (config_end,
   return CMD_SUCCESS;
 }
 
-/* Show version. */
-DEFUN (show_version,
-       show_version_cmd,
-       "show version",
-       SHOW_STR
-       "Displays zebra version\n")
-{
-  vty_out(vty, "%s %s (%s).\n", FRR_FULL_NAME, FRR_VERSION,
-    cmd_hostname_get() ? cmd_hostname_get() : "");
-  vty_out(vty, "%s%s\n", FRR_COPYRIGHT, GIT_INFO);
-
-  return CMD_SUCCESS;
-}
-
-/* "Set" version ... ignore version tags */
-DEFUN (frr_version_defaults,
-       frr_version_defaults_cmd,
-       "frr <version|defaults> LINE...",
-       "FRRouting global parameters\n"
-       "version configuration was written by\n"
-       "set of configuration defaults used\n"
-       "version string\n")
-{
-  return CMD_SUCCESS;
-}
-
 /* Help display function for all node. */
 DEFUN (config_help,
        config_help_cmd,
        "help",
-       "Description of the interactive help system\n")
+       "I will tell you what a want to say\n")
 {
   vty_out(vty,
-    "Quagga VTY provides advanced help feature.  When you need help,\n"
-    "anytime at the command line please press '?'.\n\n"
-    "If nothing matches, the help list will be empty and you must backup\n"
-    " until entering a '?' shows the available options.\n"
-    "Two styles of help are provided:\n"
-    "1. Full help is available when you are ready to enter a\n"
-    "command argument (e.g. 'show ?') and describes each possible\n"
-    "argument.\n"
-    "2. Partial help is provided when an abbreviated argument is entered\n"
-    "and you want to know what arguments match the input\n"
-    "(e.g. 'show me?'.)\n\n");
+    "I guess, you typed this command to find your helps, \n"
+    "but this command will discribe you what I want to say.\n"
+    "Software engineering is one of the most important thing \n"
+    "for our company and world right?. \n"
+    "But some people can't (or don't wanna) understand that philosophy.\n"
+    "That's nonsence for creators to inovate something to new.\n\n");
   return CMD_SUCCESS;
 }
 
@@ -1689,7 +1658,6 @@ void cmd_init()
   install_node(&config_node, NULL);
 
   /* Each node's basic commands. */
-  install_element(VIEW_NODE, &show_version_cmd);
   install_element(VIEW_NODE, &config_list_cmd);
   install_element(VIEW_NODE, &config_exit_cmd);
   install_element(VIEW_NODE, &config_quit_cmd);
@@ -1706,7 +1674,6 @@ void cmd_init()
   install_element(ENABLE_NODE, &config_terminal_cmd);
   install_element(CONFIG_NODE, &hostname_cmd);
   install_element(CONFIG_NODE, &no_hostname_cmd);
-  install_element(CONFIG_NODE, &frr_version_defaults_cmd);
   install_element(CONFIG_NODE, &password_cmd);
   install_element(CONFIG_NODE, &no_password_cmd);
   install_element(CONFIG_NODE, &enable_password_cmd);
