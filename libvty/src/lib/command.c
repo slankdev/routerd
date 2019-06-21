@@ -222,17 +222,6 @@ int argv_find(struct cmd_token **argv, int argc, const char *text, int *index)
   return found;
 }
 
-static unsigned int cmd_hash_key(const void *p)
-{
-  int size = sizeof(p);
-  return jhash(p, size, 0);
-}
-
-static bool cmd_hash_cmp(const void *a, const void *b)
-{
-  return a == b;
-}
-
 /* Return prompt character of specified node. */
 const char *cmd_prompt(enum node_type node)
 {
