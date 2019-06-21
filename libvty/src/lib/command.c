@@ -1725,8 +1725,7 @@ DEFUN (show_startup_config,
 
 int cmd_domainname_set(const char *domainname)
 {
-  XFREE(MTYPE_HOST, host.domainname);
-  host.domainname = domainname ? XSTRDUP(MTYPE_HOST, domainname) : NULL;
+  host.domainname = strdup(domainname);
   return CMD_SUCCESS;
 }
 
