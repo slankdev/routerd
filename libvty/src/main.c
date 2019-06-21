@@ -6,7 +6,6 @@
 #include "command.h"
 #include "command.h"
 #include "memory.h"
-#include "memory_vty.h"
 
 int dump_args(struct vty *vty,
     const char *descr, int argc,
@@ -75,7 +74,6 @@ int main(int argc, char **argv)
   cmd_domainname_set("test.domain");
   vty_init(master, false);
   vty_serv_sock(NULL, 9077, "/var/run/frr/slank.vty");
-  memory_init();
   install_commands(argc, argv);
 
   struct thread thread;

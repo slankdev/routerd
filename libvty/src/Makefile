@@ -14,7 +14,6 @@ SRC += lib/vty.c \
 			 lib/sigevent.c \
 			 lib/frrstr.c \
 			 lib/vector.c \
-			 lib/memory_vty.c \
 			 lib/strlcpy.c \
 			 lib/strlcat.c \
 			 lib/sockunion.c \
