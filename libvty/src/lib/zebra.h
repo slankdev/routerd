@@ -401,7 +401,7 @@ typedef enum {
 
 /* VRF ID type. */
 typedef uint32_t vrf_id_t;
-
+typedef signed int ifindex_t;
 typedef uint32_t route_tag_t;
 #define ROUTE_TAG_MAX UINT32_MAX
 #define ROUTE_TAG_PRI PRIu32
