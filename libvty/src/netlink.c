@@ -26,7 +26,7 @@ DEFUN (filter_ifinfo_msg_flag,
        "Setting rtnl-link's filter\n"
        "Setting rtnl-link flag's filter\n")
 {
-  vty_out(vty, "%s node=%d\n", __func__, vty->node);
+  vty_out(vty, "%s\n", __func__);
   return CMD_SUCCESS;
 }
 
@@ -43,11 +43,14 @@ DEFUN (show_netlink_filter,
 
 DEFUN (show_netlink_cache,
        show_netlink_cache_cmd,
-       "show netlink cache iflink",
+       "show netlink cache <iflink|addr|route|neigh>",
        SHOW_STR
        "Show netlink information\n"
        "Show netlink cache information\n"
-       "Show netlink iflink cache\n")
+       "Show netlink iflink cache\n"
+       "Show netlink addr cache\n"
+       "Show netlink route cache\n"
+       "Show netlink neigh cache\n")
 {
   vty_out(vty, "%s\n", __func__);
   return CMD_SUCCESS;
