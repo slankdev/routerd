@@ -32,7 +32,7 @@ SRC += lib/vty.c \
 			 # end
 LDFLAGS += -lpthread -lm -lcrypt
 
-SRC += main.c
+SRC += main.c netlink.c
 OBJ = $(SRC:.c=.o)
 TARGET = a.out
 

@@ -39,6 +39,8 @@
 #include "qobj.h"
 #include "hash.h"
 
+#define debug_printf printf
+
 #define DFLT_NAME "traditional"
 #ifdef HAVE_DATACENTER
 #define DFLT_BGP_IMPORT_CHECK      1
@@ -707,58 +709,11 @@ char **cmd_complete_command(vector vline, struct vty *vty, int *status)
 /* MUST eventually converge on CONFIG_NODE */
 enum node_type node_parent(enum node_type node)
 {
-  enum node_type ret;
-
   assert(node > CONFIG_NODE);
-
   switch (node) {
-  case BGP_VPNV4_NODE:
-  case BGP_VPNV6_NODE:
-  case BGP_FLOWSPECV4_NODE:
-  case BGP_FLOWSPECV6_NODE:
-  case BGP_VNC_DEFAULTS_NODE:
-  case BGP_VNC_NVE_GROUP_NODE:
-  case BGP_VNC_L2_GROUP_NODE:
-  case BGP_IPV4_NODE:
-  case BGP_IPV4M_NODE:
-  case BGP_IPV4L_NODE:
-  case BGP_IPV6_NODE:
-  case BGP_IPV6M_NODE:
-  case BGP_EVPN_NODE:
-  case BGP_IPV6L_NODE:
-    ret = BGP_NODE;
-    break;
-  case BGP_EVPN_VNI_NODE:
-    ret = BGP_EVPN_NODE;
-    break;
-  case KEYCHAIN_KEY_NODE:
-    ret = KEYCHAIN_NODE;
-    break;
-  case LINK_PARAMS_NODE:
-    ret = INTERFACE_NODE;
-    break;
-  case LDP_IPV4_NODE:
-  case LDP_IPV6_NODE:
-    ret = LDP_NODE;
-    break;
-  case LDP_IPV4_IFACE_NODE:
-    ret = LDP_IPV4_NODE;
-    break;
-  case LDP_IPV6_IFACE_NODE:
-    ret = LDP_IPV6_NODE;
-    break;
-  case LDP_PSEUDOWIRE_NODE:
-    ret = LDP_L2VPN_NODE;
-    break;
-  case BFD_PEER_NODE:
-    ret = BFD_NODE;
-    break;
   default:
-    ret = CONFIG_NODE;
-    break;
+    return CONFIG_NODE;
   }
-
-  return ret;
 }
 
 /* Execute command by argument vline vector. */
@@ -766,12 +721,14 @@ static int cmd_execute_command_real(vector vline, enum cmd_filter_type filter,
             struct vty *vty,
             const struct cmd_element **cmd)
 {
+  debug_printf("%s: (1): vty=%p vty->node=%d\n\r", __func__, vty, vty->node);
   struct list *argv_list;
   enum matcher_rv status;
   const struct cmd_element *matched_element = NULL;
 
   struct graph *cmdgraph = cmd_node_graph(cmdvec, vty->node);
   status = command_match(cmdgraph, vline, &argv_list, &matched_element);
+  debug_printf("%s: (2): vty=%p vty->node=%d\n\r", __func__, vty, vty->node);
 
   if (cmd)
     *cmd = matched_element;
@@ -811,7 +768,9 @@ static int cmd_execute_command_real(vector vline, enum cmd_filter_type filter,
       memset(&vty->cfg_changes, 0, sizeof(vty->cfg_changes));
     }
 
+    debug_printf("%s: (3): vty->node=%d\n\r", __func__, vty->node);
     ret = matched_element->func(matched_element, vty, argc, argv);
+    debug_printf("%s: (4): vty->node=%d\n\r", __func__, vty->node);
   }
 
   // delete list and cmd_token's in it
@@ -839,6 +798,7 @@ static int cmd_execute_command_real(vector vline, enum cmd_filter_type filter,
 int cmd_execute_command(vector vline, struct vty *vty,
       const struct cmd_element **cmd, int vtysh)
 {
+  debug_printf("%s: (1): vty->node=%d\n\r", __func__, vty->node);
   int ret, saved_ret = 0;
   enum node_type onode, try_node;
   int orig_xpath_index;
@@ -861,8 +821,9 @@ int cmd_execute_command(vector vline, struct vty *vty,
       vector_set_index(shifted_vline, index - 1,
            vector_lookup(vline, index));
 
-    ret = cmd_execute_command_real(shifted_vline, FILTER_RELAXED,
-                 vty, cmd);
+    debug_printf("%s: (3:1): vty=%p vty->node=%d\n\r", __func__, vty, vty->node);
+    ret = cmd_execute_command_real(shifted_vline, FILTER_RELAXED, vty, cmd);
+    debug_printf("%s: (3:2): vty=%p vty->node=%d\n\r", __func__, vty, vty->node);
 
     vector_free(shifted_vline);
     vty->node = onode;
@@ -870,8 +831,10 @@ int cmd_execute_command(vector vline, struct vty *vty,
     return ret;
   }
 
+  debug_printf("%s: (4:1): vty=%p vty->node=%d\n\r", __func__, vty, vty->node);
   saved_ret = ret =
     cmd_execute_command_real(vline, FILTER_RELAXED, vty, cmd);
+  debug_printf("%s: (4:2): vty=%p vty->node=%d\n\r", __func__, vty, vty->node);
 
   if (vtysh)
     return saved_ret;
@@ -885,8 +848,9 @@ int cmd_execute_command(vector vline, struct vty *vty,
       vty->node = try_node;
       if (vty->xpath_index > 0)
         vty->xpath_index--;
-      ret = cmd_execute_command_real(vline, FILTER_RELAXED,
-                   vty, cmd);
+      debug_printf("%s: (5:1): vty=%p vty->node=%d\n\r", __func__, vty, vty->node);
+      ret = cmd_execute_command_real(vline, FILTER_RELAXED, vty, cmd);
+      debug_printf("%s: (5:2): vty=%p vty->node=%d\n\r", __func__, vty, vty->node);
       if (ret == CMD_SUCCESS || ret == CMD_WARNING
           || ret == CMD_NOT_MY_INSTANCE
           || ret == CMD_WARNING_CONFIG_FAILED)
@@ -917,7 +881,9 @@ int cmd_execute_command(vector vline, struct vty *vty,
 int cmd_execute_command_strict(vector vline, struct vty *vty,
              const struct cmd_element **cmd)
 {
+  debug_printf("%s: (1:1): vty=%p vty->node=%d\n\r", __func__, vty, vty->node);
   return cmd_execute_command_real(vline, FILTER_STRICT, vty, cmd);
+  debug_printf("%s: (1:2): vty=%p vty->node=%d\n\r", __func__, vty, vty->node);
 }
 
 /*
@@ -988,6 +954,7 @@ int cmd_execute(struct vty *vty, const char *cmd,
   cmd_exec = cmd_out ? (const char *)cmd_out : cmd;
 
   vline = cmd_make_strvec(cmd_exec);
+  debug_printf("%s(1): cmd=\'%s\' vty=%p vty->node=%u\n\r", __func__, cmd, vty, vty->node);
 
   if (vline) {
     ret = cmd_execute_command(vline, vty, matched, vtysh);
@@ -997,6 +964,7 @@ int cmd_execute(struct vty *vty, const char *cmd,
   }
 
   XFREE(MTYPE_TMP, cmd_out);
+  debug_printf("%s(2): cmd=\'%s\' vty=%p vty->node=%u\n\r", __func__, cmd, vty, vty->node);
   return ret;
 }
 
@@ -1127,6 +1095,7 @@ DEFUN (config_exit,
 
 void cmd_exit(struct vty *vty)
 {
+  debug_printf("%s: (1): vty->node=%d\n\r", __func__, vty->node);
   switch (vty->node) {
   case VIEW_NODE:
   case ENABLE_NODE:
@@ -1139,69 +1108,10 @@ void cmd_exit(struct vty *vty)
     vty->node = ENABLE_NODE;
     vty_config_exit(vty);
     break;
-  case INTERFACE_NODE:
-  case PW_NODE:
-  case LOGICALROUTER_NODE:
-  case NH_GROUP_NODE:
-  case ZEBRA_NODE:
-  case BGP_NODE:
-  case RIP_NODE:
-  case EIGRP_NODE:
-  case BABEL_NODE:
-  case RIPNG_NODE:
-  case OSPF_NODE:
-  case OSPF6_NODE:
-  case LDP_NODE:
-  case LDP_L2VPN_NODE:
-  case ISIS_NODE:
-  case OPENFABRIC_NODE:
-  case KEYCHAIN_NODE:
-  case RMAP_NODE:
-  case PBRMAP_NODE:
   case VTY_NODE:
-  case BFD_NODE:
+  case NETLINK_NODE:
     vty->node = CONFIG_NODE;
-    break;
-  case BGP_IPV4_NODE:
-  case BGP_IPV4M_NODE:
-  case BGP_IPV4L_NODE:
-  case BGP_VPNV4_NODE:
-  case BGP_VPNV6_NODE:
-  case BGP_FLOWSPECV4_NODE:
-  case BGP_FLOWSPECV6_NODE:
-  case BGP_VNC_DEFAULTS_NODE:
-  case BGP_VNC_NVE_GROUP_NODE:
-  case BGP_VNC_L2_GROUP_NODE:
-  case BGP_IPV6_NODE:
-  case BGP_IPV6M_NODE:
-  case BGP_EVPN_NODE:
-  case BGP_IPV6L_NODE:
-    vty->node = BGP_NODE;
-    break;
-  case BGP_EVPN_VNI_NODE:
-    vty->node = BGP_EVPN_NODE;
-    break;
-  case LDP_IPV4_NODE:
-  case LDP_IPV6_NODE:
-    vty->node = LDP_NODE;
-    break;
-  case LDP_IPV4_IFACE_NODE:
-    vty->node = LDP_IPV4_NODE;
-    break;
-  case LDP_IPV6_IFACE_NODE:
-    vty->node = LDP_IPV6_NODE;
-    break;
-  case LDP_PSEUDOWIRE_NODE:
-    vty->node = LDP_L2VPN_NODE;
-    break;
-  case KEYCHAIN_KEY_NODE:
-    vty->node = KEYCHAIN_NODE;
-    break;
-  case LINK_PARAMS_NODE:
-    vty->node = INTERFACE_NODE;
-    break;
-  case BFD_PEER_NODE:
-    vty->node = BFD_NODE;
+    vty_config_enter(vty, false, false);
     break;
   default:
     break;

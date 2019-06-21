@@ -71,6 +71,8 @@ vty_do_exit(int isexit)
     exit(0);
 }
 
+void setup_netlink_node();
+
 void *th(void *ptr)
 {
   master = thread_master_create(NULL);
@@ -79,6 +81,9 @@ void *th(void *ptr)
   cmd_hostname_set("test");
   vty_init(master, false);
   vty_serv_sock(NULL, 9077, "/var/run/frr/slank.vty");
+
+  setup_netlink_node();;
+
   install_commands();
   vty_stdio(NULL);
   struct thread thread;
