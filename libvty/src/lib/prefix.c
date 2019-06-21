@@ -25,7 +25,6 @@
 #include "vty.h"
 #include "sockunion.h"
 #include "memory.h"
-#include "log.h"
 #include "hash.h"
 #include "printfrr.h"
 
@@ -431,14 +430,14 @@ static const struct in6_addr maskbytes6[] = {
 
 #define MASKBIT(offset)  ((0xff << (PNBBY - (offset))) & 0xff)
 
-void prefix_hexdump(const struct prefix *p)
-{
-	char buf[PREFIX_STRLEN];
-
-	zlog_debug("prefix: %s",
-		   prefix2str(p, buf, sizeof(buf)));
-	zlog_hexdump(p, sizeof(struct prefix));
-}
+/* void prefix_hexdump(const struct prefix *p) */
+/* { */
+/* 	char buf[PREFIX_STRLEN]; */
+/*  */
+/* 	printf("prefix: %s", */
+/* 		   prefix2str(p, buf, sizeof(buf))); */
+/* 	zlog_hexdump(p, sizeof(struct prefix)); */
+/* } */
 
 int is_zero_mac(struct ethaddr *mac)
 {
@@ -658,7 +657,7 @@ void prefix_copy(struct prefix *dest, const struct prefix *src)
 		memcpy((void *)dest->u.prefix_flowspec.ptr,
 		       (void *)src->u.prefix_flowspec.ptr, len);
 	} else {
-		flog_err(0,
+		fprintf(stdout,
 			 "prefix_copy(): Unknown address family %d",
 			 src->family);
 		assert(0);

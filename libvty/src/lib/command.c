@@ -30,8 +30,6 @@
 #include "command.h"
 #include "frrstr.h"
 #include "memory.h"
-#include "log.h"
-#include "log_int.h"
 #include "thread.h"
 #include "vector.h"
 #include "linklist.h"
@@ -52,24 +50,6 @@ DEFINE_MTYPE(LIB, COMPLETION, "Completion item")
 	{                                                                      \
 		x, #x                                                          \
 	}
-
-/* clang-format off */
-const struct message tokennames[] = {
-	item(WORD_TKN),
-	item(VARIABLE_TKN),
-	item(RANGE_TKN),
-	item(IPV4_TKN),
-	item(IPV4_PREFIX_TKN),
-	item(IPV6_TKN),
-	item(IPV6_PREFIX_TKN),
-	item(MAC_TKN),
-	item(MAC_PREFIX_TKN),
-	item(FORK_TKN),
-	item(JOIN_TKN),
-	item(START_TKN),
-	item(END_TKN),
-	{0},
-};
 
 const char *node_names[] = {
 	"auth",			    // AUTH_NODE,
@@ -227,16 +207,6 @@ static int facility_match(const char *str)
 		if (!strncmp(str, fm->name, fm->match))
 			return fm->facility;
 	return -1;
-}
-
-static int level_match(const char *s)
-{
-	int level;
-
-	for (level = 0; zlog_priority[level] != NULL; level++)
-		if (!strncmp(s, zlog_priority[level], 2))
-			return level;
-	return ZLOG_DISABLED;
 }
 
 /* This is called from main when a daemon is invoked with -v or --version. */
@@ -474,6 +444,7 @@ static char *zencrypt(const char *passwd)
 	return crypt(passwd, salt);
 }
 
+#if 0
 /* This function write configuration of this host. */
 static int config_write_host(struct vty *vty)
 {
@@ -579,6 +550,7 @@ static int config_write_host(struct vty *vty)
 
 	return 1;
 }
+#endif
 
 /* Utility function for getting command graph. */
 static struct graph *cmd_node_graph(vector v, enum node_type ntype)
@@ -1708,7 +1680,7 @@ static int file_write_config(struct vty *vty)
 	}
 	if (fchmod(fd, 0640) != 0) {
 		vty_out(vty, "Can't chmod configuration file %s: %s (%d).\n",
-			config_file_tmp, safe_strerror(errno), errno);
+			config_file_tmp, strerror(errno), errno);
 		goto finished;
 	}
 
@@ -1719,7 +1691,6 @@ static int file_write_config(struct vty *vty)
 
 	/* Config file header print. */
 	vty_out(file_vty, "!\n! Zebra configuration saved from vty\n!   ");
-	vty_time_print(file_vty, 1);
 	vty_out(file_vty, "!\n");
 	vty_write_config(file_vty);
 	vty_close(file_vty);
@@ -1822,7 +1793,7 @@ DEFUN (show_startup_config,
 	confp = fopen(host.config, "r");
 	if (confp == NULL) {
 		vty_out(vty, "Can't open configuration file [%s] due to '%s'\n",
-			host.config, safe_strerror(errno));
+			host.config, strerror(errno));
 		return CMD_WARNING;
 	}
 
@@ -2192,373 +2163,6 @@ DEFUN_HIDDEN (do_echo,
 	return CMD_SUCCESS;
 }
 
-DEFUN (config_logmsg,
-       config_logmsg_cmd,
-       "logmsg <emergencies|alerts|critical|errors|warnings|notifications|informational|debugging> MESSAGE...",
-       "Send a message to enabled logging destinations\n"
-       LOG_LEVEL_DESC
-       "The message to send\n")
-{
-	int idx_log_level = 1;
-	int idx_message = 2;
-	int level;
-	char *message;
-
-	if ((level = level_match(argv[idx_log_level]->arg)) == ZLOG_DISABLED)
-		return CMD_ERR_NO_MATCH;
-
-	zlog(level, "%s",
-	     ((message = argv_concat(argv, argc, idx_message)) ? message : ""));
-	if (message)
-		XFREE(MTYPE_TMP, message);
-
-	return CMD_SUCCESS;
-}
-
-DEFUN (show_logging,
-       show_logging_cmd,
-       "show logging",
-       SHOW_STR
-       "Show current logging configuration\n")
-{
-	struct zlog *zl = zlog_default;
-
-	vty_out(vty, "Syslog logging: ");
-	if (zl->maxlvl[ZLOG_DEST_SYSLOG] == ZLOG_DISABLED)
-		vty_out(vty, "disabled");
-	else
-		vty_out(vty, "level %s, facility %s, ident %s",
-			zlog_priority[zl->maxlvl[ZLOG_DEST_SYSLOG]],
-			facility_name(zl->facility), zl->ident);
-	vty_out(vty, "\n");
-
-	vty_out(vty, "Stdout logging: ");
-	if (zl->maxlvl[ZLOG_DEST_STDOUT] == ZLOG_DISABLED)
-		vty_out(vty, "disabled");
-	else
-		vty_out(vty, "level %s",
-			zlog_priority[zl->maxlvl[ZLOG_DEST_STDOUT]]);
-	vty_out(vty, "\n");
-
-	vty_out(vty, "Monitor logging: ");
-	if (zl->maxlvl[ZLOG_DEST_MONITOR] == ZLOG_DISABLED)
-		vty_out(vty, "disabled");
-	else
-		vty_out(vty, "level %s",
-			zlog_priority[zl->maxlvl[ZLOG_DEST_MONITOR]]);
-	vty_out(vty, "\n");
-
-	vty_out(vty, "File logging: ");
-	if ((zl->maxlvl[ZLOG_DEST_FILE] == ZLOG_DISABLED) || !zl->fp)
-		vty_out(vty, "disabled");
-	else
-		vty_out(vty, "level %s, filename %s",
-			zlog_priority[zl->maxlvl[ZLOG_DEST_FILE]],
-			zl->filename);
-	vty_out(vty, "\n");
-
-	vty_out(vty, "Protocol name: %s\n", zl->protoname);
-	vty_out(vty, "Record priority: %s\n",
-		(zl->record_priority ? "enabled" : "disabled"));
-	vty_out(vty, "Timestamp precision: %d\n", zl->timestamp_precision);
-
-	return CMD_SUCCESS;
-}
-
-DEFUN (config_log_stdout,
-       config_log_stdout_cmd,
-       "log stdout [<emergencies|alerts|critical|errors|warnings|notifications|informational|debugging>]",
-       "Logging control\n"
-       "Set stdout logging level\n"
-       LOG_LEVEL_DESC)
-{
-	int idx_log_level = 2;
-
-	if (argc == idx_log_level) {
-		zlog_set_level(ZLOG_DEST_STDOUT, zlog_default->default_lvl);
-		return CMD_SUCCESS;
-	}
-	int level;
-
-	if ((level = level_match(argv[idx_log_level]->arg)) == ZLOG_DISABLED)
-		return CMD_ERR_NO_MATCH;
-	zlog_set_level(ZLOG_DEST_STDOUT, level);
-	return CMD_SUCCESS;
-}
-
-DEFUN (no_config_log_stdout,
-       no_config_log_stdout_cmd,
-       "no log stdout [<emergencies|alerts|critical|errors|warnings|notifications|informational|debugging>]",
-       NO_STR
-       "Logging control\n"
-       "Cancel logging to stdout\n"
-       LOG_LEVEL_DESC)
-{
-	zlog_set_level(ZLOG_DEST_STDOUT, ZLOG_DISABLED);
-	return CMD_SUCCESS;
-}
-
-DEFUN (config_log_monitor,
-       config_log_monitor_cmd,
-       "log monitor [<emergencies|alerts|critical|errors|warnings|notifications|informational|debugging>]",
-       "Logging control\n"
-       "Set terminal line (monitor) logging level\n"
-       LOG_LEVEL_DESC)
-{
-	int idx_log_level = 2;
-
-	if (argc == idx_log_level) {
-		zlog_set_level(ZLOG_DEST_MONITOR, zlog_default->default_lvl);
-		return CMD_SUCCESS;
-	}
-	int level;
-
-	if ((level = level_match(argv[idx_log_level]->arg)) == ZLOG_DISABLED)
-		return CMD_ERR_NO_MATCH;
-	zlog_set_level(ZLOG_DEST_MONITOR, level);
-	return CMD_SUCCESS;
-}
-
-DEFUN (no_config_log_monitor,
-       no_config_log_monitor_cmd,
-       "no log monitor [<emergencies|alerts|critical|errors|warnings|notifications|informational|debugging>]",
-       NO_STR
-       "Logging control\n"
-       "Disable terminal line (monitor) logging\n"
-       LOG_LEVEL_DESC)
-{
-	zlog_set_level(ZLOG_DEST_MONITOR, ZLOG_DISABLED);
-	return CMD_SUCCESS;
-}
-
-static int set_log_file(struct vty *vty, const char *fname, int loglevel)
-{
-	int ret;
-	char *p = NULL;
-	const char *fullpath;
-
-	/* Path detection. */
-	if (!IS_DIRECTORY_SEP(*fname)) {
-		char cwd[MAXPATHLEN + 1];
-		cwd[MAXPATHLEN] = '\0';
-
-		if (getcwd(cwd, MAXPATHLEN) == NULL) {
-			flog_err_sys(0,
-				     "config_log_file: Unable to alloc mem!");
-			return CMD_WARNING_CONFIG_FAILED;
-		}
-
-		p = XMALLOC(MTYPE_TMP, strlen(cwd) + strlen(fname) + 2);
-		sprintf(p, "%s/%s", cwd, fname);
-		fullpath = p;
-	} else
-		fullpath = fname;
-
-	ret = zlog_set_file(fullpath, loglevel);
-
-	XFREE(MTYPE_TMP, p);
-
-	if (!ret) {
-		if (vty)
-			vty_out(vty, "can't open logfile %s\n", fname);
-		return CMD_WARNING_CONFIG_FAILED;
-	}
-
-	XFREE(MTYPE_HOST, host.logfile);
-
-	host.logfile = XSTRDUP(MTYPE_HOST, fname);
-
-#if defined(HAVE_CUMULUS)
-	if (zlog_default->maxlvl[ZLOG_DEST_SYSLOG] != ZLOG_DISABLED)
-		zlog_set_level(ZLOG_DEST_SYSLOG, ZLOG_DISABLED);
-#endif
-	return CMD_SUCCESS;
-}
-
-void command_setup_early_logging(const char *dest, const char *level)
-{
-	char *token;
-
-	if (level) {
-		int nlevel = level_match(level);
-
-		if (nlevel != ZLOG_DISABLED)
-			zlog_default->default_lvl = nlevel;
-	}
-
-	if (!dest)
-		return;
-
-	if (strcmp(dest, "stdout") == 0) {
-		zlog_set_level(ZLOG_DEST_STDOUT, zlog_default->default_lvl);
-		return;
-	}
-
-	if (strcmp(dest, "syslog") == 0) {
-		zlog_set_level(ZLOG_DEST_SYSLOG, zlog_default->default_lvl);
-		return;
-	}
-
-	token = strstr(dest, ":");
-	if (token == NULL)
-		return;
-
-	token++;
-
-	set_log_file(NULL, token, zlog_default->default_lvl);
-}
-
-DEFUN (config_log_file,
-       config_log_file_cmd,
-       "log file FILENAME [<emergencies|alerts|critical|errors|warnings|notifications|informational|debugging>]",
-       "Logging control\n"
-       "Logging to file\n"
-       "Logging filename\n"
-       LOG_LEVEL_DESC)
-{
-	int idx_filename = 2;
-	int idx_log_levels = 3;
-	if (argc == 4) {
-		int level;
-		if ((level = level_match(argv[idx_log_levels]->arg))
-		    == ZLOG_DISABLED)
-			return CMD_ERR_NO_MATCH;
-		return set_log_file(vty, argv[idx_filename]->arg, level);
-	} else
-		return set_log_file(vty, argv[idx_filename]->arg,
-				    zlog_default->default_lvl);
-}
-
-static void disable_log_file(void)
-{
-	zlog_reset_file();
-
-	XFREE(MTYPE_HOST, host.logfile);
-
-	host.logfile = NULL;
-}
-
-DEFUN (no_config_log_file,
-       no_config_log_file_cmd,
-       "no log file [FILENAME [LEVEL]]",
-       NO_STR
-       "Logging control\n"
-       "Cancel logging to file\n"
-       "Logging file name\n"
-       "Logging level\n")
-{
-	disable_log_file();
-	return CMD_SUCCESS;
-}
-
-DEFUN (config_log_syslog,
-       config_log_syslog_cmd,
-       "log syslog [<emergencies|alerts|critical|errors|warnings|notifications|informational|debugging>]",
-       "Logging control\n"
-       "Set syslog logging level\n"
-       LOG_LEVEL_DESC)
-{
-	int idx_log_levels = 2;
-
-	if (argc == 3) {
-		int level;
-		if ((level = level_match(argv[idx_log_levels]->arg))
-		    == ZLOG_DISABLED)
-			return CMD_ERR_NO_MATCH;
-		zlog_set_level(ZLOG_DEST_SYSLOG, level);
-		return CMD_SUCCESS;
-	} else {
-		zlog_set_level(ZLOG_DEST_SYSLOG, zlog_default->default_lvl);
-		return CMD_SUCCESS;
-	}
-}
-
-DEFUN (no_config_log_syslog,
-       no_config_log_syslog_cmd,
-       "no log syslog [<kern|user|mail|daemon|auth|syslog|lpr|news|uucp|cron|local0|local1|local2|local3|local4|local5|local6|local7>] [<emergencies|alerts|critical|errors|warnings|notifications|informational|debugging>]",
-       NO_STR
-       "Logging control\n"
-       "Cancel logging to syslog\n"
-       LOG_FACILITY_DESC
-       LOG_LEVEL_DESC)
-{
-	zlog_set_level(ZLOG_DEST_SYSLOG, ZLOG_DISABLED);
-	return CMD_SUCCESS;
-}
-
-DEFUN (config_log_facility,
-       config_log_facility_cmd,
-       "log facility <kern|user|mail|daemon|auth|syslog|lpr|news|uucp|cron|local0|local1|local2|local3|local4|local5|local6|local7>",
-       "Logging control\n"
-       "Facility parameter for syslog messages\n"
-       LOG_FACILITY_DESC)
-{
-	int idx_target = 2;
-	int facility = facility_match(argv[idx_target]->arg);
-
-	zlog_default->facility = facility;
-	return CMD_SUCCESS;
-}
-
-DEFUN (no_config_log_facility,
-       no_config_log_facility_cmd,
-       "no log facility [<kern|user|mail|daemon|auth|syslog|lpr|news|uucp|cron|local0|local1|local2|local3|local4|local5|local6|local7>]",
-       NO_STR
-       "Logging control\n"
-       "Reset syslog facility to default (daemon)\n"
-       LOG_FACILITY_DESC)
-{
-	zlog_default->facility = LOG_DAEMON;
-	return CMD_SUCCESS;
-}
-
-DEFUN (config_log_record_priority,
-       config_log_record_priority_cmd,
-       "log record-priority",
-       "Logging control\n"
-       "Log the priority of the message within the message\n")
-{
-	zlog_default->record_priority = 1;
-	return CMD_SUCCESS;
-}
-
-DEFUN (no_config_log_record_priority,
-       no_config_log_record_priority_cmd,
-       "no log record-priority",
-       NO_STR
-       "Logging control\n"
-       "Do not log the priority of the message within the message\n")
-{
-	zlog_default->record_priority = 0;
-	return CMD_SUCCESS;
-}
-
-DEFUN (config_log_timestamp_precision,
-       config_log_timestamp_precision_cmd,
-       "log timestamp precision (0-6)",
-       "Logging control\n"
-       "Timestamp configuration\n"
-       "Set the timestamp precision\n"
-       "Number of subsecond digits\n")
-{
-	int idx_number = 3;
-	zlog_default->timestamp_precision =
-		strtoul(argv[idx_number]->arg, NULL, 10);
-	return CMD_SUCCESS;
-}
-
-DEFUN (no_config_log_timestamp_precision,
-       no_config_log_timestamp_precision_cmd,
-       "no log timestamp precision",
-       NO_STR
-       "Logging control\n"
-       "Timestamp configuration\n"
-       "Reset the timestamp precision to the default value of 0\n")
-{
-	zlog_default->timestamp_precision = 0;
-	return CMD_SUCCESS;
-}
-
 DEFUN (debug_memstats,
        debug_memstats_cmd,
        "[no] debug memstats-at-exit",
@@ -2736,7 +2340,7 @@ void cmd_init(int terminal)
 	install_node(&enable_node, NULL);
 	install_node(&auth_node, NULL);
 	install_node(&auth_enable_node, NULL);
-	install_node(&config_node, config_write_host);
+	install_node(&config_node, NULL);
 
 	/* Each node's basic commands. */
 	install_element(VIEW_NODE, &show_version_cmd);
@@ -2752,7 +2356,7 @@ void cmd_init(int terminal)
 		install_element(VIEW_NODE, &config_enable_cmd);
 		install_element(VIEW_NODE, &config_terminal_length_cmd);
 		install_element(VIEW_NODE, &config_terminal_no_length_cmd);
-		install_element(VIEW_NODE, &show_logging_cmd);
+		/* install_element(VIEW_NODE, &show_logging_cmd); */
 		install_element(VIEW_NODE, &show_commandtree_cmd);
 		install_element(VIEW_NODE, &echo_cmd);
 		install_element(VIEW_NODE, &autocomplete_cmd);
@@ -2764,7 +2368,7 @@ void cmd_init(int terminal)
 		install_element(ENABLE_NODE, &copy_runningconf_startupconf_cmd);
 		install_element(ENABLE_NODE, &config_write_cmd);
 		install_element(ENABLE_NODE, &show_running_config_cmd);
-		install_element(ENABLE_NODE, &config_logmsg_cmd);
+		/* install_element(ENABLE_NODE, &config_logmsg_cmd); */
 
 		install_default(CONFIG_NODE);
 
@@ -2787,23 +2391,6 @@ void cmd_init(int terminal)
 		install_element(CONFIG_NODE, &enable_password_cmd);
 		install_element(CONFIG_NODE, &no_enable_password_cmd);
 
-		install_element(CONFIG_NODE, &config_log_stdout_cmd);
-		install_element(CONFIG_NODE, &no_config_log_stdout_cmd);
-		install_element(CONFIG_NODE, &config_log_monitor_cmd);
-		install_element(CONFIG_NODE, &no_config_log_monitor_cmd);
-		install_element(CONFIG_NODE, &config_log_file_cmd);
-		install_element(CONFIG_NODE, &no_config_log_file_cmd);
-		install_element(CONFIG_NODE, &config_log_syslog_cmd);
-		install_element(CONFIG_NODE, &no_config_log_syslog_cmd);
-		install_element(CONFIG_NODE, &config_log_facility_cmd);
-		install_element(CONFIG_NODE, &no_config_log_facility_cmd);
-		install_element(CONFIG_NODE, &config_log_record_priority_cmd);
-		install_element(CONFIG_NODE,
-				&no_config_log_record_priority_cmd);
-		install_element(CONFIG_NODE,
-				&config_log_timestamp_precision_cmd);
-		install_element(CONFIG_NODE,
-				&no_config_log_timestamp_precision_cmd);
 		install_element(CONFIG_NODE, &service_password_encrypt_cmd);
 		install_element(CONFIG_NODE, &no_service_password_encrypt_cmd);
 		install_element(CONFIG_NODE, &banner_motd_default_cmd);

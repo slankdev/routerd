@@ -23,7 +23,6 @@
 #include "thread.h"
 #include "memory.h"
 #include "hash.h"
-#include "log.h"
 #include "qobj.h"
 #include "hash.h"
 

@@ -26,7 +26,6 @@
 #include "workqueue.h"
 #include "linklist.h"
 #include "command.h"
-#include "log.h"
 
 DEFINE_MTYPE(LIB, WORK_QUEUE, "Work queue")
 DEFINE_MTYPE_STATIC(LIB, WORK_QUEUE_ITEM, "Work queue item")

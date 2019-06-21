@@ -24,7 +24,6 @@
 #include "sigevent.h"
 #include "privs.h"
 #include "thread.h"
-#include "log.h"
 #include "getopt.h"
 #include "module.h"
 

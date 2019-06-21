@@ -20,7 +20,6 @@
  */
 
 #include <zebra.h>
-#include "log.h"
 #include "network.h"
 
 /* Read nbytes from fd and store into ptr. */
@@ -78,15 +77,15 @@ int set_nonblocking(int fd)
 	   should
 	   never be negative. */
 	if ((flags = fcntl(fd, F_GETFL)) < 0) {
-		flog_err(0,
+		fprintf(stderr,
 			 "fcntl(F_GETFL) failed for fd %d: %s", fd,
-			 safe_strerror(errno));
+			 strerror(errno));
 		return -1;
 	}
 	if (fcntl(fd, F_SETFL, (flags | O_NONBLOCK)) < 0) {
-		flog_err(0,
+		fprintf(stderr,
 			 "fcntl failed setting fd %d non-blocking: %s", fd,
-			 safe_strerror(errno));
+			 strerror(errno));
 		return -1;
 	}
 	return 0;

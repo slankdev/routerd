@@ -47,6 +47,4 @@
 	FRR_COPYRIGHT "\n" \
 	GIT_INFO "\n"
 
-pid_t pid_output (const char *);
-
 #endif /* _ZEBRA_VERSION_H */

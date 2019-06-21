@@ -20,7 +20,7 @@
 
 #include <zebra.h>
 #include <stdlib.h>
-
+#include <assert.h>
 #include "linklist.h"
 #include "memory.h"
 

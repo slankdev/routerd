@@ -24,7 +24,6 @@
 #include "vty.h"
 #include "sockunion.h"
 #include "memory.h"
-#include "log.h"
 #include "hash.h"
 
 DEFINE_MTYPE_STATIC(LIB, SOCKUNION, "Socket union")
@@ -139,9 +138,9 @@ int sockunion_socket(const union sockunion *su)
 	sock = socket(su->sa.sa_family, SOCK_STREAM, 0);
 	if (sock < 0) {
 		char buf[SU_ADDRSTRLEN];
-		flog_err(0, "Can't make socket for %s : %s",
+		fprintf(stderr, "Can't make socket for %s : %s",
 			 sockunion_log(su, buf, SU_ADDRSTRLEN),
-			 safe_strerror(errno));
+			 strerror(errno));
 		return -1;
 	}
 
@@ -213,9 +212,9 @@ enum connect_result sockunion_connect(int fd, const union sockunion *peersu,
 	if (ret < 0) {
 		if (errno != EINPROGRESS) {
 			char str[SU_ADDRSTRLEN];
-			zlog_info("can't connect to %s fd %d : %s",
+			printf("can't connect to %s fd %d : %s",
 				  sockunion_log(&su, str, sizeof str), fd,
-				  safe_strerror(errno));
+				  strerror(errno));
 			return connect_error;
 		}
 	}
@@ -234,7 +233,7 @@ int sockunion_stream_socket(union sockunion *su)
 	sock = socket(su->sa.sa_family, SOCK_STREAM, 0);
 
 	if (sock < 0)
-		flog_err(0,
+		fprintf(stderr,
 			 "can't make socket sockunion_stream_socket");
 
 	return sock;
@@ -273,9 +272,9 @@ int sockunion_bind(int sock, union sockunion *su, unsigned short port,
 	ret = bind(sock, (struct sockaddr *)su, size);
 	if (ret < 0) {
 		char buf[SU_ADDRSTRLEN];
-		flog_err(0, "can't bind socket for %s : %s",
+		fprintf(stderr, "can't bind socket for %s : %s",
 			 sockunion_log(su, buf, SU_ADDRSTRLEN),
-			 safe_strerror(errno));
+			 strerror(errno));
 	}
 
 	return ret;
@@ -289,7 +288,7 @@ int sockopt_reuseaddr(int sock)
 	ret = setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (void *)&on,
 			 sizeof(on));
 	if (ret < 0) {
-		flog_err(0,
+		fprintf(stderr,
 			 "can't set sockopt SO_REUSEADDR to socket %d", sock);
 		return -1;
 	}
@@ -305,7 +304,7 @@ int sockopt_reuseport(int sock)
 	ret = setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, (void *)&on,
 			 sizeof(on));
 	if (ret < 0) {
-		flog_err(0,
+		fprintf(stderr,
 			 "can't set sockopt SO_REUSEPORT to socket %d", sock);
 		return -1;
 	}
@@ -327,7 +326,7 @@ int sockopt_ttl(int family, int sock, int ttl)
 		ret = setsockopt(sock, IPPROTO_IP, IP_TTL, (void *)&ttl,
 				 sizeof(int));
 		if (ret < 0) {
-			flog_err(0,
+			fprintf(stderr,
 				 "can't set sockopt IP_TTL %d to socket %d",
 				 ttl, sock);
 			return -1;
@@ -339,8 +338,8 @@ int sockopt_ttl(int family, int sock, int ttl)
 		ret = setsockopt(sock, IPPROTO_IPV6, IPV6_UNICAST_HOPS,
 				 (void *)&ttl, sizeof(int));
 		if (ret < 0) {
-			flog_err(
-				0,
+			fprintf(
+				stderr,
 				"can't set sockopt IPV6_UNICAST_HOPS %d to socket %d",
 				ttl, sock);
 			return -1;
@@ -372,10 +371,10 @@ int sockopt_minttl(int family, int sock, int minttl)
 		int ret = setsockopt(sock, IPPROTO_IP, IP_MINTTL, &minttl,
 				     sizeof(minttl));
 		if (ret < 0)
-			flog_err(
-				0,
+			fprintf(
+				stderr,
 				"can't set sockopt IP_MINTTL to %d on socket %d: %s",
-				minttl, sock, safe_strerror(errno));
+				minttl, sock, strerror(errno));
 		return ret;
 	}
 #endif /* IP_MINTTL */
@@ -384,10 +383,10 @@ int sockopt_minttl(int family, int sock, int minttl)
 		int ret = setsockopt(sock, IPPROTO_IPV6, IPV6_MINHOPCOUNT,
 				     &minttl, sizeof(minttl));
 		if (ret < 0)
-			flog_err(
-				0,
+			fprintf(
+				stderr,
 				"can't set sockopt IPV6_MINHOPCOUNT to %d on socket %d: %s",
-				minttl, sock, safe_strerror(errno));
+				minttl, sock, strerror(errno));
 		return ret;
 	}
 #endif
@@ -405,7 +404,7 @@ int sockopt_v6only(int family, int sock)
 		ret = setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, (void *)&on,
 				 sizeof(int));
 		if (ret < 0) {
-			flog_err(0,
+			fprintf(stderr,
 				 "can't set sockopt IPV6_V6ONLY "
 				 "to socket %d",
 				 sock);
@@ -523,9 +522,9 @@ union sockunion *sockunion_getsockname(int fd)
 
 	ret = getsockname(fd, (struct sockaddr *)&name, &len);
 	if (ret < 0) {
-		flog_err(0,
+		fprintf(stderr,
 			 "Can't get local address and port by getsockname: %s",
-			 safe_strerror(errno));
+			 strerror(errno));
 		return NULL;
 	}
 
@@ -560,8 +559,8 @@ union sockunion *sockunion_getpeername(int fd)
 	len = sizeof name;
 	ret = getpeername(fd, (struct sockaddr *)&name, &len);
 	if (ret < 0) {
-		flog_err(0, "Can't get remote address and port: %s",
-			 safe_strerror(errno));
+		fprintf(stderr, "Can't get remote address and port: %s",
+			 strerror(errno));
 		return NULL;
 	}
 

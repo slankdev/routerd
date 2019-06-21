@@ -21,7 +21,6 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #include <zebra.h>
-#include "log.h"
 #include "privs.h"
 #include "memory.h"
 #include "lib/queue.h"
@@ -306,7 +305,7 @@ zebra_privs_current_t zprivs_state_caps(void)
 			flog_err(
 				0,
 				"zprivs_state_caps: could not cap_get_flag, %s",
-				safe_strerror(errno));
+				strerror(errno));
 			return ZPRIVS_UNKNOWN;
 		}
 		if (val == CAP_SET)
@@ -324,7 +323,7 @@ static void zprivs_caps_init(struct zebra_privs_t *zprivs)
 	if (prctl(PR_SET_KEEPCAPS, 1, 0, 0, 0) == -1) {
 		fprintf(stderr,
 			"privs_init: could not set PR_SET_KEEPCAPS, %s\n",
-			safe_strerror(errno));
+			strerror(errno));
 		exit(1);
 	}
 
@@ -335,7 +334,7 @@ static void zprivs_caps_init(struct zebra_privs_t *zprivs)
 		if (setreuid(zprivs_state.zuid, zprivs_state.zuid)) {
 			fprintf(stderr,
 				"zprivs_init (cap): could not setreuid, %s\n",
-				safe_strerror(errno));
+				strerror(errno));
 			exit(1);
 		}
 	}
@@ -345,13 +344,13 @@ static void zprivs_caps_init(struct zebra_privs_t *zprivs)
 
 	if (!(zprivs_state.caps = cap_init())) {
 		fprintf(stderr, "privs_init: failed to cap_init, %s\n",
-			safe_strerror(errno));
+			strerror(errno));
 		exit(1);
 	}
 
 	if (cap_clear(zprivs_state.caps)) {
 		fprintf(stderr, "privs_init: failed to cap_clear, %s\n",
-			safe_strerror(errno));
+			strerror(errno));
 		exit(1);
 	}
 
@@ -376,7 +375,7 @@ static void zprivs_caps_init(struct zebra_privs_t *zprivs)
 		char *wanted_caps_text = NULL;
 
 		fprintf(stderr, "privs_init: initial cap_set_proc failed: %s\n",
-			safe_strerror(errno));
+			strerror(errno));
 
 		current_caps = cap_get_proc();
 		if (current_caps) {
@@ -411,7 +410,7 @@ static void zprivs_caps_terminate(void)
 	/* and boom, capabilities are gone forever */
 	if (cap_set_proc(zprivs_state.caps)) {
 		fprintf(stderr, "privs_terminate: cap_set_proc failed, %s",
-			safe_strerror(errno));
+			strerror(errno));
 		exit(1);
 	}
 
@@ -521,13 +520,13 @@ zebra_privs_current_t zprivs_state_caps(void)
 
 	if ((effective = priv_allocset()) == NULL) {
 		fprintf(stderr, "%s: failed to get priv_allocset! %s\n",
-			__func__, safe_strerror(errno));
+			__func__, strerror(errno));
 		return ZPRIVS_UNKNOWN;
 	}
 
 	if (getppriv(PRIV_EFFECTIVE, effective)) {
 		fprintf(stderr, "%s: failed to get state! %s\n", __func__,
-			safe_strerror(errno));
+			strerror(errno));
 		result = ZPRIVS_UNKNOWN;
 	} else {
 		if (priv_isequalset(effective, zprivs_state.syscaps_p))
@@ -577,7 +576,7 @@ static void zprivs_caps_init(struct zebra_privs_t *zprivs)
 	 */
 	if (setpflags(PRIV_AWARE, 1)) {
 		fprintf(stderr, "%s: error setting PRIV_AWARE!, %s\n", __func__,
-			safe_strerror(errno));
+			strerror(errno));
 		exit(1);
 	}
 
@@ -591,7 +590,7 @@ static void zprivs_caps_init(struct zebra_privs_t *zprivs)
 	if ((zprivs_state.zuid) && (zprivs_state.zsuid != zprivs_state.zuid)) {
 		if (setreuid(zprivs_state.zuid, zprivs_state.zuid)) {
 			fprintf(stderr, "%s: could not setreuid, %s\n",
-				__func__, safe_strerror(errno));
+				__func__, strerror(errno));
 			exit(1);
 		}
 	}
@@ -599,14 +598,14 @@ static void zprivs_caps_init(struct zebra_privs_t *zprivs)
 	/* set the permitted set */
 	if (setppriv(PRIV_SET, PRIV_PERMITTED, zprivs_state.syscaps_p)) {
 		fprintf(stderr, "%s: error setting permitted set!, %s\n",
-			__func__, safe_strerror(errno));
+			__func__, strerror(errno));
 		exit(1);
 	}
 
 	/* set the inheritable set */
 	if (setppriv(PRIV_SET, PRIV_INHERITABLE, zprivs_state.syscaps_i)) {
 		fprintf(stderr, "%s: error setting inheritable set!, %s\n",
-			__func__, safe_strerror(errno));
+			__func__, strerror(errno));
 		exit(1);
 	}
 
@@ -617,7 +616,7 @@ static void zprivs_caps_init(struct zebra_privs_t *zprivs)
 	/* now set the effective set with a subset of basic privileges */
 	if (setppriv(PRIV_SET, PRIV_EFFECTIVE, minimal)) {
 		fprintf(stderr, "%s: error setting effective set!, %s\n",
-			__func__, safe_strerror(errno));
+			__func__, strerror(errno));
 		exit(1);
 	}
 
@@ -767,8 +766,8 @@ struct zebra_privs_t *_zprivs_raise(struct zebra_privs_t *privs,
 		if (++(refs->refcount) == 1) {
 			errno = 0;
 			if (privs->change(ZPRIVS_RAISE)) {
-				zlog_err("%s: Failed to raise privileges (%s)",
-					 funcname, safe_strerror(errno));
+				printf("%s: Failed to raise privileges (%s)",
+					 funcname, strerror(errno));
 			}
 			errno = save_errno;
 			refs->raised_in_funcname = funcname;
@@ -797,9 +796,9 @@ void _zprivs_lower(struct zebra_privs_t **privs)
 		if (--(refs->refcount) == 0) {
 			errno = 0;
 			if ((*privs)->change(ZPRIVS_LOWER)) {
-				zlog_err("%s: Failed to lower privileges (%s)",
+				printf("%s: Failed to lower privileges (%s)",
 					 refs->raised_in_funcname,
-					 safe_strerror(errno));
+					 strerror(errno));
 			}
 			errno = save_errno;
 			refs->raised_in_funcname = NULL;
@@ -926,7 +925,7 @@ void zprivs_init(struct zebra_privs_t *zprivs)
 	if ((ngroups) && (zprivs_state.zsuid != zprivs_state.zuid)) {
 		if (setgroups(ngroups, groups)) {
 			fprintf(stderr, "privs_init: could not setgroups, %s\n",
-				safe_strerror(errno));
+				strerror(errno));
 			exit(1);
 		}
 	}
@@ -936,7 +935,7 @@ void zprivs_init(struct zebra_privs_t *zprivs)
 		/* change group now, forever. uid we do later */
 		if (setregid(zprivs_state.zgid, zprivs_state.zgid)) {
 			fprintf(stderr, "zprivs_init: could not setregid, %s\n",
-				safe_strerror(errno));
+				strerror(errno));
 			exit(1);
 		}
 	}
@@ -969,7 +968,7 @@ void zprivs_init(struct zebra_privs_t *zprivs)
 		if (setreuid(-1, zprivs_state.zuid)) {
 			fprintf(stderr,
 				"privs_init (uid): could not setreuid, %s\n",
-				safe_strerror(errno));
+				strerror(errno));
 			exit(1);
 		}
 	}
@@ -999,7 +998,7 @@ void zprivs_terminate(struct zebra_privs_t *zprivs)
 		if (setreuid(zprivs_state.zuid, zprivs_state.zuid)) {
 			fprintf(stderr,
 				"privs_terminate: could not setreuid, %s",
-				safe_strerror(errno));
+				strerror(errno));
 			exit(1);
 		}
 	}

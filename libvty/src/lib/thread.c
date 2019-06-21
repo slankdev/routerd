@@ -25,7 +25,6 @@
 
 #include "thread.h"
 #include "memory.h"
-#include "log.h"
 #include "hash.h"
 #include "pqueue.h"
 #include "command.h"
@@ -1011,9 +1010,9 @@ static void thread_cancel_rw(struct thread_master *master, int fd, short state)
 		}
 
 	if (!found) {
-		zlog_debug(
+		printf(
 			"[!] Received cancellation request for nonexistent rw job");
-		zlog_debug("[!] threadmaster: %s | fd: %d",
+		printf("[!] threadmaster: %s | fd: %d",
 			   master->name ? master->name : "", fd);
 		return;
 	}
@@ -1291,7 +1290,7 @@ static int thread_process_io_helper(struct thread_master *m,
 
 	if (!thread) {
 		if ((actual_state & (POLLHUP|POLLIN)) != POLLHUP)
-			flog_err(0,
+			fprintf(stderr,
 				 "Attempting to process an I/O event but for fd: %d(%d) no thread to handle this!\n",
 				 m->handler.pfds[pos].fd, actual_state);
 		return 0;
@@ -1497,8 +1496,8 @@ struct thread *thread_fetch(struct thread_master *m, struct thread *fetch)
 			}
 
 			/* else die */
-			flog_err(0, "poll() error: %s",
-				 safe_strerror(errno));
+			fprintf(stderr, "poll() error: %s",
+				 strerror(errno));
 			pthread_mutex_unlock(&m->mtx);
 			fetch = NULL;
 			break;
@@ -1640,8 +1639,7 @@ void thread_call(struct thread *thread)
 		 * Whinge about it now, so we're aware this is yet another task
 		 * to fix.
 		 */
-		flog_warn(
-			0,
+		fprintf(stderr,
 			"SLOW THREAD: task %s (%lx) ran for %lums (cpu time %lums)",
 			thread->funcname, (unsigned long)thread->func,
 			realtime / 1000, cputime / 1000);

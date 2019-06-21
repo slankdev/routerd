@@ -32,7 +32,6 @@
 #include "command.h"
 #include "version.h"
 #include "memory_vty.h"
-#include "log_int.h"
 #include "module.h"
 #include "network.h"
 #include "debug.h"
@@ -223,7 +222,7 @@ void frr_help_exit(int status)
 	FILE *target = status ? stderr : stdout;
 
 	if (status != 0)
-		fprintf(stderr, "Invalid options.\n\n");
+		fprintf(target, "Invalid options.\n\n");
 
 	if (di->printhelp)
 		di->printhelp(target);
@@ -464,14 +463,14 @@ static void frr_mkdir(const char *path, bool strip)
 		if (errno == EEXIST)
 			return;
 
-		flog_err(0, "failed to mkdir \"%s\": %s", path,
+		fprintf(stderr, "failed to mkdir \"%s\": %s", path,
 			 strerror(errno));
 		return;
 	}
 
 	zprivs_get_ids(&ids);
 	if (chown(path, ids.uid_normal, ids.gid_normal))
-		flog_err(0, "failed to chown \"%s\": %s", path,
+		fprintf(stderr, "failed to chown \"%s\": %s", path,
 			 strerror(errno));
 }
 
@@ -524,9 +523,9 @@ static void frr_terminal_close(int isexit)
 
 	nullfd = open("/dev/null", O_RDONLY | O_NOCTTY);
 	if (nullfd == -1) {
-		flog_err_sys(0,
+		fprintf(stderr,
 			     "%s: failed to open /dev/null: %s", __func__,
-			     safe_strerror(errno));
+			     strerror(errno));
 	} else {
 		dup2(nullfd, 0);
 		dup2(nullfd, 1);

@@ -19,7 +19,7 @@
  */
 #include <zebra.h>
 #include <stdio.h>
-
+#include <assert.h>
 #include "printfrr.h"
 #include "memory.h"
 #include "termtable.h"

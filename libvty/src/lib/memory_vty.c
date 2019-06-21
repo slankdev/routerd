@@ -32,7 +32,6 @@
 #include <link.h>
 #endif
 
-#include "log.h"
 #include "memory.h"
 #include "module.h"
 #include "memory_vty.h"

@@ -1,6 +1,5 @@
 
 #include <zebra.h>
-#include "log.h"
 #include "vty.h"
 #include "prefix.h"
 #include "thread.h"
@@ -178,16 +177,12 @@ int dump_args(struct vty *vty, const char *descr, int argc,
 
 int main(int argc, char **argv)
 {
-  /* Set umask before anything for security */
-  umask(0027);
-
   /* master init. */
   master = thread_master_create(NULL);
-  openzlog("common-cli", "NONE", 0, LOG_CONS | LOG_NDELAY | LOG_PID,
-     LOG_DAEMON);
-  zlog_set_level(ZLOG_DEST_SYSLOG, ZLOG_DISABLED);
-  zlog_set_level(ZLOG_DEST_STDOUT, ZLOG_DISABLED);
-  zlog_set_level(ZLOG_DEST_MONITOR, LOG_DEBUG);
+  /* openzlog("common-cli", "NONE", 0, LOG_CONS | LOG_NDELAY | LOG_PID, LOG_DAEMON); */
+  /* zlog_set_level(ZLOG_DEST_SYSLOG, ZLOG_DISABLED); */
+  /* zlog_set_level(ZLOG_DEST_STDOUT, ZLOG_DISABLED); */
+  /* zlog_set_level(ZLOG_DEST_MONITOR, LOG_DEBUG); */
 
   /* Library inits. */
   cmd_init(1);

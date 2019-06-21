@@ -15,7 +15,7 @@
  */
 
 #include <zebra.h>
-
+#include <assert.h>
 #include <stdlib.h>
 #ifdef HAVE_MALLOC_H
 #include <malloc.h>
@@ -28,7 +28,6 @@
 #endif
 
 #include "memory.h"
-#include "log.h"
 
 static struct memgroup *mg_first = NULL;
 struct memgroup **mg_insert = &mg_first;
@@ -85,6 +84,13 @@ static inline void mt_count_free(struct memtype *mt, void *ptr)
 
 	atomic_fetch_sub_explicit(&mt->total, mallocsz, memory_order_relaxed);
 #endif
+}
+
+static inline void memory_oom(size_t size, const char *name)
+{
+  fprintf(stderr, "out of memory: failed to allocate "
+      "%zu bytes for %s" "object", size, name);
+  abort();
 }
 
 static inline void *mt_checkalloc(struct memtype *mt, void *ptr, size_t size)

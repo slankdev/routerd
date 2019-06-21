@@ -32,7 +32,6 @@
 #include "command.h"
 #include "sockunion.h"
 #include "memory.h"
-#include "log.h"
 #include "prefix.h"
 #include "vty.h"
 #include "privs.h"
@@ -288,23 +287,6 @@ done:
 	return len;
 }
 
-/* Output current time to the vty. */
-void vty_time_print(struct vty *vty, int cr)
-{
-	char buf[QUAGGA_TIMESTAMP_LEN];
-
-	if (quagga_timestamp(0, buf, sizeof(buf)) == 0) {
-		zlog_info("quagga_timestamp error");
-		return;
-	}
-	if (cr)
-		vty_out(vty, "%s\n", buf);
-	else
-		vty_out(vty, "%s ", buf);
-
-	return;
-}
-
 /* Say hello to vty interface. */
 void vty_hello(struct vty *vty)
 {
@@ -473,7 +455,6 @@ static int vty_command(struct vty *vty, char *buf)
 			 vty_str);
 
 		/* now log the command */
-		zlog_notice("%s%s", prompt_str, buf);
 	}
 
 		ret = cmd_execute(vty, buf, NULL, 0);
@@ -1184,13 +1165,13 @@ static int vty_telnet_option(struct vty *vty, unsigned char *buf, int nbytes)
 		switch (vty->sb_buf[0]) {
 		case TELOPT_NAWS:
 			if (vty->sb_len != TELNET_NAWS_SB_LEN)
-				flog_err(0,
+				fprintf(stderr,
 					"RFC 1073 violation detected: telnet NAWS option "
 					"should send %d characters, but we received %lu",
 					TELNET_NAWS_SB_LEN,
 					(unsigned long)vty->sb_len);
 			else if (sizeof(vty->sb_buf) < TELNET_NAWS_SB_LEN)
-				flog_err(0,
+				fprintf(stderr,
 					"Bug detected: sizeof(vty->sb_buf) %lu < %d, too small to handle the telnet NAWS option",
 					(unsigned long)sizeof(vty->sb_buf),
 					TELNET_NAWS_SB_LEN);
@@ -1305,9 +1286,9 @@ static int vty_read(struct thread *thread)
 			}
 			vty->monitor = 0; /* disable monitoring to avoid
 					     infinite recursion */
-			flog_err(0,
+			fprintf(stderr,
 				"%s: read error on vty client fd %d, closing: %s",
-				__func__, vty->fd, safe_strerror(errno));
+				__func__, vty->fd, strerror(errno));
 			buffer_reset(vty->obuf);
 			buffer_reset(vty->lbuf);
 		}
@@ -1510,10 +1491,8 @@ static int vty_flush(struct thread *thread)
 			vty->lines >= 0 ? vty->lines : vty->height, erase, 0);
 	switch (flushrc) {
 	case BUFFER_ERROR:
-		vty->monitor =
-			0; /* disable monitoring to avoid infinite recursion */
-		zlog_info("buffer_flush failed on vty client fd %d, closing",
-			  vty->fd);
+		vty->monitor = 0;
+    /* disable monitoring to avoid infinite recursion */
 		buffer_reset(vty->lbuf);
 		buffer_reset(vty->obuf);
 		vty_close(vty);
@@ -1761,8 +1740,8 @@ static int vty_accept(struct thread *thread)
 	/* We can handle IPv4 or IPv6 socket. */
 	vty_sock = sockunion_accept(accept_sock, &su);
 	if (vty_sock < 0) {
-		flog_err(0, "can't accept vty socket : %s",
-			 safe_strerror(errno));
+		fprintf(stderr, "can't accept vty socket : %s",
+			 strerror(errno));
 		return -1;
 	}
 	set_nonblocking(vty_sock);
@@ -1770,47 +1749,14 @@ static int vty_accept(struct thread *thread)
 
 	sockunion2hostprefix(&su, &p);
 
-#if 0
-	/* VTY's accesslist apply. */
-	if (p.family == AF_INET && vty_accesslist_name) {
-		if ((acl = access_list_lookup(AFI_IP, vty_accesslist_name))
-		    && (access_list_apply(acl, &p) == FILTER_DENY)) {
-			zlog_info("Vty connection refused from %s",
-				  sockunion2str(&su, buf, SU_ADDRSTRLEN));
-			close(vty_sock);
-
-			/* continue accepting connections */
-			vty_event(VTY_SERV, accept_sock, NULL);
-
-			return 0;
-		}
-	}
-
-	/* VTY's ipv6 accesslist apply. */
-	if (p.family == AF_INET6 && vty_ipv6_accesslist_name) {
-		if ((acl = access_list_lookup(AFI_IP6,
-					      vty_ipv6_accesslist_name))
-		    && (access_list_apply(acl, &p) == FILTER_DENY)) {
-			zlog_info("Vty connection refused from %s",
-				  sockunion2str(&su, buf, SU_ADDRSTRLEN));
-			close(vty_sock);
-
-			/* continue accepting connections */
-			vty_event(VTY_SERV, accept_sock, NULL);
-
-			return 0;
-		}
-	}
-#endif
-
 	on = 1;
 	ret = setsockopt(vty_sock, IPPROTO_TCP, TCP_NODELAY, (char *)&on,
 			 sizeof(on));
 	if (ret < 0)
-		zlog_info("can't set sockopt to vty_sock : %s",
-			  safe_strerror(errno));
+		printf("can't set sockopt to vty_sock : %s",
+			  strerror(errno));
 
-	zlog_info("Vty connection from %s",
+	printf("Vty connection from %s",
 		  sockunion2str(&su, buf, SU_ADDRSTRLEN));
 
 	vty_create(vty_sock, &su);
@@ -1837,7 +1783,7 @@ static void vty_serv_sock_addrinfo(const char *hostname, unsigned short port)
 	ret = getaddrinfo(hostname, port_str, &req, &ainfo);
 
 	if (ret != 0) {
-		flog_err_sys(0, "getaddrinfo failed: %s",
+		fprintf(stderr, "getaddrinfo failed: %s",
 			     gai_strerror(ret));
 		exit(1);
 	}
@@ -1898,9 +1844,9 @@ static void vty_serv_un(const char *path)
 	/* Make UNIX domain socket. */
 	sock = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sock < 0) {
-		flog_err_sys(0,
+		fprintf(stderr,
 			     "Cannot create unix stream socket: %s",
-			     safe_strerror(errno));
+			     strerror(errno));
 		return;
 	}
 
@@ -1918,16 +1864,16 @@ static void vty_serv_un(const char *path)
 
 	ret = bind(sock, (struct sockaddr *)&serv, len);
 	if (ret < 0) {
-		flog_err_sys(0, "Cannot bind path %s: %s", path,
-			     safe_strerror(errno));
+		fprintf(stderr, "Cannot bind path %s: %s", path,
+			     strerror(errno));
 		close(sock); /* Avoid sd leak. */
 		return;
 	}
 
 	ret = listen(sock, 5);
 	if (ret < 0) {
-		flog_err_sys(0, "listen(fd %d) failed: %s", sock,
-			     safe_strerror(errno));
+		fprintf(stderr, "listen(fd %d) failed: %s", sock,
+			     strerror(errno));
 		close(sock); /* Avoid sd leak. */
 		return;
 	}
@@ -1942,9 +1888,9 @@ static void vty_serv_un(const char *path)
 	if ((int)ids.gid_vty > 0) {
 		/* set group of socket */
 		if (chown(path, -1, ids.gid_vty)) {
-			flog_err_sys(0,
+			fprintf(stderr,
 				     "vty_serv_un: could chown socket, %s",
-				     safe_strerror(errno));
+				     strerror(errno));
 		}
 	}
 
@@ -1972,16 +1918,15 @@ static int vtysh_accept(struct thread *thread)
 		      (socklen_t *)&client_len);
 
 	if (sock < 0) {
-		flog_err(0, "can't accept vty socket : %s",
-			 safe_strerror(errno));
+		fprintf(stderr, "can't accept vty socket : %s",
+			 strerror(errno));
 		return -1;
 	}
 
 	if (set_nonblocking(sock) < 0) {
-		flog_err(
-			0,
+		fprintf(stderr,
 			"vtysh_accept: could not set vty socket %d to non-blocking, %s, closing",
-			sock, safe_strerror(errno));
+			sock, strerror(errno));
 		close(sock);
 		return -1;
 	}
@@ -2011,7 +1956,7 @@ static int vtysh_flush(struct vty *vty)
 	case BUFFER_ERROR:
 		vty->monitor =
 			0; /* disable monitoring to avoid infinite recursion */
-		flog_err(0, "%s: write error to fd %d, closing",
+		fprintf(stderr, "%s: write error to fd %d, closing",
 			 __func__, vty->fd);
 		buffer_reset(vty->lbuf);
 		buffer_reset(vty->obuf);
@@ -2046,10 +1991,9 @@ static int vtysh_read(struct thread *thread)
 			}
 			vty->monitor = 0; /* disable monitoring to avoid
 					     infinite recursion */
-			flog_err(
-				0,
+			fprintf(stderr,
 				"%s: read failed on vtysh client fd %d, closing: %s",
-				__func__, sock, safe_strerror(errno));
+				__func__, sock, strerror(errno));
 		}
 		buffer_reset(vty->lbuf);
 		buffer_reset(vty->obuf);
@@ -2732,13 +2676,13 @@ static void vty_save_cwd(void)
 		 * Hence not worrying about it too much.
 		 */
 		if (!chdir(SYSCONFDIR)) {
-			flog_err_sys(0,
+			fprintf(stderr,
 				     "Failure to chdir to %s, errno: %d",
 				     SYSCONFDIR, errno);
 			exit(-1);
 		}
 		if (getcwd(vty_cwd, sizeof(vty_cwd)) == NULL) {
-			flog_err_sys(0,
+			fprintf(stderr,
 				     "Failure to getcwd, errno: %d", errno);
 			exit(-1);
 		}

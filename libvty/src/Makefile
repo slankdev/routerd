@@ -7,7 +7,6 @@ SRC += lib/vty.c \
 					 lib/printf/printf-pos.c \
 					 lib/prefix.c \
 					 lib/memory.c \
-					 lib/command.c \
 					 lib/termtable.c \
 					 lib/hash.c \
 					 lib/linklist.c \
@@ -18,7 +17,6 @@ SRC += lib/vty.c \
 					 lib/sigevent.c \
 					 lib/frrstr.c \
 					 lib/vector.c \
-					 lib/log.c \
 					 lib/memory_vty.c \
 					 lib/openbsd-tree.c \
 					 lib/strlcpy.c \
@@ -31,13 +29,13 @@ SRC += lib/vty.c \
 					 lib/qobj.c \
 					 lib/typesafe.c \
 					 lib/table.c \
+					 lib/command.c \
 					 lib/command_graph.c \
 					 lib/command_match.c \
 					 lib/command_parse.c \
 					 lib/command_lex.c \
 					 lib/workqueue.c \
 					 lib/ferr.c \
-					 lib/pid_output.c \
 					 lib/graph.c \
 					 lib/json.c \
 					 lib/sockopt.c \
