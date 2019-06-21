@@ -24,7 +24,6 @@ extern "C" {
 #endif
 
 #if defined(__OpenBSD__) && !defined(STAILQ_HEAD)
-#include "openbsd-queue.h"
 
 /* Try to map FreeBSD implementation to OpenBSD one. */
 #define STAILQ_HEAD(name, type)				SIMPLEQ_HEAD(name, type)

@@ -134,8 +134,6 @@ typedef unsigned char uint8_t;
 #endif
 #endif
 
-#include "openbsd-tree.h"
-
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
