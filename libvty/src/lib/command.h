@@ -479,9 +479,6 @@ extern int cmd_hostname_set(const char *hostname);
 extern const char *cmd_hostname_get(void);
 extern const char *cmd_domainname_get(void);
 
-/* NOT safe for general use; call this only if DEV_BUILD! */
-extern void grammar_sandbox_init(void);
-
 extern vector completions_to_vec(struct list *completions);
 
 /* Export typical functions. */

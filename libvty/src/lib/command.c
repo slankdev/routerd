@@ -2,6 +2,7 @@
  * CLI backend interface.
  *
  * --
+ * Copyright (C) 2019 Hiroki Shirokura / slankdev
  * Copyright (C) 2016 Cumulus Networks, Inc.
  * Copyright (C) 1997, 98, 99 Kunihiro Ishiguro
  * Copyright (C) 2013 by Open Source Routing.
@@ -30,7 +31,6 @@
 #include "command.h"
 #include "frrstr.h"
 #include "memory.h"
-#include "thread.h"
 #include "vector.h"
 #include "linklist.h"
 #include "vty.h"
@@ -65,10 +65,7 @@
 DEFINE_MTYPE(LIB, HOST, "Host config")
 DEFINE_MTYPE(LIB, COMPLETION, "Completion item")
 
-#define item(x)                                                                \
-  {                                                                      \
-    x, #x                                                          \
-  }
+#define item(x) { x, #x }
 
 const char *node_names[] = {
   "auth",          // AUTH_NODE,
@@ -133,47 +130,35 @@ const char *node_names[] = {
 };
 /* clang-format on */
 
-/* Command vector which includes some level of command lists. Normally
-   each daemon maintains each own cmdvec. */
+/*
+ * Command vector which includes some level
+ * of command lists. Normally each daemon
+ * maintains each own cmdvec.
+ */
 vector cmdvec = NULL;
 
-/* Host information structure. */
-struct host host;
+struct host host; /* Host information structure. */
 
-/*
- * Returns host.name if any, otherwise
- * it returns the system hostname.
- */
 const char *cmd_hostname_get(void)
-{
-  return host.name;
-}
-
-/*
- * Returns unix domainname
- */
+{ return host.name; }
 const char *cmd_domainname_get(void)
+{ return host.domainname; }
+int cmd_password_set(const char *password)
 {
-  return host.domainname;
+  host.password = strdup(password);
+  return CMD_SUCCESS;
+}
+int cmd_hostname_set(const char *hostname)
+{
+  host.name = strdup(hostname);
+  return CMD_SUCCESS;
 }
 
 /* Standard command node structures. */
-static struct cmd_node auth_node = {
-  AUTH_NODE, "Password: ",
-};
-
-static struct cmd_node view_node = {
-  VIEW_NODE, "%s> ",
-};
-
-static struct cmd_node auth_enable_node = {
-  AUTH_ENABLE_NODE, "Password: ",
-};
-
-static struct cmd_node enable_node = {
-  ENABLE_NODE, "%s# ",
-};
-
+static struct cmd_node auth_node = { AUTH_NODE, "Password: ", };
+static struct cmd_node view_node = { VIEW_NODE, "%s> ", };
+static struct cmd_node auth_enable_node = { AUTH_ENABLE_NODE, "Password: ", };
+static struct cmd_node enable_node = { ENABLE_NODE, "%s# ", };
 static struct cmd_node config_node = {CONFIG_NODE, "%s(config)# ", 1};
 
 /* Default motd string. */
@@ -210,9 +195,9 @@ static const struct facility_map {
 
 static const char *facility_name(int facility)
 {
-  const struct facility_map *fm;
-
-  for (fm = syslog_facilities; fm->name; fm++)
+  for (const struct facility_map *fm =
+       syslog_facilities;
+       fm->name; fm++)
     if (fm->facility == facility)
       return fm->name;
   return "";
@@ -305,7 +290,6 @@ int argv_find(struct cmd_token **argv, int argc, const char *text, int *index)
 static unsigned int cmd_hash_key(const void *p)
 {
   int size = sizeof(p);
-
   return jhash(p, size, 0);
 }
 
@@ -334,7 +318,6 @@ void install_node(struct cmd_node *node, int (*func)(struct vty *))
 const char *cmd_prompt(enum node_type node)
 {
   struct cmd_node *cnode;
-
   cnode = vector_slot(cmdvec, node);
   return cnode->prompt;
 }
@@ -649,27 +632,26 @@ void cmd_variable_complete(struct cmd_token *token, const char *arg,
   vector_free(tmpcomps);
 }
 
-#define AUTOCOMP_INDENT 5
-
 char *cmd_variable_comp2str(vector comps, unsigned short cols)
 {
   size_t bsz = 16;
   char *buf = XCALLOC(MTYPE_TMP, bsz);
-  int lc = AUTOCOMP_INDENT;
-  size_t cs = AUTOCOMP_INDENT;
+  const int autocomp_indent = 5;
+  int lc = autocomp_indent;
+  size_t cs = autocomp_indent;
   size_t itemlen;
-  snprintf(buf, bsz, "%*s", AUTOCOMP_INDENT, "");
+  snprintf(buf, bsz, "%*s", autocomp_indent, "");
   for (size_t j = 0; j < vector_active(comps); j++) {
     char *item = vector_slot(comps, j);
     itemlen = strlen(item);
 
-    if (cs + itemlen + AUTOCOMP_INDENT + 3 >= bsz)
+    if (cs + itemlen + autocomp_indent + 3 >= bsz)
       buf = XREALLOC(MTYPE_TMP, buf, (bsz *= 2));
 
     if (lc + itemlen + 1 >= cols) {
       cs += snprintf(&buf[cs], bsz - cs, "\n%*s",
-               AUTOCOMP_INDENT, "");
-      lc = AUTOCOMP_INDENT;
+               autocomp_indent, "");
+      lc = autocomp_indent;
     }
 
     size_t written = snprintf(&buf[cs], bsz - cs, "%s ", item);
@@ -1522,19 +1504,6 @@ DEFUN(config_no_domainname,
   return cmd_domainname_set(NULL);
 }
 
-int cmd_password_set(const char *password)
-{
-  host.password = strdup(password);
-  return CMD_SUCCESS;
-}
-
-int cmd_hostname_set(const char *hostname)
-{
-  XFREE(MTYPE_HOST, host.name);
-  host.name = hostname ? XSTRDUP(MTYPE_HOST, hostname) : NULL;
-  return CMD_SUCCESS;
-}
-
 /* Hostname configuration */
 DEFUN (config_hostname,
        hostname_cmd,
@@ -1962,30 +1931,22 @@ void cmd_init()
   install_element(ENABLE_NODE, &config_end_cmd);
   install_element(ENABLE_NODE, &config_disable_cmd);
   install_element(ENABLE_NODE, &config_terminal_cmd);
-  install_default(CONFIG_NODE);
-  thread_cmd_init();
-
   install_element(CONFIG_NODE, &hostname_cmd);
   install_element(CONFIG_NODE, &no_hostname_cmd);
   install_element(CONFIG_NODE, &domainname_cmd);
   install_element(CONFIG_NODE, &no_domainname_cmd);
   install_element(CONFIG_NODE, &frr_version_defaults_cmd);
-
   install_element(CONFIG_NODE, &password_cmd);
   install_element(CONFIG_NODE, &no_password_cmd);
   install_element(CONFIG_NODE, &enable_password_cmd);
   install_element(CONFIG_NODE, &no_enable_password_cmd);
-
   install_element(CONFIG_NODE, &service_password_encrypt_cmd);
   install_element(CONFIG_NODE, &no_service_password_encrypt_cmd);
   install_element(CONFIG_NODE, &banner_motd_default_cmd);
   install_element(CONFIG_NODE, &no_banner_motd_cmd);
   install_element(CONFIG_NODE, &service_terminal_length_cmd);
   install_element(CONFIG_NODE, &no_service_terminal_length_cmd);
-
-#ifdef DEV_BUILD
-  grammar_sandbox_init();
-#endif
+  install_default(CONFIG_NODE);
 }
 
 void cmd_terminate(void)
@@ -1995,8 +1956,6 @@ void cmd_terminate(void)
   if (cmdvec) {
     for (unsigned int i = 0; i < vector_active(cmdvec); i++)
       if ((cmd_node = vector_slot(cmdvec, i)) != NULL) {
-        // deleting the graph delets the cmd_element as
-        // well
         graph_delete_graph(cmd_node->cmdgraph);
         vector_free(cmd_node->cmd_vector);
         hash_clean(cmd_node->cmd_hash, NULL);
