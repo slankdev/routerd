@@ -39,7 +39,7 @@ DUMMY_DEFUN(cmd12, "alt a A.B.C.D");
 DUMMY_DEFUN(cmd13, "alt a X:X::X:X");
 DUMMY_DEFUN(cmd14, "pat g {  foo A.B.C.D$foo|foo|bar   X:X::X:X$bar| baz } [final]");
 
-void install_commands(int argc, char **argv)
+void install_commands()
 {
   install_element(ENABLE_NODE, &cmd0_cmd);
   install_element(ENABLE_NODE, &cmd1_cmd);
@@ -71,23 +71,27 @@ vty_do_exit(int isexit)
     exit(0);
 }
 
-int main(int argc, char **argv)
+void *th(void *ptr)
 {
   master = thread_master_create(NULL);
-
-  cmd_init(1);
+  cmd_init();
   cmd_password_set("slank");
   cmd_hostname_set("test");
   cmd_domainname_set("test.domain");
   vty_init(master, false);
   vty_serv_sock(NULL, 9077, "/var/run/frr/slank.vty");
-  install_commands(argc, argv);
-  vty_stdio(vty_do_exit);
-
+  install_commands();
+  vty_stdio(NULL);
   struct thread thread;
-  while (thread_fetch(master, &thread)) {
+  while (thread_fetch(master, &thread))
     thread_call(&thread);
-  }
-  exit(0);
+  return NULL;
+}
+
+int main(int argc, char **argv)
+{
+  pthread_t thread1;
+  int ret = pthread_create(&thread1, NULL, th, NULL);
+  pthread_join(thread1, NULL);
 }
 
