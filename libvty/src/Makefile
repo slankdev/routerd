@@ -23,6 +23,7 @@ SRC += lib/vty.c \
 			 lib/typesafe.c \
 			 lib/command.c \
 			 lib/command_graph.c \
+			 lib/command_node.c \
 			 lib/command_match.c \
 			 lib/command_parse.c \
 			 lib/command_lex.c \
