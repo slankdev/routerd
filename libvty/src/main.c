@@ -85,8 +85,9 @@ int main(int argc, char **argv)
   vty_stdio(vty_do_exit);
 
   struct thread thread;
-  while (thread_fetch(master, &thread))
+  while (thread_fetch(master, &thread)) {
     thread_call(&thread);
+  }
   exit(0);
 }
 
