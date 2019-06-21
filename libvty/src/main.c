@@ -1,11 +1,6 @@
 
 #include <zebra.h>
-#include "vty.h"
-#include "prefix.h"
-#include "thread.h"
 #include "command.h"
-#include "command.h"
-#include "memory.h"
 
 int dump_args(struct vty *vty,
     const char *descr, int argc,
