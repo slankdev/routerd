@@ -63,9 +63,21 @@ void install_commands(int argc, char **argv)
   install_element(ENABLE_NODE, &cmd14_cmd);
 }
 
+struct thread_master *master = NULL;
+
+static void
+vty_do_exit(int isexit)
+{
+  printf("\nend.\n");
+  cmd_terminate();
+  vty_terminate();
+  thread_master_free(master);
+  if (!isexit)
+    exit(0);
+}
+
 int main(int argc, char **argv)
 {
-  struct thread_master *master;
   master = thread_master_create(NULL);
 
   cmd_init(1);
@@ -75,6 +87,7 @@ int main(int argc, char **argv)
   vty_init(master, false);
   vty_serv_sock(NULL, 9077, "/var/run/frr/slank.vty");
   install_commands(argc, argv);
+  vty_stdio(vty_do_exit);
 
   struct thread thread;
   while (thread_fetch(master, &thread))
