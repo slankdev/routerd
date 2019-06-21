@@ -21,10 +21,6 @@
 #ifndef _ZEBRA_H
 #define _ZEBRA_H
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif /* HAVE_CONFIG_H */
-
 #include "compiler.h"
 
 #ifdef SUNOS_5

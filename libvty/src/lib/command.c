@@ -38,8 +38,8 @@
 #include "command_graph.h"
 #include "qobj.h"
 #include "hash.h"
-#include "config.h"
 
+#define DFLT_NAME "traditional"
 #ifdef HAVE_DATACENTER
 #define DFLT_BGP_IMPORT_CHECK			1
 #define DFLT_BGP_TIMERS_CONNECT			10

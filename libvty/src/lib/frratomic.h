@@ -17,10 +17,8 @@
 #ifndef _FRRATOMIC_H
 #define _FRRATOMIC_H
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
+#define HAVE_STDATOMIC_H 1
+#define FRR_AUTOCONF_ATOMIC 1
 #ifndef FRR_AUTOCONF_ATOMIC
 #error autoconf checks for atomic functions were not properly run
 #endif

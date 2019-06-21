@@ -678,6 +678,7 @@ zebra_privs_current_t zprivs_state_null(void)
 	return zprivs_null_state;
 }
 
+#define HAVE_GETGROUPLIST 1
 #ifndef HAVE_GETGROUPLIST
 /* Solaris 11 has no getgrouplist() */
 static int getgrouplist(const char *user, gid_t group, gid_t *groups,
