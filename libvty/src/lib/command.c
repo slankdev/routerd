@@ -1188,29 +1188,6 @@ int command_config_read_one_line(struct vty *vty,
   return ret;
 }
 
-/* Configuration make from file. */
-int config_from_file(struct vty *vty, FILE *fp, unsigned int *line_num)
-{
-  int ret, error_ret = 0;
-  *line_num = 0;
-
-  while (fgets(vty->buf, VTY_BUFSIZ, fp)) {
-    ++(*line_num);
-
-    ret = command_config_read_one_line(vty, NULL, *line_num, 0);
-
-    if (ret != CMD_SUCCESS && ret != CMD_WARNING
-        && ret != CMD_ERR_NOTHING_TODO)
-      error_ret = ret;
-  }
-
-  if (error_ret) {
-    return error_ret;
-  }
-
-  return CMD_SUCCESS;
-}
-
 /* Configuration from terminal */
 DEFUN (config_terminal,
        config_terminal_cmd,
@@ -1401,18 +1378,17 @@ DEFUN (config_help,
        "Description of the interactive help system\n")
 {
   vty_out(vty,
-    "Quagga VTY provides advanced help feature.  When you need help,\n\
-anytime at the command line please press '?'.\n\
-\n\
-If nothing matches, the help list will be empty and you must backup\n\
- until entering a '?' shows the available options.\n\
-Two styles of help are provided:\n\
-1. Full help is available when you are ready to enter a\n\
-command argument (e.g. 'show ?') and describes each possible\n\
-argument.\n\
-2. Partial help is provided when an abbreviated argument is entered\n\
-   and you want to know what arguments match the input\n\
-   (e.g. 'show me?'.)\n\n");
+    "Quagga VTY provides advanced help feature.  When you need help,\n"
+    "anytime at the command line please press '?'.\n\n"
+    "If nothing matches, the help list will be empty and you must backup\n"
+    " until entering a '?' shows the available options.\n"
+    "Two styles of help are provided:\n"
+    "1. Full help is available when you are ready to enter a\n"
+    "command argument (e.g. 'show ?') and describes each possible\n"
+    "argument.\n"
+    "2. Partial help is provided when an abbreviated argument is entered\n"
+    "and you want to know what arguments match the input\n"
+    "(e.g. 'show me?'.)\n\n");
   return CMD_SUCCESS;
 }
 
@@ -1510,216 +1486,6 @@ DEFUN_HIDDEN(show_cli_graph,
 
   vty_out(vty, "%s\n", dot);
   XFREE(MTYPE_TMP, dot);
-  return CMD_SUCCESS;
-}
-
-static int vty_write_config(struct vty *vty)
-{
-  size_t i;
-  struct cmd_node *node;
-
-  if (host.noconfig)
-    return CMD_SUCCESS;
-
-  if (vty->type == VTY_TERM) {
-    vty_out(vty, "\nCurrent configuration:\n");
-    vty_out(vty, "!\n");
-  }
-
-  vty_out(vty, "frr version %s\n", FRR_VER_SHORT);
-  vty_out(vty, "frr defaults %s\n", DFLT_NAME);
-  vty_out(vty, "!\n");
-
-  if (vty->type == VTY_TERM) {
-    vty_out(vty, "end\n");
-  }
-
-  return CMD_SUCCESS;
-}
-
-static int file_write_config(struct vty *vty)
-{
-  int fd, dirfd;
-  char *config_file, *slash;
-  char *config_file_tmp = NULL;
-  char *config_file_sav = NULL;
-  int ret = CMD_WARNING;
-  struct vty *file_vty;
-  struct stat conf_stat;
-
-  if (host.noconfig)
-    return CMD_SUCCESS;
-
-  /* Check and see if we are operating under vtysh configuration */
-  if (host.config == NULL) {
-    vty_out(vty,
-      "Can't save to configuration file, using vtysh.\n");
-    return CMD_WARNING;
-  }
-
-  /* Get filename. */
-  config_file = host.config;
-
-#ifndef O_DIRECTORY
-#define O_DIRECTORY 0
-#endif
-  slash = strrchr(config_file, '/');
-  if (slash) {
-    char *config_dir = XSTRDUP(MTYPE_TMP, config_file);
-    config_dir[slash - config_file] = '\0';
-    dirfd = open(config_dir, O_DIRECTORY | O_RDONLY);
-    XFREE(MTYPE_TMP, config_dir);
-  } else
-    dirfd = open(".", O_DIRECTORY | O_RDONLY);
-  /* if dirfd is invalid, directory sync fails, but we're still OK */
-
-  size_t config_file_sav_sz = strlen(config_file) + strlen(CONF_BACKUP_EXT) + 1;
-  config_file_sav = XMALLOC(MTYPE_TMP, config_file_sav_sz);
-  strlcpy(config_file_sav, config_file, config_file_sav_sz);
-  strlcat(config_file_sav, CONF_BACKUP_EXT, config_file_sav_sz);
-
-
-  config_file_tmp = XMALLOC(MTYPE_TMP, strlen(config_file) + 8);
-  sprintf(config_file_tmp, "%s.XXXXXX", config_file);
-
-  /* Open file to configuration write. */
-  fd = mkstemp(config_file_tmp);
-  if (fd < 0) {
-    vty_out(vty, "Can't open configuration file %s.\n",
-      config_file_tmp);
-    goto finished;
-  }
-  if (fchmod(fd, 0640) != 0) {
-    vty_out(vty, "Can't chmod configuration file %s: %s (%d).\n",
-      config_file_tmp, strerror(errno), errno);
-    goto finished;
-  }
-
-  /* Make vty for configuration file. */
-  file_vty = vty_new();
-  file_vty->wfd = fd;
-  file_vty->type = VTY_FILE;
-
-  /* Config file header print. */
-  vty_out(file_vty, "!\n! Zebra configuration saved from vty\n!   ");
-  vty_out(file_vty, "!\n");
-  vty_write_config(file_vty);
-  vty_close(file_vty);
-
-  if (stat(config_file, &conf_stat) >= 0) {
-    if (unlink(config_file_sav) != 0)
-      if (errno != ENOENT) {
-        vty_out(vty,
-          "Can't unlink backup configuration file %s.\n",
-          config_file_sav);
-        goto finished;
-      }
-    if (link(config_file, config_file_sav) != 0) {
-      vty_out(vty,
-        "Can't backup old configuration file %s.\n",
-        config_file_sav);
-      goto finished;
-    }
-    if (dirfd >= 0)
-      fsync(dirfd);
-  }
-  if (rename(config_file_tmp, config_file) != 0) {
-    vty_out(vty, "Can't save configuration file %s.\n",
-      config_file);
-    goto finished;
-  }
-  if (dirfd >= 0)
-    fsync(dirfd);
-
-  vty_out(vty, "Configuration saved to %s\n", config_file);
-  ret = CMD_SUCCESS;
-
-finished:
-  if (ret != CMD_SUCCESS)
-    unlink(config_file_tmp);
-  if (dirfd >= 0)
-    close(dirfd);
-  XFREE(MTYPE_TMP, config_file_tmp);
-  XFREE(MTYPE_TMP, config_file_sav);
-  return ret;
-}
-
-/* Write current configuration into file. */
-
-DEFUN (config_write,
-       config_write_cmd,
-       "write [<file|memory|terminal>]",
-       "Write running configuration to memory, network, or terminal\n"
-       "Write to configuration file\n"
-       "Write configuration currently in memory\n"
-       "Write configuration to terminal\n")
-{
-  const int idx_type = 1;
-
-  // if command was 'write terminal' or 'write memory'
-  if (argc == 2 && (!strcmp(argv[idx_type]->text, "terminal"))) {
-    return vty_write_config(vty);
-  }
-
-  return file_write_config(vty);
-}
-
-/* ALIAS_FIXME for 'write <terminal|memory>' */
-DEFUN (show_running_config,
-       show_running_config_cmd,
-       "show running-config",
-       SHOW_STR
-       "running configuration (same as write terminal)\n")
-{
-  return vty_write_config(vty);
-}
-
-/* ALIAS_FIXME for 'write file' */
-DEFUN (copy_runningconf_startupconf,
-       copy_runningconf_startupconf_cmd,
-       "copy running-config startup-config",
-       "Copy configuration\n"
-       "Copy running config to... \n"
-       "Copy running config to startup config (same as write file/memory)\n")
-{
-  return file_write_config(vty);
-}
-/** -- **/
-
-/* Write startup configuration into the terminal. */
-DEFUN (show_startup_config,
-       show_startup_config_cmd,
-       "show startup-config",
-       SHOW_STR
-       "Contents of startup configuration\n")
-{
-  char buf[BUFSIZ];
-  FILE *confp;
-
-  if (host.noconfig)
-    return CMD_SUCCESS;
-  if (host.config == NULL)
-    return CMD_WARNING;
-
-  confp = fopen(host.config, "r");
-  if (confp == NULL) {
-    vty_out(vty, "Can't open configuration file [%s] due to '%s'\n",
-      host.config, strerror(errno));
-    return CMD_WARNING;
-  }
-
-  while (fgets(buf, BUFSIZ, confp)) {
-    char *cp = buf;
-
-    while (*cp != '\r' && *cp != '\n' && *cp != '\0')
-      cp++;
-    *cp = '\0';
-
-    vty_out(vty, "%s\n", buf);
-  }
-
-  fclose(confp);
-
   return CMD_SUCCESS;
 }
 
@@ -2148,43 +1914,22 @@ void install_default(enum node_type node)
   install_element(node, &config_list_cmd);
   install_element(node, &show_cli_graph_cmd);
   install_element(node, &find_cmd);
-
-  install_element(node, &config_write_cmd);
-  install_element(node, &show_running_config_cmd);
-
   install_element(node, &autocomplete_cmd);
 }
 
-/* Initialize command interface. Install basic nodes and commands.
- *
- * terminal = 0 -- vtysh / no logging, no config control
- * terminal = 1 -- normal daemon
- * terminal = -1 -- watchfrr / no logging, but minimal config control */
 void cmd_init()
 {
   struct utsname names;
-
-  /* if (array_size(node_names) != NODE_TYPE_MAX) */
-  /*   assert(!"Update the CLI node description array!"); */
-
   uname(&names);
   qobj_init();
 
-  varhandlers = list_new();
-
   /* Allocate initial top vector of commands. */
+  varhandlers = list_new();
   cmdvec = vector_init(VECTOR_MIN_SIZE);
 
   /* Default host value settings. */
   host.name = XSTRDUP(MTYPE_HOST, names.nodename);
-#ifdef HAVE_STRUCT_UTSNAME_DOMAINNAME
-  if ((strcmp(names.domainname, "(none)") == 0))
-    host.domainname = NULL;
-  else
-    host.domainname = XSTRDUP(MTYPE_HOST, names.domainname);
-#else
   host.domainname = NULL;
-#endif
   host.password = NULL;
   host.enable = NULL;
   host.logfile = NULL;
@@ -2203,8 +1948,6 @@ void cmd_init()
 
   /* Each node's basic commands. */
   install_element(VIEW_NODE, &show_version_cmd);
-  install_element(ENABLE_NODE, &show_startup_config_cmd);
-
   install_element(VIEW_NODE, &config_list_cmd);
   install_element(VIEW_NODE, &config_exit_cmd);
   install_element(VIEW_NODE, &config_quit_cmd);
@@ -2219,9 +1962,6 @@ void cmd_init()
   install_element(ENABLE_NODE, &config_end_cmd);
   install_element(ENABLE_NODE, &config_disable_cmd);
   install_element(ENABLE_NODE, &config_terminal_cmd);
-  install_element(ENABLE_NODE, &copy_runningconf_startupconf_cmd);
-  install_element(ENABLE_NODE, &config_write_cmd);
-  install_element(ENABLE_NODE, &show_running_config_cmd);
   install_default(CONFIG_NODE);
   thread_cmd_init();
 
