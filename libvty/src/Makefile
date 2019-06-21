@@ -34,7 +34,6 @@ SRC += lib/vty.c \
 					 lib/command_match.c \
 					 lib/command_parse.c \
 					 lib/command_lex.c \
-					 lib/workqueue.c \
 					 lib/ferr.c \
 					 lib/graph.c \
 					 lib/json.c \
