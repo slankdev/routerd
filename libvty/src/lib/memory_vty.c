@@ -33,7 +33,6 @@
 #endif
 
 #include "memory.h"
-#include "module.h"
 #include "memory_vty.h"
 
 /* Looking up memory status from vty interface. */
@@ -133,50 +132,9 @@ DEFUN (show_memory,
 	return CMD_SUCCESS;
 }
 
-DEFUN (show_modules,
-       show_modules_cmd,
-       "show modules",
-       "Show running system information\n"
-       "Loaded modules\n")
-{
-	struct frrmod_runtime *plug = frrmod_list;
-
-	vty_out(vty, "%-12s %-25s %s\n\n", "Module Name", "Version",
-		"Description");
-	while (plug) {
-		const struct frrmod_info *i = plug->info;
-
-		vty_out(vty, "%-12s %-25s %s\n", i->name, i->version,
-			i->description);
-		if (plug->dl_handle) {
-#ifdef HAVE_DLINFO_ORIGIN
-			char origin[MAXPATHLEN] = "";
-			dlinfo(plug->dl_handle, RTLD_DI_ORIGIN, &origin);
-#ifdef HAVE_DLINFO_LINKMAP
-			const char *name;
-			struct link_map *lm = NULL;
-			dlinfo(plug->dl_handle, RTLD_DI_LINKMAP, &lm);
-			if (lm) {
-				name = strrchr(lm->l_name, '/');
-				name = name ? name + 1 : lm->l_name;
-				vty_out(vty, "\tfrom: %s/%s\n", origin, name);
-			}
-#else
-			vty_out(vty, "\tfrom: %s \n", origin, plug->load_name);
-#endif
-#else
-			vty_out(vty, "\tfrom: %s\n", plug->load_name);
-#endif
-		}
-		plug = plug->next;
-	}
-	return CMD_SUCCESS;
-}
-
 void memory_init(void)
 {
 	install_element(VIEW_NODE, &show_memory_cmd);
-	install_element(VIEW_NODE, &show_modules_cmd);
 }
 
 /* Stats querying from users */

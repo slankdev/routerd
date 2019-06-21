@@ -20,7 +20,6 @@ SRC += lib/vty.c \
 					 lib/memory_vty.c \
 					 lib/strlcpy.c \
 					 lib/strlcat.c \
-					 lib/module.c \
 					 lib/sockunion.c \
 					 lib/privs.c \
 					 lib/buffer.c \

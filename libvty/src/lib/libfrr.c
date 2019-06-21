@@ -32,7 +32,6 @@
 #include "command.h"
 #include "version.h"
 #include "memory_vty.h"
-#include "module.h"
 #include "network.h"
 
 const char frr_sysconfdir[] = SYSCONFDIR;

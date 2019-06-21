@@ -25,7 +25,6 @@
 #include "privs.h"
 #include "thread.h"
 #include "getopt.h"
-#include "module.h"
 
 #ifdef __cplusplus
 extern "C" {
