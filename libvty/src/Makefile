@@ -33,10 +33,9 @@ SRC += lib/vty.c \
 					 lib/command_parse.c \
 					 lib/command_lex.c \
 					 lib/graph.c \
-					 lib/json.c \
 					 lib/sockopt.c \
 					 # end
-LDFLAGS += -lpthread -ljson-c -lyang -lm $(shell pkg-config --libs glib-2.0) -ldl -lcrypt -lunwind
+LDFLAGS += -lpthread -lm $(shell pkg-config --libs glib-2.0) -ldl -lcrypt -lunwind
 
 SRC += main.c
 OBJ = $(SRC:.c=.o)
