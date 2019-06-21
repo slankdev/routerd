@@ -36,7 +36,6 @@
 #include "vty.h"
 #include "privs.h"
 #include "network.h"
-#include "libfrr.h"
 #include "frrstr.h"
 #include "printfrr.h"
 
@@ -420,7 +419,6 @@ static void vty_auth(struct vty *vty, char *buf)
 static int vty_command(struct vty *vty, char *buf)
 {
 	int ret;
-	const char *protocolname;
 	char *cp = NULL;
 
 	assert(vty);
@@ -460,7 +458,6 @@ static int vty_command(struct vty *vty, char *buf)
 		ret = cmd_execute(vty, buf, NULL, 0);
 
 		/* Get the name of the protocol if any */
-		protocolname = frr_protoname;
 
 	if (ret != CMD_SUCCESS)
 		switch (ret) {
@@ -472,8 +469,7 @@ static int vty_command(struct vty *vty, char *buf)
 			vty_out(vty, "%% Ambiguous command.\n");
 			break;
 		case CMD_ERR_NO_MATCH:
-			vty_out(vty, "%% [%s] Unknown command: %s\n",
-				protocolname, buf);
+			vty_out(vty, "%% Unknown command: %s\n", buf);
 			break;
 		case CMD_ERR_INCOMPLETE:
 			vty_out(vty, "%% Command incomplete.\n");

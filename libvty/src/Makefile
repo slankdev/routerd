@@ -10,7 +10,6 @@ SRC += lib/vty.c \
 					 lib/termtable.c \
 					 lib/hash.c \
 					 lib/linklist.c \
-					 lib/libfrr.c \
 					 lib/thread.c \
 					 lib/network.c \
 					 lib/pqueue.c \

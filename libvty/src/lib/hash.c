@@ -27,7 +27,6 @@
 #include "termtable.h"
 #include "vty.h"
 #include "command.h"
-#include "libfrr.h"
 
 DEFINE_MTYPE(LIB, HASH, "Hash")
 DEFINE_MTYPE(LIB, HASH_BACKET, "Hash Bucket")
@@ -419,12 +418,8 @@ DEFUN_NOSH(show_hash_stats,
 	pthread_mutex_unlock(&_hashes_mtx);
 
 	/* display header */
-	char header[] = "Showing hash table statistics for ";
-	char underln[sizeof(header) + strlen(frr_protonameinst)];
-	memset(underln, '-', sizeof(underln));
-	underln[sizeof(underln) - 1] = '\0';
-	vty_out(vty, "%s%s\n", header, frr_protonameinst);
-	vty_out(vty, "%s\n", underln);
+	char header[] = "Showing hash table statistics";
+	vty_out(vty, "%s\n", header);
 
 	vty_out(vty, "# allocated: %d\n", _hashes->count);
 	vty_out(vty, "# named:     %d\n\n", tt->nrows - 1);
