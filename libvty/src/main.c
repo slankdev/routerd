@@ -10,12 +10,6 @@
 
 /* function to be implemented by test */
 extern void test_init(int argc, char **argv);
-
-/* functions provided by common cli
- * (includes main())
- */
-extern struct thread_master *master;
-
 extern int dump_args(struct vty *vty, const char *descr, int argc,
          struct cmd_token *argv[]);
 
@@ -31,8 +25,6 @@ extern int dump_args(struct vty *vty, const char *descr, int argc,
 
 DUMMY_DEFUN(cmd0, "slank ipv4 A.B.C.D");
 DUMMY_DEFUN(cmd1, "show int");
-/* DUMMY_DEFUN(cmd0, "arg ipv4 A.B.C.D"); */
-/* DUMMY_DEFUN(cmd1, "arg ipv4m A.B.C.D/M"); */
 DUMMY_DEFUN(cmd2, "arg ipv6 X:X::X:X$foo");
 DUMMY_DEFUN(cmd3, "arg ipv6m X:X::X:X/M");
 DUMMY_DEFUN(cmd4, "arg range (5-15)");
@@ -45,8 +37,7 @@ DUMMY_DEFUN(cmd10, "pat f [key]");
 DUMMY_DEFUN(cmd11, "alt a WORD");
 DUMMY_DEFUN(cmd12, "alt a A.B.C.D");
 DUMMY_DEFUN(cmd13, "alt a X:X::X:X");
-DUMMY_DEFUN(cmd14,
-      "pat g {  foo A.B.C.D$foo|foo|bar   X:X::X:X$bar| baz } [final]");
+DUMMY_DEFUN(cmd14, "pat g {  foo A.B.C.D$foo|foo|bar   X:X::X:X$bar| baz } [final]");
 
 /* magic_test => "magic (0-100) {ipv4net A.B.C.D/M|X:X::X:X$ipv6}" */
 DEFUN_CMD_FUNC_DECL(magic_test)
@@ -160,8 +151,6 @@ void install_commands(int argc, char **argv)
   install_element(ENABLE_NODE, &magic_test_cmd);
 }
 
-struct thread_master *master;
-
 int dump_args(struct vty *vty, const char *descr, int argc,
         struct cmd_token *argv[])
 {
@@ -177,14 +166,9 @@ int dump_args(struct vty *vty, const char *descr, int argc,
 
 int main(int argc, char **argv)
 {
-  /* master init. */
+  struct thread_master *master;
   master = thread_master_create(NULL);
-  /* openzlog("common-cli", "NONE", 0, LOG_CONS | LOG_NDELAY | LOG_PID, LOG_DAEMON); */
-  /* zlog_set_level(ZLOG_DEST_SYSLOG, ZLOG_DISABLED); */
-  /* zlog_set_level(ZLOG_DEST_STDOUT, ZLOG_DISABLED); */
-  /* zlog_set_level(ZLOG_DEST_MONITOR, LOG_DEBUG); */
 
-  /* Library inits. */
   cmd_init(1);
   cmd_password_set("slank");
   cmd_hostname_set("test");
@@ -194,7 +178,6 @@ int main(int argc, char **argv)
   memory_init();
   install_commands(argc, argv);
 
-  /* Fetch next active thread. */
   struct thread thread;
   while (thread_fetch(master, &thread))
     thread_call(&thread);
