@@ -1,4 +1,3 @@
-
 #include "command.h"
 #include "command_node.h"
 
@@ -31,12 +30,35 @@ DEFUN (filter_ifinfo_msg_flag,
   return CMD_SUCCESS;
 }
 
-DEFUN (show_netlink_mask,
-       show_netlink_mask_cmd,
-       "show netlink mask",
+DEFUN (show_netlink_filter,
+       show_netlink_filter_cmd,
+       "show netlink filter",
        SHOW_STR
        "Show netlink information\n"
-       "Show netlink mask\n")
+       "Show netlink filter\n")
+{
+  vty_out(vty, "%s\n", __func__);
+  return CMD_SUCCESS;
+}
+
+DEFUN (show_netlink_cache,
+       show_netlink_cache_cmd,
+       "show netlink cache iflink",
+       SHOW_STR
+       "Show netlink information\n"
+       "Show netlink cache information\n"
+       "Show netlink iflink cache\n")
+{
+  vty_out(vty, "%s\n", __func__);
+  return CMD_SUCCESS;
+}
+
+DEFUN (show_netlink_counter,
+       show_netlink_counter_cmd,
+       "show netlink counter",
+       SHOW_STR
+       "Show netlink information\n"
+       "Show netlink message counter\n")
 {
   vty_out(vty, "%s\n", __func__);
   return CMD_SUCCESS;
@@ -48,7 +70,9 @@ setup_netlink_node()
   netlink_node_id = alloc_new_node_id("netlink", CONFIG_NODE);
   netlink_node.node = netlink_node_id;
   install_node(&netlink_node, NULL);
-  install_element(ENABLE_NODE, &show_netlink_mask_cmd);
+  install_element(ENABLE_NODE, &show_netlink_filter_cmd);
+  install_element(ENABLE_NODE, &show_netlink_cache_cmd);
+  install_element(ENABLE_NODE, &show_netlink_counter_cmd);
   install_element(CONFIG_NODE, &netlink_cmd);
   install_element(netlink_node_id, &filter_ifinfo_msg_flag_cmd);
   install_default(netlink_node_id);
