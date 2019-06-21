@@ -2,8 +2,6 @@
 #include "command.h"
 #include "command_node.h"
 
-static struct cmd_node netlink_node = { NETLINK_NODE, "%s(config-netlink)# ", 1 };
-
 int vty_netlink_enter(struct vty *vty)
 {
   vty->node = NETLINK_NODE;
@@ -45,6 +43,7 @@ DEFUN (show_netlink_mask,
 void
 setup_netlink_node()
 {
+  static struct cmd_node netlink_node = { NETLINK_NODE, "%s(config-netlink)# ", 1 };
   install_node(&netlink_node, NULL);
   install_element(ENABLE_NODE, &show_netlink_mask_cmd);
   install_element(CONFIG_NODE, &netlink_cmd);

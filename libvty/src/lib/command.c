@@ -39,7 +39,8 @@
 #include "qobj.h"
 #include "hash.h"
 
-#define debug_printf printf
+#define debug_printf(fmt, ...) \
+  if (false) printf(fmt, __VA_ARGS__)
 
 #define DFLT_NAME "traditional"
 #ifdef HAVE_DATACENTER
