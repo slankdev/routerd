@@ -34,7 +34,6 @@
 #include "memory_vty.h"
 #include "module.h"
 #include "network.h"
-#include "debug.h"
 
 const char frr_sysconfdir[] = SYSCONFDIR;
 char frr_vtydir[256];
