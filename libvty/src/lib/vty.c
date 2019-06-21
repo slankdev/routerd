@@ -132,8 +132,6 @@ char vty_cwd[MAXPATHLEN];
 static int no_password_check = 0;
 
 /* Integrated configuration file path */
-static char integrate_default[] = SYSCONFDIR INTEGRATE_DEFAULT_CONFIG;
-
 static bool do_log_commands;
 static bool do_log_commands_perm;
 
@@ -2659,32 +2657,6 @@ void vty_reset(void)
 	}
 }
 
-static void vty_save_cwd(void)
-{
-	char *c;
-
-	c = getcwd(vty_cwd, sizeof(vty_cwd));
-
-	if (!c) {
-		/*
-		 * At this point if these go wrong, more than likely
-		 * the whole world is coming down around us
-		 * Hence not worrying about it too much.
-		 */
-		if (!chdir(SYSCONFDIR)) {
-			fprintf(stderr,
-				     "Failure to chdir to %s, errno: %d",
-				     SYSCONFDIR, errno);
-			exit(-1);
-		}
-		if (getcwd(vty_cwd, sizeof(vty_cwd)) == NULL) {
-			fprintf(stderr,
-				     "Failure to getcwd, errno: %d", errno);
-			exit(-1);
-		}
-	}
-}
-
 char *vty_get_cwd(void)
 {
 	return vty_cwd;
@@ -2710,12 +2682,8 @@ void vty_init(struct thread_master *master_thread, bool do_command_logging)
 {
   printf("slankdev: %s\n", __func__);
 	/* For further configuration read, preserve current directory. */
-	vty_save_cwd();
-
 	vtyvec = vector_init(VECTOR_MIN_SIZE);
-
 	vty_master = master_thread;
-
 	atexit(vty_stdio_atexit);
 
 	/* Initilize server thread vector. */

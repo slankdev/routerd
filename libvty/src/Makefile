@@ -1,6 +1,5 @@
 
-CFLAGS += -I./lib -I. -D_GNU_SOURCE $(shell pkg-config --cflags glib-2.0) -g -O0
-CFLAGS += -DSYSCONFDIR=\"/etc/\" -DHAVE_CONFIG_H
+CFLAGS += -I./lib -I. -D_GNU_SOURCE -g -O0
 SRC += lib/vty.c \
 					 lib/printf/vfprintf.c \
 					 lib/printf/glue.c \
@@ -31,7 +30,7 @@ SRC += lib/vty.c \
 					 lib/graph.c \
 					 lib/sockopt.c \
 					 # end
-LDFLAGS += -lpthread -lm $(shell pkg-config --libs glib-2.0) -ldl -lcrypt -lunwind
+LDFLAGS += -lpthread -lm -lcrypt
 
 SRC += main.c
 OBJ = $(SRC:.c=.o)

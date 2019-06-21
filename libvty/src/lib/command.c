@@ -2074,46 +2074,6 @@ DEFUN_HIDDEN (do_echo,
 	return CMD_SUCCESS;
 }
 
-int cmd_banner_motd_file(const char *file)
-{
-	int success = CMD_SUCCESS;
-	char p[PATH_MAX];
-	char *rpath;
-	char *in;
-
-	rpath = realpath(file, p);
-	if (!rpath)
-		return CMD_ERR_NO_FILE;
-	in = strstr(rpath, SYSCONFDIR);
-	if (in == rpath) {
-		XFREE(MTYPE_HOST, host.motdfile);
-		host.motdfile = XSTRDUP(MTYPE_HOST, file);
-	} else
-		success = CMD_WARNING_CONFIG_FAILED;
-
-	return success;
-}
-
-DEFUN (banner_motd_file,
-       banner_motd_file_cmd,
-       "banner motd file FILE",
-       "Set banner\n"
-       "Banner for motd\n"
-       "Banner from a file\n"
-       "Filename\n")
-{
-	int idx_file = 3;
-	const char *filename = argv[idx_file]->arg;
-	int cmd = cmd_banner_motd_file(filename);
-
-	if (cmd == CMD_ERR_NO_FILE)
-		vty_out(vty, "%s does not exist", filename);
-	else if (cmd == CMD_WARNING_CONFIG_FAILED)
-		vty_out(vty, "%s must be in %s", filename, SYSCONFDIR);
-
-	return cmd;
-}
-
 DEFUN (banner_motd_default,
        banner_motd_default_cmd,
        "banner motd default",
@@ -2287,7 +2247,6 @@ void cmd_init(int terminal)
 		install_element(CONFIG_NODE, &service_password_encrypt_cmd);
 		install_element(CONFIG_NODE, &no_service_password_encrypt_cmd);
 		install_element(CONFIG_NODE, &banner_motd_default_cmd);
-		install_element(CONFIG_NODE, &banner_motd_file_cmd);
 		install_element(CONFIG_NODE, &no_banner_motd_cmd);
 		install_element(CONFIG_NODE, &service_terminal_length_cmd);
 		install_element(CONFIG_NODE, &no_service_terminal_length_cmd);
