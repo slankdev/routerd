@@ -20,12 +20,7 @@ make
 ./a.out
 ```
 
-### define and install new command
-
-```
-```
-
-### Create new node
+### define and install new node and command
 
 ```
 DEFUN (netlink,
@@ -33,7 +28,7 @@ DEFUN (netlink,
        "netlink",
        "Netlink setting\n")
 {
-  vty->node = find_netlink_node_id("netlink");
+  vty->node = find_node_id_by_name("netlink");
   vty->config = true;
   vty->xpath_index = 0;
   return CMD_SUCCESS;
