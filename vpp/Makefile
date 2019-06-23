@@ -1,16 +1,16 @@
 
-CC = gcc
-CFLAGS += -I/usr/include/vpp_plugins -g -O0
+VUI = ../libvui/src
+CFLAGS += -I$(VUI) -L$(VUI)
+CFLAGS += -D_GNU_SOURCE
+CFLAGS += -g -O0
+CFLAGS += -I/usr/include/vpp_plugins
+
 LDFLAGS += \
-        -lvlibmemoryclient \
-        -lsvm \
-        -lvatplugin \
-        -lvppinfra  \
-        -lvlib \
-        -lpthread -lm -lrt -ldl -lcrypto
+  -lvlibmemoryclient -lvatplugin \
+  -lvppinfra -lvlib -lsvm -lrt -ldl \
+  -lvui -lpthread -lm -lcrypt -lcrypto
 
-
-SRC = main.c
+SRC = main.c netlink.c vpp.c
 OBJ = $(SRC:.c=.o)
 TARGET = a.out
 
