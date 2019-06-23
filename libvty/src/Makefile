@@ -37,9 +37,23 @@ SRC += main.c netlink.c
 OBJ = $(SRC:.c=.o)
 TARGET = a.out
 
-all: $(OBJ)
+all: pre_build $(OBJ)
 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJ) $(LDFLAGS)
+
+pre_build: lib/command_lex.c lib/command_parse.c
+
+lib/command_lex.c: lib/command_lex.l
+	flex lib/command_lex.l
+
+lib/command_parse.c: lib/command_parse.y
+	bison -d -Dapi.prefix={cmd_yy} \
+		-Dparse.error=verbose -Wno-yacc \
+		lib/command_parse.y
 
 clean:
 	rm -f $(OBJ) $(TARGET)
+	rm -f lib/command_lex.c \
+		lib/command_lex.h \
+		lib/command_parse.c \
+		lib/command_parse.h
 
