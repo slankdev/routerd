@@ -21,7 +21,7 @@
 #ifndef _ZEBRA_THREAD_H
 #define _ZEBRA_THREAD_H
 
-#include <zebra.h>
+#include "zebra.h"
 #include <pthread.h>
 #include <poll.h>
 #include <stdint.h>

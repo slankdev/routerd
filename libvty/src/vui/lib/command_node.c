@@ -69,3 +69,11 @@ int alloc_new_node_id(const char* name, int parent)
   _node_parent[next] = parent;
   return next;
 }
+
+int find_node_id_by_name(const char *name)
+{
+  for (size_t i=0; i<NODE_TYPE_MAX; i++)
+    if (strcmp(node_names[i], name) == 0)
+      return i;
+  return -1;
+}

@@ -60,6 +60,13 @@ int alloc_new_node_id(const char* name, int parent);
  */
 int node_parent(int node);
 
+/*
+ * find and return node-id by name
+ * This is not thread safe function.
+ * if node is nothing, return -1.
+ */
+int find_node_id_by_name(const char *name);
+
 #ifdef __cplusplus
 }
 #endif

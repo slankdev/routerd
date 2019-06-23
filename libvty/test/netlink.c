@@ -1,19 +1,17 @@
-#include "command.h"
-#include "command_node.h"
 
-static int netlink_node_id = -1;
-static struct cmd_node netlink_node = {
-  .node =  -1,
-  .prompt = "%s(config-netlink)# ",
-  .vtysh = 1,
-};
+#include <stdio.h>
+#include <string.h>
+#include <stdint.h>
+#include <stddef.h>
+#include <stdlib.h>
+#include <vui/vui.h>
 
 DEFUN (netlink,
        netlink_cmd,
        "netlink",
        "Netlink setting\n")
 {
-  vty->node = netlink_node_id;
+  vty->node = find_node_id_by_name("netlink");
   vty->config = true;
   vty->xpath_index = 0;
   return CMD_SUCCESS;
@@ -68,15 +66,19 @@ DEFUN (show_netlink_counter,
 }
 
 void
-setup_netlink_node()
+setup_netlink_node(vui_t *vui)
 {
-  netlink_node_id = alloc_new_node_id("netlink", CONFIG_NODE);
-  netlink_node.node = netlink_node_id;
-  install_node(&netlink_node, NULL);
-  install_element(ENABLE_NODE, &show_netlink_filter_cmd);
-  install_element(ENABLE_NODE, &show_netlink_cache_cmd);
-  install_element(ENABLE_NODE, &show_netlink_counter_cmd);
-  install_element(CONFIG_NODE, &netlink_cmd);
-  install_element(netlink_node_id, &filter_ifinfo_msg_flag_cmd);
-  install_default(netlink_node_id);
+  vui_node_t *netlink_node = vui_node_new();
+  netlink_node->name = strdup("netlink");
+  netlink_node->prompt = strdup("%s(config-netlink)# ");
+  netlink_node->parent = CONFIG_NODE;
+  vui_node_install(vui, netlink_node);
+
+  vui_install_element(vui, ENABLE_NODE, &show_netlink_filter_cmd);
+  vui_install_element(vui, ENABLE_NODE, &show_netlink_cache_cmd);
+  vui_install_element(vui, ENABLE_NODE, &show_netlink_counter_cmd);
+  vui_install_element(vui, CONFIG_NODE, &netlink_cmd);
+  vui_install_element(vui, netlink_node->node, &filter_ifinfo_msg_flag_cmd);
+  vui_install_default_element(vui, netlink_node->node);
 }
+

@@ -1,0 +1,5 @@
+
+src/vui/lib/command_lex.c
+src/vui/lib/command_lex.h
+src/vui/lib/command_parse.c
+src/vui/lib/command_parse.h
