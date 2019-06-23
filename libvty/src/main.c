@@ -13,6 +13,7 @@ void *th(void *ptr)
   vui_serv_stdio(vui);
   setup_netlink_node(vui);
   vui_run();
+  vui_delete(vui);
 }
 
 int main(int argc, char **argv)
