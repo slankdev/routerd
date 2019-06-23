@@ -1,6 +1,7 @@
 
 CFLAGS += -I./lib -I. -D_GNU_SOURCE -g -O0
 SRC += lib/vty.c \
+			 lib/vui.c \
 			 lib/printf/vfprintf.c \
 			 lib/printf/glue.c \
 			 lib/printf/printf-pos.c \

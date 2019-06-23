@@ -1,5 +1,8 @@
 
-# Libvty (WIP)
+# VUI: VTY UI Librariy
+
+This is under the development. FRR's awesome VTY's wrapper for our toy systems.
+This module helps you when developing CLI. very easy and good functionality.
 
 ```
 sudo apt update && sudo apt insetall -y \
@@ -16,3 +19,21 @@ cd libvty/src
 make
 ./a.out
 ```
+
+### define and install new command
+
+```
+```
+
+### Create new node
+
+```
+int slank_node_id = -1;
+int main()
+{
+  slank_node_id = vui_alloc_new_node_id(vui, "netlink", CONFIG_NODE);
+  slank_node.node = netlink_node_id;
+  vui_install_node(vui, &netlink_node);
+}
+```
+
