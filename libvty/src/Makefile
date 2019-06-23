@@ -1,6 +1,6 @@
 
 build:
-	make -C vui
+	make -C vui build
 
 clean:
 	make -C vui clean
