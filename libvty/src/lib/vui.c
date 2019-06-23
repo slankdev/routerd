@@ -79,6 +79,22 @@ int vui_alloc_new_node_id(vui_t *vui, const char *name, int parent)
   return alloc_new_node_id(name, parent);
 }
 
+vui_node_t *vui_node_new(void)
+{
+  vui_node_t *node = malloc(sizeof(vui_node_t));
+  memset(node, 0, sizeof(vui_node_t));
+  return node;
+}
+
+void vui_node_install(vui_t *vui, vui_node_t *node)
+{
+  node->node = alloc_new_node_id(node->name, node->parent);
+  node->impl.node = node->node;
+  node->impl.prompt = node->prompt;
+  node->impl.vtysh = 1;
+  install_node(&node->impl, NULL);
+}
+
 void vui_install_default_element(vui_t *vui, int node)
 {
   install_default(node);

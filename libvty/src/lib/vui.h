@@ -12,7 +12,16 @@
 typedef struct vui_s {
 } vui_t;
 
+typedef struct vui_node_s {
+  int node;
+  int parent;
+  const char *name;
+  const char *prompt;
+  struct cmd_node impl;
+} vui_node_t;
+
 vui_t *vui_new(void);
+vui_node_t *vui_node_new(void);
 void vui_delete(vui_t *vui);
 int vui_serv_stdio(vui_t *vui);
 int vui_serv_sock(vui_t *vui, const char *addr, uint16_t port);
@@ -24,5 +33,6 @@ void vui_install_element(vui_t *vui,
 void vui_run(void);
 int vui_alloc_new_node_id(vui_t *vui, const char *name, int parent);
 void vui_install_default_element(vui_t *vui, int node);
+void vui_node_install(vui_t *vui, vui_node_t *node);
 
 #endif /* _VUI_H_ */

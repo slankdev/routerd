@@ -7,11 +7,6 @@
 #include <stdlib.h>
 
 static int netlink_node_id = -1;
-static struct cmd_node netlink_node = {
-  .node =  -1,
-  .prompt = "%s(config-netlink)# ",
-  .vtysh = 1,
-};
 
 DEFUN (netlink,
        netlink_cmd,
@@ -75,14 +70,18 @@ DEFUN (show_netlink_counter,
 void
 setup_netlink_node(vui_t *vui)
 {
-  netlink_node_id = vui_alloc_new_node_id(vui, "netlink", CONFIG_NODE);
-  netlink_node.node = netlink_node_id;
-  vui_install_node(vui, &netlink_node);
+  vui_node_t *netlink_node = vui_node_new();
+  netlink_node->name = strdup("netlink");
+  netlink_node->prompt = strdup("%s(config-netlink)# ");
+  netlink_node->parent = CONFIG_NODE;
+  vui_node_install(vui, netlink_node);
+  netlink_node_id = netlink_node->node;
+
   vui_install_element(vui, ENABLE_NODE, &show_netlink_filter_cmd);
   vui_install_element(vui, ENABLE_NODE, &show_netlink_cache_cmd);
   vui_install_element(vui, ENABLE_NODE, &show_netlink_counter_cmd);
   vui_install_element(vui, CONFIG_NODE, &netlink_cmd);
-  vui_install_element(vui, netlink_node_id, &filter_ifinfo_msg_flag_cmd);
+  vui_install_element(vui, netlink_node->node, &filter_ifinfo_msg_flag_cmd);
   vui_install_default_element(vui, netlink_node_id);
 }
 
