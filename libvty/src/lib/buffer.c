@@ -19,15 +19,11 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include <stddef.h>
 #include <zebra.h>
-
 #include "memory.h"
 #include "buffer.h"
-#include "log.h"
 #include "network.h"
-#include "lib_errors.h"
-
-#include <stddef.h>
 
 DEFINE_MTYPE_STATIC(LIB, BUFFER, "Buffer")
 DEFINE_MTYPE_STATIC(LIB, BUFFER_DATA, "Buffer data")
@@ -331,8 +327,7 @@ buffer_status_t buffer_flush_window(struct buffer *b, int fd, int width,
 					       iov_alloc * sizeof(*iov));
 			} else {
 				/* This should absolutely never occur. */
-				flog_err_sys(
-					EC_LIB_SYSTEM_CALL,
+				fprintf(stderr,
 					"%s: corruption detected: iov_small overflowed; "
 					"head %p, tail %p, head->next %p",
 					__func__, (void *)b->head,
@@ -365,9 +360,9 @@ buffer_status_t buffer_flush_window(struct buffer *b, int fd, int width,
 			iov_size =
 				((iov_index > IOV_MAX) ? IOV_MAX : iov_index);
 			if ((nbytes = writev(fd, c_iov, iov_size)) < 0) {
-				flog_err(EC_LIB_SOCKET,
+				fprintf(stderr,
 					 "%s: writev to fd %d failed: %s",
-					 __func__, fd, safe_strerror(errno));
+					 __func__, fd, strerror(errno));
 				break;
 			}
 
@@ -378,8 +373,8 @@ buffer_status_t buffer_flush_window(struct buffer *b, int fd, int width,
 	}
 #else  /* IOV_MAX */
 	if ((nbytes = writev(fd, iov, iov_index)) < 0)
-		flog_err(EC_LIB_SOCKET, "%s: writev to fd %d failed: %s",
-			 __func__, fd, safe_strerror(errno));
+		fprintf(stderr, "%s: writev to fd %d failed: %s",
+			 __func__, fd, strerror(errno));
 #endif /* IOV_MAX */
 
 	/* Free printed buffer data. */
@@ -439,16 +434,15 @@ in one shot. */
 		if (ERRNO_IO_RETRY(errno))
 			/* Calling code should try again later. */
 			return BUFFER_PENDING;
-		flog_err(EC_LIB_SOCKET, "%s: write error on fd %d: %s",
-			 __func__, fd, safe_strerror(errno));
+		fprintf(stderr, "%s: write error on fd %d: %s",
+			 __func__, fd, strerror(errno));
 		return BUFFER_ERROR;
 	}
 
 	/* Free printed buffer data. */
 	while (written > 0) {
 		if (!(d = b->head)) {
-			flog_err(
-				EC_LIB_DEVELOPMENT,
+			fprintf(stderr,
 				"%s: corruption detected: buffer queue empty, but written is %lu",
 				__func__, (unsigned long)written);
 			break;
@@ -493,8 +487,8 @@ buffer_status_t buffer_write(struct buffer *b, int fd, const void *p,
 		if (ERRNO_IO_RETRY(errno))
 			nbytes = 0;
 		else {
-			flog_err(EC_LIB_SOCKET, "%s: write error on fd %d: %s",
-				 __func__, fd, safe_strerror(errno));
+			fprintf(stderr, "%s: write error on fd %d: %s",
+				 __func__, fd, strerror(errno));
 			return BUFFER_ERROR;
 		}
 	}

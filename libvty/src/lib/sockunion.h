@@ -23,7 +23,6 @@
 #define _ZEBRA_SOCKUNION_H
 
 #include "privs.h"
-#include "if.h"
 #ifdef __OpenBSD__
 #include <netmpls/mpls.h>
 #endif

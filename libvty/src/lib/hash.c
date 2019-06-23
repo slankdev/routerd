@@ -24,10 +24,9 @@
 #include "hash.h"
 #include "memory.h"
 #include "linklist.h"
-#include "termtable.h"
+/* #include "termtable.h" */
 #include "vty.h"
 #include "command.h"
-#include "libfrr.h"
 
 DEFINE_MTYPE(LIB, HASH, "Hash")
 DEFINE_MTYPE(LIB, HASH_BACKET, "Hash Bucket")
@@ -328,121 +327,168 @@ void hash_free(struct hash *hash)
 	XFREE(MTYPE_HASH, hash);
 }
 
+/* The golden ration: an arbitrary value */
+#define JHASH_GOLDEN_RATIO  0x9e3779b9
 
-/* CLI commands ------------------------------------------------------------ */
+/* NOTE: Arguments are modified. */
+#define __jhash_mix(a, b, c)                                                   \
+	{                                                                      \
+		a -= b;                                                        \
+		a -= c;                                                        \
+		a ^= (c >> 13);                                                \
+		b -= c;                                                        \
+		b -= a;                                                        \
+		b ^= (a << 8);                                                 \
+		c -= a;                                                        \
+		c -= b;                                                        \
+		c ^= (b >> 13);                                                \
+		a -= b;                                                        \
+		a -= c;                                                        \
+		a ^= (c >> 12);                                                \
+		b -= c;                                                        \
+		b -= a;                                                        \
+		b ^= (a << 16);                                                \
+		c -= a;                                                        \
+		c -= b;                                                        \
+		c ^= (b >> 5);                                                 \
+		a -= b;                                                        \
+		a -= c;                                                        \
+		a ^= (c >> 3);                                                 \
+		b -= c;                                                        \
+		b -= a;                                                        \
+		b ^= (a << 10);                                                \
+		c -= a;                                                        \
+		c -= b;                                                        \
+		c ^= (b >> 15);                                                \
+	}
 
-DEFUN_NOSH(show_hash_stats,
-           show_hash_stats_cmd,
-           "show debugging hashtable [statistics]",
-           SHOW_STR
-           DEBUG_STR
-           "Statistics about hash tables\n"
-           "Statistics about hash tables\n")
+/* The most generic version, hashes an arbitrary sequence
+ * of bytes.  No alignment or length assumptions are made about
+ * the input key.
+ */
+uint32_t jhash(const void *key, uint32_t length, uint32_t initval)
 {
-	struct hash *h;
-	struct listnode *ln;
-	struct ttable *tt = ttable_new(&ttable_styles[TTSTYLE_BLANK]);
+	uint32_t a, b, c, len;
+	const uint8_t *k = key;
 
-	ttable_add_row(tt, "Hash table|Buckets|Entries|Empty|LF|SD|FLF|SD");
-	tt->style.cell.lpad = 2;
-	tt->style.cell.rpad = 1;
-	tt->style.corner = '+';
-	ttable_restyle(tt);
-	ttable_rowseps(tt, 0, BOTTOM, true, '-');
+	len = length;
+	a = b = JHASH_GOLDEN_RATIO;
+	c = initval;
 
-	/* Summary statistics calculated are:
-	 *
-	 * - Load factor: This is the number of elements in the table divided
-	 *   by the number of buckets. Since this hash table implementation
-	 *   uses chaining, this value can be greater than 1.
-	 *   This number provides information on how 'full' the table is, but
-	 *   does not provide information on how evenly distributed the
-	 *   elements are.
-	 *   Notably, a load factor >= 1 does not imply that every bucket has
-	 *   an element; with a pathological hash function, all elements could
-	 *   be in a single bucket.
-	 *
-	 * - Full load factor: this is the number of elements in the table
-	 *   divided by the number of buckets that have some elements in them.
-	 *
-	 * - Std. Dev.: This is the standard deviation calculated from the
-	 *   relevant load factor. If the load factor is the mean of number of
-	 *   elements per bucket, the standard deviation measures how much any
-	 *   particular bucket is likely to deviate from the mean.
-	 *   As a rule of thumb this number should be less than 2, and ideally
-	 *   <= 1 for optimal performance. A number larger than 3 generally
-	 *   indicates a poor hash function.
-	 */
+	while (len >= 12) {
+		a += (k[0] + ((uint32_t)k[1] << 8) + ((uint32_t)k[2] << 16)
+		      + ((uint32_t)k[3] << 24));
+		b += (k[4] + ((uint32_t)k[5] << 8) + ((uint32_t)k[6] << 16)
+		      + ((uint32_t)k[7] << 24));
+		c += (k[8] + ((uint32_t)k[9] << 8) + ((uint32_t)k[10] << 16)
+		      + ((uint32_t)k[11] << 24));
 
-	double lf;    // load factor
-	double flf;   // full load factor
-	double var;   // overall variance
-	double fvar;  // full variance
-	double stdv;  // overall stddev
-	double fstdv; // full stddev
+		__jhash_mix(a, b, c);
 
-	long double x2;   // h->count ^ 2
-	long double ldc;  // (long double) h->count
-	long double full; // h->size - h->stats.empty
-	long double ssq;  // ssq casted to long double
-
-	pthread_mutex_lock(&_hashes_mtx);
-	if (!_hashes) {
-		pthread_mutex_unlock(&_hashes_mtx);
-		ttable_del(tt);
-		vty_out(vty, "No hash tables in use.\n");
-		return CMD_SUCCESS;
+		k += 12;
+		len -= 12;
 	}
 
-	for (ALL_LIST_ELEMENTS_RO(_hashes, ln, h)) {
-		if (!h->name)
-			continue;
-
-		ssq = (long double)h->stats.ssq;
-		x2 = h->count * h->count;
-		ldc = (long double)h->count;
-		full = h->size - h->stats.empty;
-		lf = h->count / (double)h->size;
-		flf = full ? h->count / (double)(full) : 0;
-		var = ldc ? (1.0 / ldc) * (ssq - x2 / ldc) : 0;
-		fvar = full ? (1.0 / full) * (ssq - x2 / full) : 0;
-		var = (var < .0001) ? 0 : var;
-		fvar = (fvar < .0001) ? 0 : fvar;
-		stdv = sqrt(var);
-		fstdv = sqrt(fvar);
-
-		ttable_add_row(tt, "%s|%d|%ld|%.0f%%|%.2lf|%.2lf|%.2lf|%.2lf",
-			       h->name, h->size, h->count,
-			       (h->stats.empty / (double)h->size) * 100, lf,
-			       stdv, flf, fstdv);
+	c += length;
+	switch (len) {
+	case 11:
+		c += ((uint32_t)k[10] << 24);
+	/* fallthru */
+	case 10:
+		c += ((uint32_t)k[9] << 16);
+	/* fallthru */
+	case 9:
+		c += ((uint32_t)k[8] << 8);
+	/* fallthru */
+	case 8:
+		b += ((uint32_t)k[7] << 24);
+	/* fallthru */
+	case 7:
+		b += ((uint32_t)k[6] << 16);
+	/* fallthru */
+	case 6:
+		b += ((uint32_t)k[5] << 8);
+	/* fallthru */
+	case 5:
+		b += k[4];
+	/* fallthru */
+	case 4:
+		a += ((uint32_t)k[3] << 24);
+	/* fallthru */
+	case 3:
+		a += ((uint32_t)k[2] << 16);
+	/* fallthru */
+	case 2:
+		a += ((uint32_t)k[1] << 8);
+	/* fallthru */
+	case 1:
+		a += k[0];
 	}
-	pthread_mutex_unlock(&_hashes_mtx);
 
-	/* display header */
-	char header[] = "Showing hash table statistics for ";
-	char underln[sizeof(header) + strlen(frr_protonameinst)];
-	memset(underln, '-', sizeof(underln));
-	underln[sizeof(underln) - 1] = '\0';
-	vty_out(vty, "%s%s\n", header, frr_protonameinst);
-	vty_out(vty, "%s\n", underln);
+	__jhash_mix(a, b, c);
 
-	vty_out(vty, "# allocated: %d\n", _hashes->count);
-	vty_out(vty, "# named:     %d\n\n", tt->nrows - 1);
-
-	if (tt->nrows > 1) {
-		ttable_colseps(tt, 0, RIGHT, true, '|');
-		char *table = ttable_dump(tt, "\n");
-		vty_out(vty, "%s\n", table);
-		XFREE(MTYPE_TMP, table);
-	} else
-		vty_out(vty, "No named hash tables to display.\n");
-
-	ttable_del(tt);
-
-	return CMD_SUCCESS;
+	return c;
 }
 
-void hash_cmd_init(void)
+/* A special optimized version that handles 1 or more of uint32_ts.
+ * The length parameter here is the number of uint32_ts in the key.
+ */
+uint32_t jhash2(const uint32_t *k, uint32_t length, uint32_t initval)
 {
-	install_element(ENABLE_NODE, &show_hash_stats_cmd);
+	uint32_t a, b, c, len;
+
+	a = b = JHASH_GOLDEN_RATIO;
+	c = initval;
+	len = length;
+
+	while (len >= 3) {
+		a += k[0];
+		b += k[1];
+		c += k[2];
+		__jhash_mix(a, b, c);
+		k += 3;
+		len -= 3;
+	}
+
+	c += length * 4;
+
+	switch (len) {
+	case 2:
+		b += k[1];
+	/* fallthru */
+	case 1:
+		a += k[0];
+	}
+
+	__jhash_mix(a, b, c);
+
+	return c;
+}
+
+
+/* A special ultra-optimized versions that knows they are hashing exactly
+ * 3, 2 or 1 word(s).
+ *
+ * NOTE: In partilar the "c += length; __jhash_mix(a,b,c);" normally
+ *       done at the end is not done here.
+ */
+uint32_t jhash_3words(uint32_t a, uint32_t b, uint32_t c, uint32_t initval)
+{
+	a += JHASH_GOLDEN_RATIO;
+	b += JHASH_GOLDEN_RATIO;
+	c += initval;
+
+	__jhash_mix(a, b, c);
+
+	return c;
+}
+
+uint32_t jhash_2words(uint32_t a, uint32_t b, uint32_t initval)
+{
+	return jhash_3words(a, b, 0, initval);
+}
+
+uint32_t jhash_1word(uint32_t a, uint32_t initval)
+{
+	return jhash_3words(a, 0, 0, initval);
 }

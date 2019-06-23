@@ -24,11 +24,11 @@
 
 #include "vector.h"
 #include "vty.h"
-#include "lib/route_types.h"
 #include "graph.h"
 #include "memory.h"
 #include "hash.h"
 #include "command_graph.h"
+#include "command_node.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -52,9 +52,6 @@ DECLARE_MTYPE(COMPLETION)
 struct host {
 	/* Host name of this router. */
 	char *name;
-
-	/* Domainname of this router */
-	char *domainname;
 
 	/* Password for vty interface. */
 	char *password;
@@ -83,114 +80,7 @@ struct host {
 	char *motdfile;
 };
 
-/* List of CLI nodes. Please remember to update the name array in command.c. */
-enum node_type {
-	AUTH_NODE,		 /* Authentication mode of vty interface. */
-	VIEW_NODE,		 /* View node. Default mode of vty interface. */
-	AUTH_ENABLE_NODE,	/* Authentication mode for change enable. */
-	ENABLE_NODE,		 /* Enable node. */
-	CONFIG_NODE,		 /* Config node. Default mode of config file. */
-	DEBUG_NODE,		 /* Debug node. */
-	VRF_DEBUG_NODE,		 /* Vrf Debug node. */
-	NORTHBOUND_DEBUG_NODE,	 /* Northbound Debug node. */
-	DEBUG_VNC_NODE,		 /* Debug VNC node. */
-	RMAP_DEBUG_NODE,         /* Route-map debug node */
-	AAA_NODE,		 /* AAA node. */
-	KEYCHAIN_NODE,		 /* Key-chain node. */
-	KEYCHAIN_KEY_NODE,       /* Key-chain key node. */
-	LOGICALROUTER_NODE,      /* Logical-Router node. */
-	IP_NODE,		 /* Static ip route node. */
-	VRF_NODE,		 /* VRF mode node. */
-	INTERFACE_NODE,		 /* Interface mode node. */
-	NH_GROUP_NODE,		 /* Nexthop-Group mode node. */
-	ZEBRA_NODE,		 /* zebra connection node. */
-	TABLE_NODE,		 /* rtm_table selection node. */
-	RIP_NODE,		 /* RIP protocol mode node. */
-	RIPNG_NODE,		 /* RIPng protocol mode node. */
-	BABEL_NODE,		 /* BABEL protocol mode node. */
-	EIGRP_NODE,		 /* EIGRP protocol mode node. */
-	BGP_NODE,		 /* BGP protocol mode which includes BGP4+ */
-	BGP_VPNV4_NODE,		 /* BGP MPLS-VPN PE exchange. */
-	BGP_VPNV6_NODE,		 /* BGP MPLS-VPN PE exchange. */
-	BGP_IPV4_NODE,		 /* BGP IPv4 unicast address family.  */
-	BGP_IPV4M_NODE,		 /* BGP IPv4 multicast address family.  */
-	BGP_IPV4L_NODE,		 /* BGP IPv4 labeled unicast address family.  */
-	BGP_IPV6_NODE,		 /* BGP IPv6 address family */
-	BGP_IPV6M_NODE,		 /* BGP IPv6 multicast address family. */
-	BGP_IPV6L_NODE,		 /* BGP IPv6 labeled unicast address family. */
-	BGP_VRF_POLICY_NODE,     /* BGP VRF policy */
-	BGP_VNC_DEFAULTS_NODE,   /* BGP VNC nve defaults */
-	BGP_VNC_NVE_GROUP_NODE,  /* BGP VNC nve group */
-	BGP_VNC_L2_GROUP_NODE,   /* BGP VNC L2 group */
-	RFP_DEFAULTS_NODE,       /* RFP defaults node */
-	BGP_EVPN_NODE,		 /* BGP EVPN node. */
-	OSPF_NODE,		 /* OSPF protocol mode */
-	OSPF6_NODE,		 /* OSPF protocol for IPv6 mode */
-	LDP_NODE,		 /* LDP protocol mode */
-	LDP_IPV4_NODE,		 /* LDP IPv4 address family */
-	LDP_IPV6_NODE,		 /* LDP IPv6 address family */
-	LDP_IPV4_IFACE_NODE,     /* LDP IPv4 Interface */
-	LDP_IPV6_IFACE_NODE,     /* LDP IPv6 Interface */
-	LDP_L2VPN_NODE,		 /* LDP L2VPN node */
-	LDP_PSEUDOWIRE_NODE,     /* LDP Pseudowire node */
-	ISIS_NODE,		 /* ISIS protocol mode */
-	ACCESS_NODE,		 /* Access list node. */
-	PREFIX_NODE,		 /* Prefix list node. */
-	ACCESS_IPV6_NODE,	/* Access list node. */
-	ACCESS_MAC_NODE,	 /* MAC access list node*/
-	PREFIX_IPV6_NODE,	/* Prefix list node. */
-	AS_LIST_NODE,		 /* AS list node. */
-	COMMUNITY_LIST_NODE,     /* Community list node. */
-	RMAP_NODE,		 /* Route map node. */
-	PBRMAP_NODE,		 /* PBR map node. */
-	SMUX_NODE,		 /* SNMP configuration node. */
-	DUMP_NODE,		 /* Packet dump node. */
-	FORWARDING_NODE,	 /* IP forwarding node. */
-	PROTOCOL_NODE,		 /* protocol filtering node */
-	MPLS_NODE,		 /* MPLS config node */
-	PW_NODE,		 /* Pseudowire config node */
-	VTY_NODE,		 /* Vty node. */
-	LINK_PARAMS_NODE,	/* Link-parameters node */
-	BGP_EVPN_VNI_NODE,       /* BGP EVPN VNI */
-	RPKI_NODE,     /* RPKI node for configuration of RPKI cache server
-			  connections.*/
-	BGP_FLOWSPECV4_NODE,	/* BGP IPv4 FLOWSPEC Address-Family */
-	BGP_FLOWSPECV6_NODE,	/* BGP IPv6 FLOWSPEC Address-Family */
-	BFD_NODE,		 /* BFD protocol mode. */
-	BFD_PEER_NODE,		 /* BFD peer configuration mode. */
-	OPENFABRIC_NODE,	/* OpenFabric router configuration node */
-	VRRP_NODE,		 /* VRRP node */
-	NODE_TYPE_MAX, /* maximum */
-};
-
 extern vector cmdvec;
-extern const struct message tokennames[];
-extern const char *node_names[];
-
-/* Node which has some commands and prompt string and configuration
-   function pointer . */
-struct cmd_node {
-	/* Node index. */
-	enum node_type node;
-
-	/* Prompt character at vty interface. */
-	const char *prompt;
-
-	/* Is this node's configuration goes to vtysh ? */
-	int vtysh;
-
-	/* Node's configuration write function */
-	int (*func)(struct vty *);
-
-	/* Node's command graph */
-	struct graph *cmdgraph;
-
-	/* Vector of this node's command list. */
-	vector cmd_vector;
-
-	/* Hashed index of command node list, for de-dupping primarily */
-	struct hash *cmd_hash;
-};
 
 /* Return value of the commands. */
 #define CMD_SUCCESS              0
@@ -384,8 +274,7 @@ struct cmd_node {
 #define SECONDS_STR "Seconds\n"
 #define ROUTE_STR "Routing Table\n"
 #define PREFIX_LIST_STR "Build a prefix list\n"
-#define OSPF6_DUMP_TYPE_LIST                                                   \
-	"<neighbor|interface|area|lsa|zebra|config|dbex|spf|route|lsdb|redistribute|hook|asbr|prefix|abr>"
+#define OSPF6_DUMP_TYPE_LIST "<neighbor|interface|area|lsa|zebra|config|dbex|spf|route|lsdb|redistribute|hook|asbr|prefix|abr>"
 #define AREA_TAG_STR "[area tag]\n"
 #define COMMUNITY_AANN_STR "Community number where AA and NN are (0-65535)\n"
 #define COMMUNITY_VAL_STR  "Community number in AA:NN format (where AA and NN are (0-65535)) or local-AS|no-advertise|no-export|internet or additive\n"
@@ -431,9 +320,7 @@ extern char *argv_concat(struct cmd_token **argv, int argc, int shift);
  * cli then there is no need to modify the initial
  * value of the index
  */
-extern int argv_find(struct cmd_token **argv, int argc, const char *text,
-		     int *index);
-
+extern int argv_find(struct cmd_token **argv, int argc, const char *text, int *index);
 extern vector cmd_make_strvec(const char *);
 extern void cmd_free_strvec(vector);
 extern vector cmd_describe_command(vector, struct vty *, int *status);
@@ -443,7 +330,6 @@ extern int command_config_read_one_line(struct vty *vty,
 					const struct cmd_element **,
 					uint32_t line_num, int use_config_node);
 extern int config_from_file(struct vty *, FILE *, unsigned int *line_num);
-extern enum node_type node_parent(enum node_type);
 /*
  * Execute command under the given vty context.
  *
@@ -470,27 +356,21 @@ extern int cmd_execute_command(vector, struct vty *,
 			       const struct cmd_element **, int);
 extern int cmd_execute_command_strict(vector, struct vty *,
 				      const struct cmd_element **);
-extern void cmd_init(int);
+extern void cmd_init(void);
 extern void cmd_terminate(void);
 extern void cmd_exit(struct vty *vty);
 extern int cmd_list_cmds(struct vty *vty, int do_permute);
 
-extern int cmd_domainname_set(const char *domainname);
+extern int cmd_password_set(const char *password);
 extern int cmd_hostname_set(const char *hostname);
 extern const char *cmd_hostname_get(void);
-extern const char *cmd_domainname_get(void);
-
-/* NOT safe for general use; call this only if DEV_BUILD! */
-extern void grammar_sandbox_init(void);
 
 extern vector completions_to_vec(struct list *completions);
 
 /* Export typical functions. */
 extern const char *host_config_get(void);
 extern void host_config_set(const char *);
-
 extern void print_version(const char *);
-
 extern int cmd_banner_motd_file(const char *);
 
 /* struct host global, ick */
@@ -501,16 +381,12 @@ struct cmd_variable_handler {
 	void (*completions)(vector out, struct cmd_token *token);
 };
 
-extern void cmd_variable_complete(struct cmd_token *token, const char *arg,
-				  vector comps);
-extern void
-cmd_variable_handler_register(const struct cmd_variable_handler *cvh);
+extern void cmd_variable_complete(struct cmd_token *token, const char *arg, vector comps);
+extern void cmd_variable_handler_register(const struct cmd_variable_handler *cvh);
 extern char *cmd_variable_comp2str(vector comps, unsigned short cols);
-
 extern void command_setup_early_logging(const char *dest, const char *level);
 
 #ifdef __cplusplus
 }
 #endif
-
 #endif /* _ZEBRA_COMMAND_H */

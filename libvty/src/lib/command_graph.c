@@ -23,7 +23,7 @@
  */
 
 #include <zebra.h>
-
+#include <assert.h>
 #include "command_graph.h"
 
 DEFINE_MTYPE_STATIC(LIB, CMD_TOKENS, "Command Tokens")
@@ -461,7 +461,6 @@ void cmd_graph_names(struct graph *graph)
 #ifndef BUILDING_CLIPPY
 
 #include "command.h"
-#include "log.h"
 
 void cmd_graph_node_print_cb(struct graph_node *gn, struct buffer *buf)
 {
@@ -483,9 +482,9 @@ void cmd_graph_node_print_cb(struct graph_node *gn, struct buffer *buf)
 
 	snprintf(nbuf, sizeof(nbuf), "  n%p [ shape=box, label=<", gn);
 	buffer_putstr(buf, nbuf);
-	snprintf(nbuf, sizeof(nbuf), "<b>%s</b>",
-		 lookup_msg(tokennames, tok->type, NULL));
-	buffer_putstr(buf, nbuf);
+	/* snprintf(nbuf, sizeof(nbuf), "<b>%s</b>", */
+	/* 	 lookup_msg(tokennames, tok->type, NULL)); */
+	/* buffer_putstr(buf, nbuf); */
 	if (tok->attr == CMD_ATTR_DEPRECATED)
 		buffer_putstr(buf, " (d)");
 	else if (tok->attr == CMD_ATTR_HIDDEN)

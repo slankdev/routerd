@@ -24,10 +24,6 @@
 #ifndef _ZEBRA_VERSION_H
 #define _ZEBRA_VERSION_H
 
-#ifdef GIT_VERSION
-#include "gitversion.h"
-#endif
-
 #ifndef GIT_SUFFIX
 #define GIT_SUFFIX ""
 #endif
@@ -44,14 +40,11 @@
 #define FRR_VER_SHORT   "7.2-dev-MyOwnFRRVersion"
 #define FRR_BUG_ADDRESS "https://github.com/frrouting/frr/issues"
 #define FRR_COPYRIGHT   "Copyright 1996-2005 Kunihiro Ishiguro, et al."
-#define FRR_CONFIG_ARGS "'--prefix=/usr' '--includedir=${prefix}/include' '--enable-exampledir=${prefix}/share/doc/frr/examples' '--bindir=${prefix}/bin' '--sbindir=${prefix}/lib/frr' '--libdir=${prefix}/lib/frr' '--libexecdir=${prefix}/lib/frr' '--localstatedir=/var/run/frr' '--sysconfdir=/etc/frr' '--with-moduledir=${prefix}/lib/frr/modules' '--with-libyang-pluginsdir=${prefix}/lib/frr/libyang_plugins' '--enable-configfile-mask=0640' '--enable-logfile-mask=0640' '--enable-multipath=64' '--enable-user=frr' '--enable-group=frr' '--enable-vty-group=frrvty' '--with-pkg-git-version' '--with-pkg-extra-version=-MyOwnFRRVersion'"
 
 #define FRR_DEFAULT_MOTD \
 	"\n" \
 	"Hello, this is " FRR_FULL_NAME " (version " FRR_VERSION ").\n" \
 	FRR_COPYRIGHT "\n" \
 	GIT_INFO "\n"
-
-pid_t pid_output (const char *);
 
 #endif /* _ZEBRA_VERSION_H */

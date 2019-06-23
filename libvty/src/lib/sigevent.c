@@ -20,9 +20,7 @@
 
 #include <zebra.h>
 #include <sigevent.h>
-#include <log.h>
 #include <memory.h>
-#include <lib_errors.h>
 
 #ifdef SA_SIGINFO
 #ifdef HAVE_UCONTEXT_H
@@ -84,7 +82,7 @@ int quagga_sigevent_process(void)
 	sigdelset(&newmask, SIGKILL);
 
 	if ((sigprocmask(SIG_BLOCK, &newmask, &oldmask)) < 0) {
-		flog_err_sys(EC_LIB_SYSTEM_CALL,
+		fprintf(stderr,
 			     "quagga_signal_timer: couldnt block signals!");
 		return -1;
 	}
@@ -216,7 +214,6 @@ exit_handler(int signo
 	void *pc = program_counter(context);
 #endif
 
-	zlog_signal(signo, "exiting...", siginfo, pc);
 	_exit(128 + signo);
 }
 
@@ -246,8 +243,6 @@ core_handler(int signo
 	sigprocmask(SIG_UNBLOCK, &sigset, NULL);
 
 	alarm(1);
-
-	zlog_signal(signo, "aborting...", siginfo, pc);
 
 	/* dump memory stats on core */
 	log_memstats(stderr, "core_handler");
@@ -334,11 +329,10 @@ static void trap_default_signals(void)
 				}
 				if (sigaction(sigmap[i].sigs[j], &act, NULL)
 				    < 0)
-					flog_err(
-						EC_LIB_SYSTEM_CALL,
+					fprintf(stderr,
 						"Unable to set signal handler for signal %d: %s",
 						sigmap[i].sigs[j],
-						safe_strerror(errno));
+						strerror(errno));
 			}
 		}
 	}

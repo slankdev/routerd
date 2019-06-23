@@ -21,10 +21,6 @@
 #ifndef _ZEBRA_H
 #define _ZEBRA_H
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif /* HAVE_CONFIG_H */
-
 #include "compiler.h"
 
 #ifdef SUNOS_5
@@ -134,8 +130,6 @@ typedef unsigned char uint8_t;
 #endif
 #endif
 
-#include "openbsd-tree.h"
-
 #include <netinet/in.h>
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
@@ -224,7 +218,13 @@ typedef unsigned char uint8_t;
 #define __attribute__(x)
 #endif /* !__GNUC__ || VTYSH_EXTRACT_PL */
 
-#include "zassert.h"
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
+#define __ASSERT_FUNCTION    __func__
+#elif defined(__GNUC__)
+#define __ASSERT_FUNCTION    __FUNCTION__
+#else
+#define __ASSERT_FUNCTION    NULL
+#endif
 
 /*
  * Add explicit static cast only when using a C++ compiler.
@@ -336,9 +336,6 @@ struct in_pktinfo {
  */
 #include "compiler.h"
 
-/* Zebra route's types are defined in route_types.h */
-#include "route_types.h"
-
 #define strmatch(a,b) (!strcmp((a), (b)))
 
 #ifndef INADDR_LOOPBACK
@@ -398,7 +395,7 @@ typedef enum {
 
 /* VRF ID type. */
 typedef uint32_t vrf_id_t;
-
+typedef signed int ifindex_t;
 typedef uint32_t route_tag_t;
 #define ROUTE_TAG_MAX UINT32_MAX
 #define ROUTE_TAG_PRI PRIu32
