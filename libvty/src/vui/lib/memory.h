@@ -19,7 +19,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <frratomic.h>
+#include "frratomic.h"
 #include "compiler.h"
 
 #ifdef __cplusplus

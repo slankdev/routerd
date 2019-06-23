@@ -1,7 +1,7 @@
 
 #include "vui.h"
-#include "command.h"
-#include <zebra.h>
+#include "lib/command.h"
+#include "lib/zebra.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -83,16 +83,24 @@ vui_node_t *vui_node_new(void)
 {
   vui_node_t *node = malloc(sizeof(vui_node_t));
   memset(node, 0, sizeof(vui_node_t));
+  node->impl = malloc(sizeof(struct cmd_node));
+  memset(node->impl, 0, sizeof(struct cmd_node));
   return node;
+}
+
+void vui_node_delete(vui_node_t *node)
+{
+  free(node->impl);
+  free(node);
 }
 
 void vui_node_install(vui_t *vui, vui_node_t *node)
 {
   node->node = alloc_new_node_id(node->name, node->parent);
-  node->impl.node = node->node;
-  node->impl.prompt = node->prompt;
-  node->impl.vtysh = 1;
-  install_node(&node->impl, NULL);
+  node->impl->node = node->node;
+  node->impl->prompt = node->prompt;
+  node->impl->vtysh = 1;
+  install_node(node->impl, NULL);
 }
 
 void vui_install_default_element(vui_t *vui, int node)

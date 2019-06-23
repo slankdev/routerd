@@ -18,6 +18,8 @@ extern "C" {
  * Please remember to update the
  * name array in command.c.
  */
+#ifndef NODE_TYPE_WAS_DEFINED
+#define NODE_TYPE_WAS_DEFINED
 enum node_type {
   AUTH_NODE,              /* Authentication mode of vty interface. */
   VIEW_NODE,              /* View node. Default mode of vty interface. */
@@ -30,6 +32,7 @@ enum node_type {
 };
 extern size_t NODE_TYPE_MAX;
 #define NODE_TYPE_LIMIT 256
+#endif /* NODE_TYPE_WAS_DEFINED */
 
 extern const char *node_names[];
 

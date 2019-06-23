@@ -1,12 +1,10 @@
 
-#include "vui.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <stdlib.h>
-
-static int netlink_node_id = -1;
+#include <vui/vui.h>
 
 DEFUN (netlink,
        netlink_cmd,
@@ -75,13 +73,12 @@ setup_netlink_node(vui_t *vui)
   netlink_node->prompt = strdup("%s(config-netlink)# ");
   netlink_node->parent = CONFIG_NODE;
   vui_node_install(vui, netlink_node);
-  netlink_node_id = netlink_node->node;
 
   vui_install_element(vui, ENABLE_NODE, &show_netlink_filter_cmd);
   vui_install_element(vui, ENABLE_NODE, &show_netlink_cache_cmd);
   vui_install_element(vui, ENABLE_NODE, &show_netlink_counter_cmd);
   vui_install_element(vui, CONFIG_NODE, &netlink_cmd);
   vui_install_element(vui, netlink_node->node, &filter_ifinfo_msg_flag_cmd);
-  vui_install_default_element(vui, netlink_node_id);
+  vui_install_default_element(vui, netlink_node->node);
 }
 

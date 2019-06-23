@@ -1,6 +1,7 @@
 
-#include "vui.h"
 #include <stdio.h>
+#include <pthread.h>
+#include <vui/vui.h>
 
 void setup_netlink_node(vui_t *vui);
 
