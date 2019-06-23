@@ -13,7 +13,7 @@ DEFUN (netlink,
        "netlink",
        "Netlink setting\n")
 {
-  vty->node = netlink_node_id;
+  vty->node = find_node_id_by_name("netlink");
   vty->config = true;
   vty->xpath_index = 0;
   return CMD_SUCCESS;
