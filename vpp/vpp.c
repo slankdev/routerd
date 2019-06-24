@@ -20,10 +20,13 @@
 #include "hexdump.h"
 
 #define VPP_STR "Show VPP information\n"
+
 #define CONTROL_PING_MESSAGE "control_ping"
 #define CONTROL_PING_REPLY_MESSAGE "control_ping_reply"
 #define DUMP_IFC_MESSAGE "sw_interface_dump"
 #define IFC_DETAIL_MESSAGE "sw_interface_details"
+#define SET_IFC_FLAGS "sw_interface_set_flags"
+#define SET_IFC_FLAGS_REPLY "sw_interface_set_flags_reply"
 
 typedef struct
 {
@@ -35,116 +38,77 @@ routerd_main_t routerd_main;
 pid_t gettid(void) { return syscall(SYS_gettid); }
 
 inline static uint32_t
-find_msg_id(char* msg) {
+find_msg_id(char* msg)
+{
   api_main_t * am = &api_main;
   hash_pair_t *hp;
-  hash_foreach_pair (hp, am->msg_index_by_name_and_crc, ({
-       char *key = (char *)hp->key; // key format: name_crc
-       int msg_name_len = strlen(key) - 9; // ignore crc
-       if (strlen(msg) == msg_name_len &&
-           strncmp(msg, (char *)hp->key, msg_name_len) == 0) {
-         return (u32)hp->value[0];
-       }
-   }));
+#define _HASH_FUNC_IMPL_INSIDE_IMPL_ { \
+  char *key = (char *)hp->key; \
+  int msg_name_len = strlen(key) - 9; \
+  if (strlen(msg) == msg_name_len && \
+    strncmp(msg, (char *)hp->key, msg_name_len) == 0) \
+    return (u32)hp->value[0]; \
 }
-
-static void
-stop_signal (int signum)
-{
-  routerd_main_t *rm = &routerd_main;
-}
-
-static void
-stats_signal (int signum)
-{
-  routerd_main_t *rm = &routerd_main;
-}
-
-static clib_error_t *
-setup_signal_handlers (void)
-{
-  signal (SIGINT, stats_signal);
-  signal (SIGQUIT, stop_signal);
-  signal (SIGTERM, stop_signal);
-  return 0;
+  hash_foreach_pair (hp,
+      am->msg_index_by_name_and_crc,
+      (_HASH_FUNC_IMPL_INSIDE_IMPL_));
 }
 
 static int
-send_ping(u16 ping_id, u16 msg_id) {
+send_ping(u16 ping_id, u16 msg_id)
+{
   routerd_main_t *rm = &routerd_main;
-
-  vl_api_control_ping_t * mp =
+  vl_api_control_ping_t *mp =
     vl_msg_api_alloc(sizeof(vl_api_control_ping_t));
   memset(mp, 0, sizeof(*mp));
   mp->_vl_msg_id = ntohs(ping_id);
   mp->client_index = rm->my_client_index;
   mp->context = htonl(msg_id);
   vl_msg_api_send_shmem(rm->vl_input_queue, (u8 *) &mp);
-  printf("Sending ping. Ping msg id: %u, message id: %u\n", ping_id, msg_id);
 }
 
 static int
-dump_ifcs(u32 dump_id, u32 message_id) {
+dump_ifcs(u32 dump_id, u32 message_id)
+{
   routerd_main_t *jm = &routerd_main;
-
-  vl_api_sw_interface_dump_t * mp;
+  vl_api_sw_interface_dump_t *mp;
   mp = vl_msg_api_alloc(sizeof(*mp));
   memset(mp, 0, sizeof(*mp));
   mp->_vl_msg_id = ntohs(dump_id);
   mp->client_index = jm->my_client_index;
   mp->context = clib_host_to_net_u32(message_id);
-
   vl_msg_api_send_shmem(jm->vl_input_queue, (u8 *) &mp);
-  printf("\r\nSending dump interfaces. Msg id: %d, message id: %d\r\n", dump_id, message_id);
 }
 
-static void
-vl_api_control_ping_reply_t_handler(vl_api_control_ping_reply_t * mp) {
-    printf("\tPing reply received, message id: %d, with retval: %d\n",
-        htonl(mp->context), mp->retval);
+static int
+set_interface_flag(u32 set_id, u32 message_id, uint32_t ifindex, bool is_up)
+{
+  routerd_main_t *jm = &routerd_main;
+  vl_api_sw_interface_set_flags_t *mp =
+    vl_msg_api_alloc(sizeof(*mp));
+  memset(mp, 0, sizeof(*mp));
+  mp->_vl_msg_id = ntohs(set_id);
+  mp->client_index = jm->my_client_index;
+  mp->context = clib_host_to_net_u32(message_id);
+  mp->sw_if_index = htonl(ifindex);
+  mp->admin_up_down = is_up ? 1 : 0;
+  vl_msg_api_send_shmem(jm->vl_input_queue, (u8 *) &mp);
 }
 
-static void vl_api_sw_interface_details_t_handler(vl_api_sw_interface_details_t * mp) {
-    /* printf("command handled on tid=%d\r\n", gettid()); */
-    printf("\tInterface, message id: %d, interface index: %d\r\n",
-        clib_net_to_host_u32(mp->context), clib_net_to_host_u32(mp->sw_if_index));
-}
-
-int
+static int
 connect_to_vpp (char *name, bool no_rx_pthread)
 {
   routerd_main_t *rm = &routerd_main;
   api_main_t *am = &api_main;
-
   int ret = -1;
-  if (no_rx_pthread)
-    ret = vl_client_connect_to_vlib_no_rx_pthread("/vpe-api", name, 32);
-  else
-    ret = vl_client_connect_to_vlib("/vpe-api", name, 32);
+  if (no_rx_pthread) ret = vl_client_connect_to_vlib_no_rx_pthread("/vpe-api", name, 32);
+  else ret = vl_client_connect_to_vlib("/vpe-api", name, 32);
   if (ret < 0) {
     clib_warning ("shmem connect failed");
     return -1;
   }
-
   rm->my_client_index = am->my_client_index;
   rm->vl_input_queue = am->shmem_hdr->vl_input_queue;
-
-  vl_msg_api_set_handlers(
-			find_msg_id(CONTROL_PING_REPLY_MESSAGE),
-			CONTROL_PING_REPLY_MESSAGE,
-      vl_api_control_ping_reply_t_handler, vl_noop_handler,
-      vl_api_control_ping_reply_t_endian,
-      vl_api_control_ping_reply_t_print,
-      sizeof(vl_api_control_ping_reply_t), 1);
-
-  vl_msg_api_set_handlers(
-      find_msg_id(IFC_DETAIL_MESSAGE),
-      IFC_DETAIL_MESSAGE,
-      vl_api_sw_interface_details_t_handler, vl_noop_handler,
-      vl_api_sw_interface_details_t_endian,
-      vl_api_sw_interface_details_t_print,
-      sizeof(vl_api_sw_interface_details_t), 1);
-
   return 0;
 }
 
@@ -167,10 +131,16 @@ DEFUN (show_vpp_vpe_message_table,
        "Show VPP VPE information\n"
        "Show VPP VPE message-table\n")
 {
+  if (connect_to_vpp("routerd", true) < 0) {
+    svm_region_exit ();
+    vty_out(vty, "Couldn't connect to vpe, exiting...\n");
+    return CMD_WARNING_CONFIG_FAILED;
+  }
   vty_out(vty, "CONTROL_PING_MESSAGE      : %04x\n", find_msg_id(CONTROL_PING_MESSAGE      ));
   vty_out(vty, "CONTROL_PING_REPLY_MESSAGE: %04x\n", find_msg_id(CONTROL_PING_REPLY_MESSAGE));
   vty_out(vty, "DUMP_IFC_MESSAGE          : %04x\n", find_msg_id(DUMP_IFC_MESSAGE          ));
   vty_out(vty, "IFC_DETAIL_MESSAGE        : %04x\n", find_msg_id(IFC_DETAIL_MESSAGE        ));
+  vl_client_disconnect_from_vlib ();
   return CMD_SUCCESS;
 }
 
@@ -190,10 +160,6 @@ DEFUN (show_vpp_interface,
        VPP_STR
        "Show VPP interface information\n")
 {
-  routerd_main_t *rm = &routerd_main;
-  unformat_input_t _argv, *a = &_argv;
-  clib_mem_init_thread_safe (0, 256 << 20);
-
   if (connect_to_vpp("routerd", true) < 0) {
     svm_region_exit ();
     vty_out(vty, "Couldn't connect to vpe, exiting...\n");
@@ -205,7 +171,7 @@ DEFUN (show_vpp_interface,
 
   uword msg;
   api_main_t *am = &api_main;
-  while (!svm_queue_sub (am->vl_input_queue, (u8 *) & msg, SVM_Q_TIMEDWAIT, 1)) {
+  while (!svm_queue_sub (am->vl_input_queue, (u8 *) & msg, SVM_Q_TIMEDWAIT, 3)) {
     uint16_t msg_id = ntohs(*((uint16_t*)msg));
     uint16_t pong_id = find_msg_id(CONTROL_PING_REPLY_MESSAGE);
     if (msg_id == pong_id)
@@ -225,22 +191,56 @@ DEFUN (show_vpp_interface,
   return CMD_SUCCESS;
 }
 
+DEFUN(set_interface_state,
+       set_interface_state_cmd,
+       "set interface state idx NAME <up|down>",
+       "Setting\n"
+       "Interface setting\n"
+       "Interface state setting\n"
+       "Specify interface index\n"
+       "Specify interface index\n"
+       "Set interface state up\n"
+       "Set interface state down\n")
+{
+  if (connect_to_vpp("routerd", true) < 0) {
+    svm_region_exit ();
+    vty_out(vty, "Couldn't connect to vpe, exiting...\n");
+    return CMD_WARNING_CONFIG_FAILED;
+  }
+
+	uint32_t ifindex = strtol(argv[4]->arg, NULL, 0);
+	bool is_up = strcmp(argv[5]->arg, "up") == 0 ? true : false;
+  set_interface_flag(find_msg_id(SET_IFC_FLAGS), 2, ifindex, is_up);
+
+  api_main_t *am = &api_main;
+  uword msg2;
+  while (!svm_queue_sub (am->vl_input_queue, (u8 *) & msg2, SVM_Q_TIMEDWAIT, 3)) {
+    vl_api_sw_interface_set_flags_reply_t * mp =
+      (vl_api_sw_interface_set_flags_reply_t*)msg2;
+    int32_t retval = ntohl(mp->retval);
+    if (retval < 0) {
+      vty_out(vty, "setting was failed retval=%d\n", retval);
+      vl_client_disconnect_from_vlib ();
+      return CMD_WARNING_CONFIG_FAILED;
+    }
+    break;
+  }
+
+  vl_client_disconnect_from_vlib ();
+  return CMD_SUCCESS;
+}
+
 DEFUN (vpe_connect,
        vpe_connect_cmd,
        "vpe connect",
        "VPP-VPE Setting\n"
        "Connect to VPP-VPE\n")
 {
-  routerd_main_t *rm = &routerd_main;
-  unformat_input_t _argv, *a = &_argv;
-  clib_mem_init_thread_safe (0, 256 << 20);
-
   if (connect_to_vpp("routerd", false) < 0) {
     svm_region_exit ();
     vty_out(vty, "Couldn't connect to vpe, exiting...\n");
     return CMD_WARNING_CONFIG_FAILED;
   }
-
   return CMD_SUCCESS;
 }
 
@@ -257,6 +257,10 @@ DEFUN (vpe_disconnect,
 void
 setup_vpp_node(vui_t *vui)
 {
+  routerd_main_t *rm = &routerd_main;
+  unformat_input_t _argv, *a = &_argv;
+  clib_mem_init_thread_safe (0, 256 << 20);
+
   vui_node_t *vpp_node = vui_node_new();
   vpp_node->name = strdup("vpp");
   vpp_node->prompt = strdup("%s(config-vpp)# ");
@@ -269,5 +273,7 @@ setup_vpp_node(vui_t *vui)
   vui_install_element(vui, ENABLE_NODE, &show_vpp_vpe_message_table_cmd);
   vui_install_element(vui, vpp_node->node, &vpe_connect_cmd);
   vui_install_element(vui, vpp_node->node, &vpe_disconnect_cmd);
+
+  vui_install_element(vui, ENABLE_NODE, &set_interface_state_cmd);
 }
 
