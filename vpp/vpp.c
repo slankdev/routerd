@@ -34,6 +34,8 @@
 #define IP_ADDR_DETAILS_DETAIL_MESSAGE "ip_address_details"
 #define CRT_LOOPBACK "create_loopback"
 #define CRT_LOOPBACK_REPLY "create_loopback_reply"
+#define IP_ADDDEL_ROUTE "ip_add_del_route"
+#define IP_ADDDEL_ROUTE_REPLY "ip_add_del_route_reply"
 
 typedef struct
 {
@@ -41,6 +43,60 @@ typedef struct
   u32 my_client_index;
 } routerd_main_t;
 routerd_main_t routerd_main;
+
+struct prefix {
+  int afi;
+  size_t plen;
+  union {
+    uint8_t raw[16];
+    struct in6_addr in6;
+    struct in_addr in4;
+  } u;
+};
+
+static void
+parse_prefix_str(const char *str, int afi, struct prefix *pref)
+{
+  assert(afi == AF_INET || afi == AF_INET6);
+  pref->afi = afi;
+
+  if (afi == AF_INET) {
+    char *pnt = strchr(str, '/');
+    if (pnt == NULL) {
+      inet_pton(AF_INET, str, &pref->u.in4);
+      pref->plen = 32;
+    } else {
+      char buf[128];
+      strncpy(buf, str, sizeof(buf));
+      buf[pnt - str] = '\0';
+      const char *plen_str = &buf[pnt - str + 1];
+      inet_pton(AF_INET, buf, &pref->u.in4);
+      pref->plen = strtol(plen_str, NULL, 0);
+    }
+  } else {
+    char *pnt = strchr(str, '/');
+    if (pnt == NULL) {
+      inet_pton(AF_INET6, str, &pref->u.in6);
+      pref->plen = 128;
+    } else {
+      char buf[128];
+      strncpy(buf, str, sizeof(buf));
+      buf[pnt - str] = '\0';
+      const char *plen_str = &buf[pnt - str + 1];
+      inet_pton(AF_INET6, buf, &pref->u.in6);
+      pref->plen = strtol(plen_str, NULL, 0);
+    }
+  }
+}
+
+static int
+snprintf_prefix(char *str, size_t size,
+    const struct prefix *prefix)
+{
+  char buf[128];
+  inet_ntop(prefix->afi, prefix->u.raw, buf, sizeof(buf));
+  return snprintf(str, size, "%s", buf);
+}
 
 pid_t gettid(void) { return syscall(SYS_gettid); }
 
@@ -77,6 +133,39 @@ link_speed_to_str(uint32_t speed)
   if (speed == _40G ) return "40G";
   if (speed == _100G) return "100G";
   return "UNKNOWN";
+}
+
+static int
+ip_add_del_route(uint16_t vl_msg_id, uint16_t msg_id, bool is_add,
+    const struct prefix *route, const struct prefix *nexthop,
+    uint32_t nh_ifindex)
+{
+  routerd_main_t *rm = &routerd_main;
+  vl_api_ip_add_del_route_t *mp =
+    vl_msg_api_alloc(sizeof(*mp));
+  memset(mp, 0, sizeof(*mp));
+  mp->_vl_msg_id = ntohs(vl_msg_id);
+  mp->client_index = rm->my_client_index;
+  mp->context = htonl(msg_id);
+  assert(route->afi == nexthop->afi);
+
+  /*
+   * [ "u8", "is_add" ],
+   * [ "u8", "is_ipv6" ],
+   * [ "u8", "dst_address_length" ],
+   * [ "u8", "dst_address", 16 ],
+	 * [ "u8", "next_hop_address", 16 ],
+   * [ "u32", "next_hop_sw_if_index" ],
+   * [ "u8", "is_resolve_host" ],
+   */
+  mp->is_add = is_add ? 1 : 0;
+  mp->is_ipv6 = route->afi == AF_INET6 ? 1 : 0;
+  mp->is_resolve_host = 1;
+  mp->dst_address_length = route->plen;
+  mp->next_hop_sw_if_index = htonl(nh_ifindex);
+  memcpy(mp->dst_address, route->u.raw, mp->is_ipv6 ? 16 : 4);
+  memcpy(mp->next_hop_address, nexthop->u.raw, mp->is_ipv6 ? 16 : 4);
+  vl_msg_api_send_shmem(rm->vl_input_queue, (u8 *) &mp);
 }
 
 static int
@@ -222,6 +311,8 @@ DEFUN (show_vpp_vpe_message_table,
   vty_out(vty, "IP_ADDR_DETAILS_DETAIL_MESSAGE: %04x\n", find_msg_id(IP_ADDR_DETAILS_DETAIL_MESSAGE));
   vty_out(vty, "CRT_LOOPBACK                  : %04x\n", find_msg_id(CRT_LOOPBACK                  ));
   vty_out(vty, "CRT_LOOPBACK_REPLY            : %04x\n", find_msg_id(CRT_LOOPBACK_REPLY            ));
+  vty_out(vty, "IP_ADDDEL_ROUTE               : %04x\n", find_msg_id(IP_ADDDEL_ROUTE               ));
+  vty_out(vty, "IP_ADDDEL_ROUTE_REPLY         : %04x\n", find_msg_id(IP_ADDDEL_ROUTE_REPLY         ));
   vl_client_disconnect_from_vlib ();
   return CMD_SUCCESS;
 }
@@ -353,51 +444,6 @@ DEFUN (show_vpp_interface,
   }
 
   return CMD_SUCCESS;
-}
-
-struct prefix {
-  int afi;
-  size_t plen;
-  union {
-    uint8_t raw[16];
-    struct in6_addr in6;
-    struct in_addr in4;
-  } u;
-};
-
-static void
-parse_prefix_str(const char *str, int afi, struct prefix *pref)
-{
-  assert(afi == AF_INET || afi == AF_INET6);
-  pref->afi = afi;
-
-  if (afi == AF_INET) {
-    char *pnt = strchr(str, '/');
-    if (pnt == NULL) {
-      inet_pton(AF_INET, str, &pref->u.in4);
-      pref->plen = 32;
-    } else {
-      char buf[128];
-      strncpy(buf, str, sizeof(buf));
-      buf[pnt - str] = '\0';
-      const char *plen_str = &buf[pnt - str + 1];
-      inet_pton(AF_INET, buf, &pref->u.in4);
-      pref->plen = strtol(plen_str, NULL, 0);
-    }
-  } else {
-    char *pnt = strchr(str, '/');
-    if (pnt == NULL) {
-      inet_pton(AF_INET6, str, &pref->u.in6);
-      pref->plen = 128;
-    } else {
-      char buf[128];
-      strncpy(buf, str, sizeof(buf));
-      buf[pnt - str] = '\0';
-      const char *plen_str = &buf[pnt - str + 1];
-      inet_pton(AF_INET6, buf, &pref->u.in6);
-      pref->plen = strtol(plen_str, NULL, 0);
-    }
-  }
 }
 
 inline static const char*
@@ -570,6 +616,70 @@ DEFUN (vpe_disconnect,
   return CMD_SUCCESS;
 }
 
+DEFUN (ip_adddel_route,
+       ip_adddel_route_cmd,
+       "<add|del> < ipv4 route A.B.C.D/M via A.B.C.D nh-ifindex NAME | "
+                   "ipv6 route X:X::X:X/M via X:X::X:X nh-ifindex NAME >",
+       "Add setting\n"
+       "Del setting\n"
+       "Add ipv4 settting\n"
+       "Add ipv4 route settting\n"
+       "Specify ipv4 prefix\n"
+       "Specify ipv4 nexthop\n"
+       "Specify ipv4 nexthop\n"
+       "Specify nexthop-ifindex\n"
+       "Specify nexthop-ifindex\n"
+       "Add ipv6 settting\n"
+       "Add ipv6 route settting\n"
+       "Specify ipv6 prefix\n"
+       "Specify ipv6 nexthop\n"
+       "Specify ipv6 nexthop\n"
+       "Specify nexthop-ifindex\n"
+       "Specify nexthop-ifindex\n")
+{
+  const size_t negate = strcmp(argv[0]->arg, "del") == 0;
+  const bool is_ipv6 = strcmp(argv[1]->arg, "ipv6") == 0;
+  const char *prefix_str = argv[3]->arg;
+  const char *nexthop_str = argv[5]->arg;
+  const char *nh_ifindex_str = argv[7]->arg;
+
+  struct prefix route_pref;
+  struct prefix nexthop_pref;
+  int afi = is_ipv6 ? AF_INET6 : AF_INET;
+  parse_prefix_str(prefix_str, afi, &route_pref);
+  parse_prefix_str(nexthop_str, afi, &nexthop_pref);
+  uint32_t nh_ifindex = strtol(nh_ifindex_str, NULL, 0);
+
+  if (connect_to_vpp("routerd", true) < 0) {
+    svm_region_exit ();
+    vty_out(vty, "Couldn't connect to vpe, exiting...\n");
+    return CMD_WARNING_CONFIG_FAILED;
+  }
+
+  ip_add_del_route(find_msg_id(IP_ADDDEL_ROUTE), 10,
+      !negate, &route_pref, &nexthop_pref, nh_ifindex);
+
+  void *msg = NULL;
+  api_main_t *am = &api_main;
+  while (!svm_queue_sub (am->vl_input_queue, (u8 *) & msg, SVM_Q_TIMEDWAIT, 1)) {
+    vl_api_sw_interface_add_del_address_reply_t * mp =
+      (vl_api_sw_interface_add_del_address_reply_t*)msg;
+    int32_t retval = ntohl(mp->retval);
+    if (retval < 0) {
+      vty_out(vty, "setting was failed: %s (%d)\n",
+          vpp_vnet_strerror(retval), retval);
+      vl_client_disconnect_from_vlib ();
+      return CMD_WARNING_CONFIG_FAILED;
+    }
+    vl_client_disconnect_from_vlib();
+    return CMD_SUCCESS;
+  }
+
+  vty_out(vty, "timeout\n");
+  vl_client_disconnect_from_vlib ();
+  return CMD_WARNING_CONFIG_FAILED;
+}
+
 void
 setup_vpp_node(vui_t *vui)
 {
@@ -594,6 +704,6 @@ setup_vpp_node(vui_t *vui)
   vui_install_element(vui, ENABLE_NODE, &set_interface_address_cmd);
   vui_install_element(vui, ENABLE_NODE, &set_interface_state_cmd);
   vui_install_element(vui, ENABLE_NODE, &create_loopback_interface_cmd);
-  /* vui_install_element(vui, ENABLE_NODE, &add_route); */
+  vui_install_element(vui, ENABLE_NODE, &ip_adddel_route_cmd);
 }
 
