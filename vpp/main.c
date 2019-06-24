@@ -5,6 +5,7 @@
 
 void setup_netlink_node(vui_t *vui);
 void setup_vpp_node(vui_t *vui);
+void setup_tap_node(vui_t *vui);
 
 void *th(void *ptr)
 {
@@ -15,6 +16,7 @@ void *th(void *ptr)
   vui_serv_stdio(vui);
   setup_netlink_node(vui);
   setup_vpp_node(vui);
+  setup_tap_node(vui);
 
   vui_run();
   vui_delete(vui);

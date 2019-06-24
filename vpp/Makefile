@@ -10,7 +10,7 @@ LDFLAGS += \
   -lvppinfra -lvlib -lsvm -lrt -ldl \
   -lvui -lpthread -lm -lcrypt -lcrypto
 
-SRC = main.c netlink.c vpp.c
+SRC = main.c netlink.c vpp.c tap.c
 OBJ = $(SRC:.c=.o)
 TARGET = a.out
 
