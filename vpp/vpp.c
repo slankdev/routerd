@@ -210,10 +210,18 @@ DEFUN (show_vpp_vpe_message_table,
     vty_out(vty, "Couldn't connect to vpe, exiting...\n");
     return CMD_WARNING_CONFIG_FAILED;
   }
-  vty_out(vty, "CONTROL_PING_MESSAGE      : %04x\n", find_msg_id(CONTROL_PING_MESSAGE      ));
-  vty_out(vty, "CONTROL_PING_REPLY_MESSAGE: %04x\n", find_msg_id(CONTROL_PING_REPLY_MESSAGE));
-  vty_out(vty, "DUMP_IFC_MESSAGE          : %04x\n", find_msg_id(DUMP_IFC_MESSAGE          ));
-  vty_out(vty, "IFC_DETAIL_MESSAGE        : %04x\n", find_msg_id(IFC_DETAIL_MESSAGE        ));
+  vty_out(vty, "CONTROL_PING_MESSAGE          : %04x\n", find_msg_id(CONTROL_PING_MESSAGE          ));
+  vty_out(vty, "CONTROL_PING_REPLY_MESSAGE    : %04x\n", find_msg_id(CONTROL_PING_REPLY_MESSAGE    ));
+  vty_out(vty, "DUMP_IFC_MESSAGE              : %04x\n", find_msg_id(DUMP_IFC_MESSAGE              ));
+  vty_out(vty, "IFC_DETAIL_MESSAGE            : %04x\n", find_msg_id(IFC_DETAIL_MESSAGE            ));
+  vty_out(vty, "SET_IFC_FLAGS                 : %04x\n", find_msg_id(SET_IFC_FLAGS                 ));
+  vty_out(vty, "SET_IFC_FLAGS_REPLY           : %04x\n", find_msg_id(SET_IFC_FLAGS_REPLY           ));
+  vty_out(vty, "SET_IFC_ADDR                  : %04x\n", find_msg_id(SET_IFC_ADDR                  ));
+  vty_out(vty, "SET_IFC_ADDR_REPLY            : %04x\n", find_msg_id(SET_IFC_ADDR_REPLY            ));
+  vty_out(vty, "DUMP_IP_ADDR_MESSAGE          : %04x\n", find_msg_id(DUMP_IP_ADDR_MESSAGE          ));
+  vty_out(vty, "IP_ADDR_DETAILS_DETAIL_MESSAGE: %04x\n", find_msg_id(IP_ADDR_DETAILS_DETAIL_MESSAGE));
+  vty_out(vty, "CRT_LOOPBACK                  : %04x\n", find_msg_id(CRT_LOOPBACK                  ));
+  vty_out(vty, "CRT_LOOPBACK_REPLY            : %04x\n", find_msg_id(CRT_LOOPBACK_REPLY            ));
   vl_client_disconnect_from_vlib ();
   return CMD_SUCCESS;
 }
