@@ -30,6 +30,8 @@
 #define SET_IFC_FLAGS_REPLY "sw_interface_set_flags_reply"
 #define SET_IFC_ADDR "sw_interface_add_del_address"
 #define SET_IFC_ADDR_REPLY "sw_interface_add_del_address_reply"
+#define DUMP_IP_ADDR_MESSAGE "ip_address_dump"
+#define IP_ADDR_DETAILS_DETAIL_MESSAGE "ip_address_details"
 
 typedef struct
 {
@@ -57,6 +59,24 @@ find_msg_id(char* msg)
       (_HASH_FUNC_IMPL_INSIDE_IMPL_));
 }
 
+static const char*
+link_speed_to_str(uint32_t speed)
+{
+#define _10M  (10000000UL)
+#define _100M (100000000UL)
+#define _1G   (1000000000UL)
+#define _10G  (10000000000UL)
+#define _40G  (40000000000UL)
+#define _100G (100000000000UL)
+  if (speed == _10M ) return "10M";
+  if (speed == _100M) return "100M";
+  if (speed == _1G  ) return "1G";
+  if (speed == _10G ) return "10G";
+  if (speed == _40G ) return "40G";
+  if (speed == _100G) return "100G";
+  return "UNKNOWN";
+}
+
 static int
 send_ping(u16 ping_id, u16 msg_id)
 {
@@ -80,6 +100,21 @@ dump_ifcs(u32 dump_id, u32 message_id)
   mp->_vl_msg_id = ntohs(dump_id);
   mp->client_index = jm->my_client_index;
   mp->context = clib_host_to_net_u32(message_id);
+  vl_msg_api_send_shmem(jm->vl_input_queue, (u8 *) &mp);
+}
+
+static int
+dump_ipaddrs(u32 dump_id, u32 message_id, uint32_t ifindex, bool is_ipv6)
+{
+  routerd_main_t *jm = &routerd_main;
+  vl_api_ip_address_dump_t *mp =
+    vl_msg_api_alloc(sizeof(*mp));
+  memset(mp, 0, sizeof(*mp));
+  mp->_vl_msg_id = ntohs(dump_id);
+  mp->client_index = jm->my_client_index;
+  mp->context = clib_host_to_net_u32(message_id);
+  mp->sw_if_index = htonl(ifindex);
+  mp->is_ipv6 = is_ipv6 ? 1 : 0;
   vl_msg_api_send_shmem(jm->vl_input_queue, (u8 *) &mp);
 }
 
@@ -176,6 +211,27 @@ snprintf_ether_addr(char *str, size_t size, const void *buffer)
   return ret;
 }
 
+struct interface_info {
+  bool enable;
+  vl_api_sw_interface_details_t link;
+  vl_api_ip_address_details_t addrs[256];
+  size_t n_addrs;
+};
+
+static void
+strfmt_append(char *str, size_t size, char *fmt, ...)
+{
+  char buf0[128];
+  va_list args;
+  va_start(args, fmt);
+  vsnprintf(buf0, sizeof(buf0), fmt, args);
+  va_end(args);
+
+  char *pos = &str[strlen(str)];
+  size_t pos_size = size - strlen(str);
+  snprintf(pos, pos_size, "%s", buf0);
+}
+
 DEFUN (show_vpp_interface,
        show_vpp_interface_cmd,
        "show vpp interface",
@@ -189,28 +245,89 @@ DEFUN (show_vpp_interface,
     return CMD_WARNING_CONFIG_FAILED;
   }
 
-  dump_ifcs(find_msg_id(DUMP_IFC_MESSAGE), 2);
-  send_ping(find_msg_id(CONTROL_PING_MESSAGE), 1);
-
+  struct interface_info interfaces[256];
+  memset(interfaces, 0, sizeof(interfaces));
   void *msg = NULL;
   api_main_t *am = &api_main;
+
+  /*
+   * Get interfaces basic info
+   */
+  dump_ifcs(find_msg_id(DUMP_IFC_MESSAGE), 2);
+  send_ping(find_msg_id(CONTROL_PING_MESSAGE), 1);
   while (!svm_queue_sub (am->vl_input_queue, (u8 *) & msg, SVM_Q_TIMEDWAIT, 3)) {
     uint16_t msg_id = ntohs(*((uint16_t*)msg));
     uint16_t pong_id = find_msg_id(CONTROL_PING_REPLY_MESSAGE);
-    if (msg_id == pong_id)
+    if (msg_id == pong_id) {
       break;
-
-    vl_api_sw_interface_details_t * mp = (vl_api_sw_interface_details_t*)msg;
-    char buf[128];
-    snprintf_ether_addr(buf, sizeof(buf), mp->l2_address);
-    vty_out(vty, " %s: idx=%u admin=%s link=%s mac=%s\n",
-        mp->interface_name,
-        clib_net_to_host_u32(mp->sw_if_index),
-        mp->admin_up_down > 0 ? "up" : "down",
-        mp->link_up_down > 0 ? "up" : "down", buf);
+    }
+    vl_api_sw_interface_details_t *mp = (vl_api_sw_interface_details_t*)msg;
+    memcpy(&interfaces[ntohl(mp->sw_if_index)].link, mp, sizeof(*mp));
+    interfaces[ntohl(mp->sw_if_index)].enable = true;
+    dump_ipaddrs(find_msg_id(DUMP_IP_ADDR_MESSAGE), 10, ntohl(mp->sw_if_index), false);
+    dump_ipaddrs(find_msg_id(DUMP_IP_ADDR_MESSAGE), 10, ntohl(mp->sw_if_index), true);
   }
 
+  /*
+   * Get interface ip-addrs info on each interface
+   */
+  send_ping(find_msg_id(CONTROL_PING_MESSAGE), 11);
+  while (!svm_queue_sub (am->vl_input_queue, (u8 *) & msg, SVM_Q_TIMEDWAIT, 1)) {
+    uint16_t msg_id = ntohs(*((uint16_t*)msg));
+    uint16_t pong_id = find_msg_id(CONTROL_PING_REPLY_MESSAGE);
+    if (msg_id == pong_id) {
+      break;
+    }
+    vl_api_ip_address_details_t *mp = msg;
+    const uint32_t ifindex = ntohl(mp->sw_if_index);
+    const size_t n_addrs = interfaces[ifindex].n_addrs++;
+    memcpy(&interfaces[ifindex].addrs[n_addrs], mp, sizeof(*mp));
+
+  }
+
+  /*
+   * Disconnect from vlib
+   */
   vl_client_disconnect_from_vlib();
+
+  /*
+   * Vty output
+   */
+  vty_out(vty, "\n");
+  for (size_t i=0; i<256; i++) {
+    if (!interfaces[i].enable)
+      continue;
+
+    char ipaddrs_str_buf[512];
+    memset(ipaddrs_str_buf, 0, sizeof(ipaddrs_str_buf));
+    for (size_t j=0; j<interfaces[i].n_addrs; j++) {
+      vl_api_ip_address_details_t *mp = &interfaces[i].addrs[j];
+      char str[128];
+      inet_ntop(mp->is_ipv6 ? AF_INET6 : AF_INET,
+          mp->ip, str, sizeof(str));
+      strfmt_append(ipaddrs_str_buf, sizeof(ipaddrs_str_buf), "%s/%u ", str, mp->prefix_length);
+    }
+    if (strlen(ipaddrs_str_buf) == 0)
+      snprintf(ipaddrs_str_buf, sizeof(ipaddrs_str_buf), "none");
+
+    vl_api_sw_interface_details_t *mp = &interfaces[i].link;
+    char buf[128];
+    snprintf_ether_addr(buf, sizeof(buf), mp->l2_address);
+    vty_out(vty,
+        " %s: idx[%u], admin %s, link %s\n"
+        "  Hardwre address: %s\n"
+        "  Internet address: %s\n"
+        "  MTU-LINK/L3/IP/IP6/MPLS: %u/%u/%u/%u/%u, Link-Speed/Duplex: %s/%s\n\n",
+        mp->interface_name, clib_net_to_host_u32(mp->sw_if_index),
+        mp->admin_up_down > 0 ? "up" : "down", mp->link_up_down > 0 ? "up" : "down", buf,
+        ipaddrs_str_buf,
+        ntohs(mp->link_mtu),
+        ntohl(mp->mtu[0]), ntohl(mp->mtu[1]), ntohl(mp->mtu[2]), ntohl(mp->mtu[3]),
+        link_speed_to_str(ntohl(mp->link_speed)),
+        mp->link_duplex == 1 ? "Full" : "Half");
+
+  }
+
   return CMD_SUCCESS;
 }
 
