@@ -32,6 +32,8 @@
 #define SET_IFC_ADDR_REPLY "sw_interface_add_del_address_reply"
 #define DUMP_IP_ADDR_MESSAGE "ip_address_dump"
 #define IP_ADDR_DETAILS_DETAIL_MESSAGE "ip_address_details"
+#define CRT_LOOPBACK "create_loopback"
+#define CRT_LOOPBACK_REPLY "create_loopback_reply"
 
 typedef struct
 {
@@ -75,6 +77,20 @@ link_speed_to_str(uint32_t speed)
   if (speed == _40G ) return "40G";
   if (speed == _100G) return "100G";
   return "UNKNOWN";
+}
+
+static int
+create_loopback(uint16_t dump_id, uint16_t msg_id)
+{
+  routerd_main_t *rm = &routerd_main;
+  vl_api_create_loopback_t *mp =
+    vl_msg_api_alloc(sizeof(*mp));
+  memset(mp, 0, sizeof(*mp));
+  mp->_vl_msg_id = ntohs(dump_id);
+  mp->client_index = rm->my_client_index;
+  mp->context = htonl(msg_id);
+
+  vl_msg_api_send_shmem(rm->vl_input_queue, (u8 *) &mp);
 }
 
 static int
@@ -488,6 +504,40 @@ DEFUN(set_interface_state,
   return CMD_SUCCESS;
 }
 
+DEFUN (create_loopback_interface,
+       create_loopback_interface_cmd,
+       "create loopback interface",
+       "Create setting\n"
+       "Create loopback interface\n"
+       "Create loopback interface\n")
+{
+  if (connect_to_vpp("routerd", false) < 0) {
+    svm_region_exit ();
+    vty_out(vty, "Couldn't connect to vpe, exiting...\n");
+    return CMD_WARNING_CONFIG_FAILED;
+  }
+
+  void *msg;
+  api_main_t *am = &api_main;
+  create_loopback(find_msg_id(CRT_LOOPBACK), 12);
+  while (!svm_queue_sub (am->vl_input_queue, (u8 *) & msg, SVM_Q_TIMEDWAIT, 3)) {
+    vl_api_create_loopback_reply_t * mp = msg;
+    int32_t retval = ntohl(mp->retval);
+    if (retval < 0) {
+      vty_out(vty, "setting was failed: %s (%d)\n",
+          vpp_vnet_strerror(retval), retval);
+      vl_client_disconnect_from_vlib ();
+      return CMD_WARNING_CONFIG_FAILED;
+    }
+    vl_client_disconnect_from_vlib ();
+    return CMD_SUCCESS;
+  }
+
+  vty_out(vty, "timeout\n");
+  vl_client_disconnect_from_vlib ();
+  return CMD_WARNING_CONFIG_FAILED;
+}
+
 DEFUN (vpe_connect,
        vpe_connect_cmd,
        "vpe connect",
@@ -535,7 +585,7 @@ setup_vpp_node(vui_t *vui)
   // TODO: change node ENABLE_NODE -> vpp_node->node
   vui_install_element(vui, ENABLE_NODE, &set_interface_address_cmd);
   vui_install_element(vui, ENABLE_NODE, &set_interface_state_cmd);
-  /* vui_install_element(vui, ENABLE_NODE, &create_loopback_interface); */
+  vui_install_element(vui, ENABLE_NODE, &create_loopback_interface_cmd);
   /* vui_install_element(vui, ENABLE_NODE, &add_route); */
 }
 
