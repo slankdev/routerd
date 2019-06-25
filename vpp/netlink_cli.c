@@ -41,11 +41,11 @@ DEFUN (show_netlink_filter,
 
 DEFUN (show_netlink_cache,
        show_netlink_cache_cmd,
-       "show netlink cache <iflink|addr|route|neigh>",
+       "show netlink cache <link|addr|route|neigh>",
        SHOW_STR
        "Show netlink information\n"
        "Show netlink cache information\n"
-       "Show netlink iflink cache\n"
+       "Show netlink link cache\n"
        "Show netlink addr cache\n"
        "Show netlink route cache\n"
        "Show netlink neigh cache\n")
