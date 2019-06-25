@@ -109,10 +109,10 @@ extern vector cmdvec;
 #define DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, attrs, dnum)     \
 	static struct cmd_element cmdname = {                                  \
 		.string = cmdstr,                                              \
-		.func = funcname,                                              \
 		.doc = helpstr,                                                \
-		.attr = attrs,                                                 \
 		.daemon = dnum,                                                \
+		.attr = attrs,                                                 \
+		.func = funcname,                                              \
 		.name = #cmdname,                                              \
 	};
 

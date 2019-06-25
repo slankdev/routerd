@@ -18,8 +18,6 @@
 extern "C" {
 #endif
 
-// extern netlink_cache_t* nlc;
-
 namespace routerd {
 
 struct link {

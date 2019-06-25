@@ -1,3 +1,5 @@
+#ifndef _HEXDUMP_H_
+#define _HEXDUMP_H_
 
 #include <stdint.h>
 #include <stddef.h>
@@ -45,3 +47,4 @@ hexdump(FILE* fp, const void *buffer, size_t bufferlen)
 #ifdef __cplusplus
 }
 #endif
+#endif /* _HEXDUMP_H_ */

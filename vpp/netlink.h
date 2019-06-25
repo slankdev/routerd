@@ -13,18 +13,35 @@
 extern "C" {
 #endif
 
-// void monitor_NEWLINK(const struct nlmsghdr* hdr);
-// void monitor_DELLINK(const struct nlmsghdr* hdr);
-// void monitor_NEWADDR(const struct nlmsghdr* hdr);
-// void monitor_DELADDR(const struct nlmsghdr* hdr);
-// void monitor_NEWROUTE(const struct nlmsghdr* hdr);
-// void monitor_DELROUTE(const struct nlmsghdr* hdr);
-// void monitor_NEWNEIGH(const struct nlmsghdr* hdr);
-// void monitor_DELNEIGH(const struct nlmsghdr* hdr);
-//
-// int monitor(const struct sockaddr_nl *who [[gnu::unused]],
-//          struct rtnl_ctrl_data* _dum_ [[gnu::unused]],
-//          struct nlmsghdr *n, void *arg [[gnu::unused]]);
+struct netlink_counter {
+  public:
+    struct {
+      size_t new_cnt;
+      size_t del_cnt;
+    } link;
+    struct {
+      size_t new_cnt;
+      size_t del_cnt;
+    } addr;
+    struct {
+      size_t new_cnt;
+      size_t del_cnt;
+    } route;
+    struct {
+      size_t new_cnt;
+      size_t del_cnt;
+    } neigh;
+  public:
+    netlink_counter() {}
+    virtual ~netlink_counter() {}
+    size_t link_all() const { return link.new_cnt + link.del_cnt; }
+    size_t addr_all() const { return addr.new_cnt + addr.del_cnt; }
+    size_t route_all() const { return route.new_cnt + route.del_cnt; }
+    size_t neigh_all() const { return neigh.new_cnt + neigh.del_cnt; }
+};
+
+extern netlink_counter counter;
+extern netlink_cache_t *nlc;
 
 void netlink_manager();
 

@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <vui/vui.h>
 #include "netlink_cli.h"
+#include "netlink.h"
 
 DEFUN (netlink,
        netlink_cmd,
@@ -40,6 +41,18 @@ DEFUN (show_netlink_filter,
   return CMD_SUCCESS;
 }
 
+static std::string
+mac_addr_str(const void *ptr_)
+{
+  const uint8_t *ptr = (const uint8_t*)ptr_;
+  for (size_t i=0; i<6; i++)
+    assert(ptr + i);
+  char str[128];
+  snprintf(str, sizeof(str), "%02x:%02x:%02x:%02x:%02x:%02x",
+      ptr[0], ptr[1], ptr[2], ptr[3], ptr[4], ptr[5]);
+  return str;
+}
+
 DEFUN (show_netlink_cache,
        show_netlink_cache_cmd,
        "show netlink cache <link|addr|route|neigh>",
@@ -51,7 +64,24 @@ DEFUN (show_netlink_cache,
        "Show netlink route cache\n"
        "Show netlink neigh cache\n")
 {
-  vty_out(vty, "%s\n", __func__);
+  vty_out(vty, "cache:%p\n", nlc);
+  std::string type = argv[3]->arg;
+
+  if (type == "link") {
+    vty_out(vty, "link-cache@%p size=%zd\n", &nlc->links, nlc->links.size());
+    for (size_t i=0; i<nlc->links.size(); i++) {
+      buffer &buf = nlc->links[i];
+      routerd::link link((const struct ifinfomsg*)buf.data(), buf.size());
+      vty_out(vty, "  link[%zd]@%p: %s\n", i, &buf, link.summary().c_str());
+      vty_out(vty, "      name: %s, flag: <%s>, mtu: %u\n"
+                   "      address: %s\n",
+          rta_readstr(link.rtas->get(IFLA_IFNAME)),
+          ifm_flags2str(link.ifi->ifi_flags).c_str(),
+          rta_read32(link.rtas->get(IFLA_MTU)),
+          mac_addr_str(rta_readptr(link.rtas->get(IFLA_ADDRESS))).c_str());
+    }
+  }
+
   return CMD_SUCCESS;
 }
 
@@ -62,7 +92,15 @@ DEFUN (show_netlink_counter,
        "Show netlink information\n"
        "Show netlink message counter\n")
 {
-  vty_out(vty, "%s\n", __func__);
+  const netlink_counter &c = counter;
+  vty_out(vty, "\n");
+  vty_out(vty, " type   %10s %10s %10s\n", "new", "del", "tot");
+  vty_out(vty, " ------ %10s %10s %10s\n", "----------", "----------", "----------");
+  vty_out(vty, " link:  %10zd %10zd %10zd\n", c.link.new_cnt, c.link.del_cnt, c.link_all());
+  vty_out(vty, " addr:  %10zd %10zd %10zd\n", c.addr.new_cnt, c.addr.del_cnt, c.addr_all());
+  vty_out(vty, " route: %10zd %10zd %10zd\n", c.route.new_cnt, c.route.del_cnt, c.route_all());
+  vty_out(vty, " neigh: %10zd %10zd %10zd\n", c.neigh.new_cnt, c.neigh.del_cnt, c.neigh_all());
+  vty_out(vty, "\n");
   return CMD_SUCCESS;
 }
 

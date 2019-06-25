@@ -14,9 +14,9 @@ extern "C" {
 #endif
 
 typedef struct vui_s {
+  size_t _dummy_;
 } vui_t;
 
-enum node_type;
 struct cmd_node;
 struct cmd_element;
 
@@ -38,7 +38,7 @@ int vui_set_password(vui_t *vui, const char* password);
 int vui_set_hostname(vui_t *vui, const char* hostname);
 void vui_install_node(vui_t *vui, struct cmd_node *node);
 void vui_install_element(vui_t *vui,
-    enum node_type ntype, struct cmd_element *cmd);
+    int ntype, struct cmd_element *cmd);
 void vui_run(void);
 int vui_alloc_new_node_id(vui_t *vui, const char *name, int parent);
 void vui_install_default_element(vui_t *vui, int node);

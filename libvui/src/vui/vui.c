@@ -61,7 +61,7 @@ void vui_install_node(vui_t *vui, struct cmd_node *node)
 }
 
 void vui_install_element(vui_t *vui,
-    enum node_type ntype, struct cmd_element *cmd)
+    int ntype, struct cmd_element *cmd)
 {
   (void*)(vui);
   install_element(ntype, cmd);

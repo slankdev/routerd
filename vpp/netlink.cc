@@ -12,21 +12,38 @@
 #include "netlink.h"
 
 netlink_cache_t* nlc;
+netlink_counter counter;
 
-void
+static void
+link_analyze_and_hook(const routerd::link &link,
+    const netlink_cache_t *nlc)
+{
+  uint32_t affected_flag = ~uint32_t(0) & link.ifi->ifi_change;
+  uint32_t target_bit = link.ifi->ifi_flags & link.ifi->ifi_change;
+  if (affected_flag & IFF_UP) {
+    bool next_is_up = target_bit & affected_flag;
+    printf("TODO: vpp api setlink(%s)\r\n", next_is_up ? "UP" : "DN");
+  }
+}
+
+static void
 monitor_NEWLINK(const struct nlmsghdr* hdr)
 {
+  counter.link.new_cnt++;
   const struct ifinfomsg* ifi = (struct ifinfomsg*)(hdr + 1);
   const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
   routerd::link link(ifi, ifa_payload_len);
 
   std::string cli = link.to_iproute2_cli(RTM_NEWLINK, nlc).c_str();
   printf(" --> %s\r\n", cli.c_str());
+
+  link_analyze_and_hook(link, nlc);
 }
 
-void
+static void
 monitor_DELLINK(const struct nlmsghdr* hdr)
 {
+  counter.link.del_cnt++;
   const struct ifinfomsg* ifi = (struct ifinfomsg*)(hdr + 1);
   const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
   routerd::link link(ifi, ifa_payload_len);
@@ -35,9 +52,10 @@ monitor_DELLINK(const struct nlmsghdr* hdr)
   printf(" --> %s\r\n", cli.c_str());
 }
 
-void
+static void
 monitor_NEWADDR(const struct nlmsghdr* hdr)
 {
+  counter.addr.new_cnt++;
   const struct ifaddrmsg* ifa = (struct ifaddrmsg*)(hdr + 1);
   const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
   routerd::ifaddr addr(ifa, ifa_payload_len);
@@ -46,9 +64,10 @@ monitor_NEWADDR(const struct nlmsghdr* hdr)
   printf(" --> %s\r\n", cli.c_str());
 }
 
-void
+static void
 monitor_DELADDR(const struct nlmsghdr* hdr)
 {
+  counter.addr.del_cnt++;
   const struct ifaddrmsg* ifa = (struct ifaddrmsg*)(hdr + 1);
   const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
   routerd::ifaddr addr(ifa, ifa_payload_len);
@@ -57,9 +76,10 @@ monitor_DELADDR(const struct nlmsghdr* hdr)
   printf(" --> %s\r\n", cli.c_str());
 }
 
-void
+static void
 monitor_NEWROUTE(const struct nlmsghdr* hdr)
 {
+  counter.route.new_cnt++;
   const struct rtmsg* rtm = (struct rtmsg*)(hdr + 1);
   const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
   routerd::route route(rtm, ifa_payload_len);
@@ -68,9 +88,10 @@ monitor_NEWROUTE(const struct nlmsghdr* hdr)
   printf(" --> %s\r\n", cli.c_str());
 }
 
-void
+static void
 monitor_DELROUTE(const struct nlmsghdr* hdr)
 {
+  counter.route.del_cnt++;
   const struct rtmsg* rtm = (struct rtmsg*)(hdr + 1);
   const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
   routerd::route route(rtm, ifa_payload_len);
@@ -79,9 +100,10 @@ monitor_DELROUTE(const struct nlmsghdr* hdr)
   printf(" --> %s\r\n", cli.c_str());
 }
 
-void
+static void
 monitor_NEWNEIGH(const struct nlmsghdr* hdr)
 {
+  counter.neigh.new_cnt++;
   struct ndmsg* ndm = (struct ndmsg*)(hdr + 1);
   const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
   routerd::neigh nei(ndm, ifa_payload_len);
@@ -90,9 +112,10 @@ monitor_NEWNEIGH(const struct nlmsghdr* hdr)
   printf(" --> %s\r\n", cli.c_str());
 }
 
-void
+static void
 monitor_DELNEIGH(const struct nlmsghdr* hdr)
 {
+  counter.neigh.del_cnt++;
   struct ndmsg* ndm = (struct ndmsg*)(hdr + 1);
   const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
   routerd::neigh nei(ndm, ifa_payload_len);
@@ -101,7 +124,7 @@ monitor_DELNEIGH(const struct nlmsghdr* hdr)
   printf(" --> %s\r\n", cli.c_str());
 }
 
-int
+static int
 monitor(const struct sockaddr_nl *who [[gnu::unused]],
          struct rtnl_ctrl_data* _dum_ [[gnu::unused]],
          struct nlmsghdr *n, void *arg [[gnu::unused]])

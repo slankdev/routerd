@@ -33,23 +33,22 @@ CXXFLAGS += $(shell pkg-config json-c --cflags)
 LDFLAGS += $(shell pkg-config json-c --libs)
 
 BUILD_DIR = build
-SRC = main.cc netlink_cli.c vpp.c tap.c netlink.cc log.cc
+SRC = main.cc log.cc tap.c \
+  netlink_cli.cc netlink.cc \
+  vpp.c vpp_cli.c
 OBJ = $(SRC:%=$(BUILD_DIR)/%.o)
 TARGET = a.out
 
 $(BUILD_DIR)/$(TARGET): $(OBJ)
-	@echo ld $@
-	@$(CXX) $(CXXFLAGS) $(OBJ) -o $@ $(LDFLAGS) -lstdc++
+	$(CXX) $(CXXFLAGS) $(OBJ) -o $@ $(LDFLAGS)
 
 $(BUILD_DIR)/%.c.o: %.c
-	@echo cc $@
 	@mkdir -p ./build
 	@$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/%.cc.o: %.cc
-	@echo g++ $@
 	@mkdir -p ./build
-	@$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
 
 clean:
 	rm -f $(OBJ) $(TARGET)

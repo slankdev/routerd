@@ -5,7 +5,7 @@
 
 #include "netlink.h"
 #include "netlink_cli.h"
-#include "vpp.h"
+#include "vpp_cli.h"
 #include "tap.h"
 
 void th1()
