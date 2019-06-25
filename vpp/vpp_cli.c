@@ -35,24 +35,6 @@
 
 #include <vui/vui.h>
 
-inline static uint32_t
-find_msg_id(char* msg)
-{
-  api_main_t * am = &api_main;
-  hash_pair_t *hp;
-#define _HASH_FUNC_IMPL_INSIDE_IMPL_ { \
-  char *key = (char *)hp->key; \
-  int msg_name_len = strlen(key) - 9; \
-  if (strlen(msg) == msg_name_len && \
-    strncmp(msg, (char *)hp->key, msg_name_len) == 0) \
-    return (u32)hp->value[0]; \
-}
-  hash_foreach_pair (hp,
-      am->msg_index_by_name_and_crc,
-      (_HASH_FUNC_IMPL_INSIDE_IMPL_));
-}
-
-
 static int
 snprintf_ether_addr(char *str, size_t size, const void *buffer)
 {

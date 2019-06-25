@@ -58,7 +58,11 @@ int set_interface_addr(uint32_t vl_msg_id, uint32_t msg_id,
 int ip_add_del_route(uint16_t vl_msg_id, uint16_t msg_id,
     bool is_add, const struct prefix *route,
     const struct prefix *nexthop, uint32_t nh_ifindex);
-int connect_to_vpp (char *name, bool no_rx_pthread);
+int connect_to_vpp (const char *name, bool no_rx_pthread);
+void disconnect_from_vpp(void);
+uint32_t find_msg_id(const char* msg);
+
+int32_t vpp_waitmsg_retval(void);
 
 #ifdef __cplusplus
 }

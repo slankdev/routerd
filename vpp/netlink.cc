@@ -10,9 +10,24 @@
 #include <arpa/inet.h>
 #include <yalin/yalin.h>
 #include "netlink.h"
+#include "vpp.h"
 
 netlink_cache_t* nlc;
 netlink_counter counter;
+
+static void set_link(bool is_up)
+{
+  if (connect_to_vpp("routerd", true) < 0) {
+    printf("%s: Couldn't connect to vpe, exiting...\r\n", __func__);
+    return;
+  }
+  set_interface_flag(find_msg_id(SET_IFC_FLAGS), 2, 1, is_up);
+  int ret = vpp_waitmsg_retval();
+  if (ret < 0) {
+    printf("%s: failed\r\n", __func__);
+  }
+  disconnect_from_vpp ();
+}
 
 static void
 link_analyze_and_hook(const routerd::link &link,
@@ -23,6 +38,7 @@ link_analyze_and_hook(const routerd::link &link,
   if (affected_flag & IFF_UP) {
     bool next_is_up = target_bit & affected_flag;
     printf("TODO: vpp api setlink(%s)\r\n", next_is_up ? "UP" : "DN");
+    set_link(next_is_up);
   }
 }
 

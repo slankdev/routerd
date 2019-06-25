@@ -23,6 +23,23 @@
 
 routerd_main_t routerd_main;
 
+uint32_t
+find_msg_id(const char* msg)
+{
+  api_main_t * am = &api_main;
+  hash_pair_t *hp;
+#define _HASH_FUNC_IMPL_INSIDE_IMPL_ { \
+  char *key = (char *)hp->key; \
+  int msg_name_len = strlen(key) - 9; \
+  if (strlen(msg) == msg_name_len && \
+    strncmp(msg, (char *)hp->key, msg_name_len) == 0) \
+    return (u32)hp->value[0]; }
+  hash_foreach_pair (hp,
+      am->msg_index_by_name_and_crc,
+      (_HASH_FUNC_IMPL_INSIDE_IMPL_));
+}
+
+
 int
 ip_add_del_route(uint16_t vl_msg_id, uint16_t msg_id, bool is_add,
     const struct prefix *route, const struct prefix *nexthop,
@@ -146,8 +163,14 @@ set_interface_addr(uint32_t set_id, uint32_t msg_id,
   vl_msg_api_send_shmem(jm->vl_input_queue, (u8 *) &mp);
 }
 
+void
+disconnect_from_vpp(void)
+{
+  vl_client_disconnect_from_vlib();
+}
+
 int
-connect_to_vpp (char *name, bool no_rx_pthread)
+connect_to_vpp (const char *name, bool no_rx_pthread)
 {
   routerd_main_t *rm = &routerd_main;
   api_main_t *am = &api_main;
@@ -161,5 +184,18 @@ connect_to_vpp (char *name, bool no_rx_pthread)
   rm->my_client_index = am->my_client_index;
   rm->vl_input_queue = am->shmem_hdr->vl_input_queue;
   return 0;
+}
+
+int32_t vpp_waitmsg_retval(void)
+{
+  void *msg = NULL;
+  api_main_t *am = &api_main;
+  while (!svm_queue_sub (am->vl_input_queue, (u8 *) & msg, SVM_Q_TIMEDWAIT, 1)) {
+    vl_api_sw_interface_add_del_address_reply_t * mp =
+      (vl_api_sw_interface_add_del_address_reply_t*)msg;
+    int32_t retval = ntohl(mp->retval);
+    return retval;
+  }
+  return -1;
 }
 
