@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <vui/vui.h>
+#include "netlink_cli.h"
 
 DEFUN (netlink,
        netlink_cmd,

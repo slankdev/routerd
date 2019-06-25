@@ -17,6 +17,10 @@
 // #include "core/route.h"
 // #include "core/netconf.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 inline static void
 parse_rtattr(const void* buf, size_t buflen,
     struct rtattr* attrs[], size_t max_attrs);
@@ -255,4 +259,7 @@ RTNLGRP_flags_to_str(uint32_t f)
   return str;
 }
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* _NETLINK_HELPER_H_ */

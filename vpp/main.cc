@@ -1,23 +1,14 @@
 
 #include <stdio.h>
-#include <pthread.h>
+#include <thread>
 #include <vui/vui.h>
 
-#include "yalin/yalin.h"
 #include "netlink.h"
-#include "log.h"
+#include "netlink_cli.h"
+#include "vpp.h"
+#include "tap.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-void setup_netlink_node(vui_t *vui);
-void setup_vpp_node(vui_t *vui);
-void setup_tap_node(vui_t *vui);
-#ifdef __cplusplus
-}
-#endif
-
-void *th1(void *ptr)
+void th1()
 {
   vui_t *vui = vui_new();
   vui_set_password(vui, "slank");
@@ -30,27 +21,15 @@ void *th1(void *ptr)
 
   vui_run();
   vui_delete(vui);
-  return NULL;
-}
-
-netlink_cache_t* nlc;
-void *th2(void *ptr)
-{
-  uint32_t groups = ~0U;
-  netlink_t *nl = netlink_open(groups, NETLINK_ROUTE);
-  nlc = netlink_cache_alloc(nl);
-  netlink_listen(nl, monitor, nullptr);
-  netlink_close(nl);
-  log_info("routerd-end\n");
-  return NULL;
 }
 
 int main(int argc, char **argv)
 {
-  pthread_t thread1, thread2;
-  pthread_create(&thread1, NULL, th1, NULL);
-  pthread_create(&thread2, NULL, th2, NULL);
-  pthread_join(thread1, NULL);
-  pthread_join(thread2, NULL);
+  std::thread thrd1(th1);
+  std::thread thrd2(netlink_manager);
+  thrd1.join();
+  thrd2.join();
+  // pthread_join(thread1, NULL);
+  // pthread_join(thread2, NULL);
 }
 

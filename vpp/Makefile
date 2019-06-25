@@ -39,7 +39,7 @@ TARGET = a.out
 
 $(BUILD_DIR)/$(TARGET): $(OBJ)
 	@echo ld $@
-	@$(CC) $(OBJ) -o $@ $(LDFLAGS) -lstdc++
+	@$(CXX) $(CXXFLAGS) $(OBJ) -o $@ $(LDFLAGS) -lstdc++
 
 $(BUILD_DIR)/%.c.o: %.c
 	@echo cc $@

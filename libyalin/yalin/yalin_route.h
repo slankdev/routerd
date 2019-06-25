@@ -8,11 +8,15 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <string>
-#include <algorithm>
+// #include <algorithm>
 #include <arpa/inet.h>
 #include "netlink_helper.h"
 #include "core/route.h"
 #include "core/link.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 namespace routerd {
 
@@ -154,4 +158,7 @@ struct route {
 
 } /* namespace routerd */
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* _ROUTE_H_ */

@@ -23,6 +23,10 @@
 
 #include "netlink_socket.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // typedef struct netlink_s netlink_t;
 
 struct buffer {
@@ -52,4 +56,7 @@ void netlink_cache_update_link(netlink_cache_t* nlc,
     const struct ifinfomsg* ifm, size_t rta_len);
 void netlink_dump_link(netlink_t* nl);
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* _NETLINK_CACHE_H_ */

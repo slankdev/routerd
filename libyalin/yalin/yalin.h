@@ -38,8 +38,10 @@
 #include <vector>
 #include <string>
 
-// #include "netlink_helper.h"
-// #include "netlink_cache.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "yalin_route.h"
 #include "yalin_neigh.h"
 #include "yalin_addr.h"
@@ -66,5 +68,8 @@ int rtnl_summary(const struct sockaddr_nl *who __attribute__((unused)),
          struct rtnl_ctrl_data* _dum_ __attribute__((unused)),
          struct nlmsghdr *n, void *arg __attribute__((unused)));
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* _YALIN_H_ */
 

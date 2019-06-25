@@ -8,10 +8,14 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <string>
-#include <algorithm>
+// #include <algorithm>
 #include <arpa/inet.h>
 #include "netlink_helper.h"
 #include "core/neigh.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 namespace routerd {
 
@@ -62,4 +66,7 @@ struct neigh {
 
 } /* namespace routerd */
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* _NEIGH_H_ */

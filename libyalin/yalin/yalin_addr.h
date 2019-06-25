@@ -8,9 +8,13 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <string>
-#include <algorithm>
+// #include <algorithm>
 #include <arpa/inet.h>
 #include "yalin/yalin.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 namespace routerd {
 
@@ -44,4 +48,7 @@ struct ifaddr {
 
 } /* namespace routerd */
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* _ADDR_H_ */

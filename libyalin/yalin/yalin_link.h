@@ -9,10 +9,14 @@
 #include <stdarg.h>
 #include <assert.h>
 #include <string>
-#include <algorithm>
+// #include <algorithm>
 #include <arpa/inet.h>
 #include "netlink_helper.h"
 #include "netlink_cache.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // extern netlink_cache_t* nlc;
 
@@ -148,4 +152,7 @@ struct link {
 
 } /* namespace routerd */
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* _LINK_H_ */

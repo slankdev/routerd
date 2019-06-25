@@ -6,6 +6,10 @@
 #include <slankdev/filefd.h>
 #include "log.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct conf {
   std::vector<uint32_t> ignore_devices;
   bool debug;
@@ -80,3 +84,7 @@ struct conf {
           i+1<ignore_devices.size()?", ":"]\r\n");
   }
 };
+
+#ifdef __cplusplus
+}
+#endif

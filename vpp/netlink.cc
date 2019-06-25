@@ -9,8 +9,9 @@
 #include <algorithm>
 #include <arpa/inet.h>
 #include <yalin/yalin.h>
+#include "netlink.h"
 
-extern netlink_cache_t* nlc;
+netlink_cache_t* nlc;
 
 void
 monitor_NEWLINK(const struct nlmsghdr* hdr)
@@ -118,3 +119,14 @@ monitor(const struct sockaddr_nl *who [[gnu::unused]],
   }
   return 0;
 }
+
+void
+netlink_manager()
+{
+  uint32_t groups = ~0U;
+  netlink_t *nl = netlink_open(groups, NETLINK_ROUTE);
+  nlc = netlink_cache_alloc(nl);
+  netlink_listen(nl, monitor, nullptr);
+  netlink_close(nl);
+}
+

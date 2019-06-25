@@ -22,6 +22,10 @@
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef int (*rtnl_listen_filter_t)(
              const struct sockaddr_nl*,
              struct rtnl_ctrl_data *,
@@ -46,4 +50,7 @@ int netlink_listen(netlink_t *rtnl, rtnl_listen_filter_t handler, void *arg);
 netlink_t* netlink_open(uint32_t subscriptions, int32_t protocol);
 void netlink_close(netlink_t *nl);
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* NETLINK_SOCKET_H */
