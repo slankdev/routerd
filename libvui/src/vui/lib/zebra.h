@@ -151,6 +151,7 @@ typedef unsigned char uint8_t;
 
 #include <net/route.h>
 
+#define HAVE_NETLINK
 #ifdef HAVE_NETLINK
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>

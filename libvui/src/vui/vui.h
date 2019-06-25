@@ -9,6 +9,10 @@
 #include "lib/command.h"
 #include "lib/zebra.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct vui_s {
 } vui_t;
 
@@ -39,5 +43,9 @@ void vui_run(void);
 int vui_alloc_new_node_id(vui_t *vui, const char *name, int parent);
 void vui_install_default_element(vui_t *vui, int node);
 void vui_node_install(vui_t *vui, vui_node_t *node);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _VUI_H_ */
