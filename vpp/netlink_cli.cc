@@ -7,6 +7,7 @@
 #include <vui/vui.h>
 #include "netlink_cli.h"
 #include "netlink.h"
+#include "routerd.h"
 
 DEFUN (netlink,
        netlink_cmd,
@@ -104,6 +105,40 @@ DEFUN (show_netlink_counter,
   return CMD_SUCCESS;
 }
 
+DEFUN (set_interface_pair,
+       set_interface_pair_cmd,
+       "set interface pair kernel-ifindex <(0-4294967295)> vpp-ifindex <(0-4294967295)>",
+       "Setting\n"
+       "Interface setting\n"
+       "Interface pair (kern/vpp) setting\n"
+       "Specify kernel-ifindex\n"
+       "Specify kernel-ifindex\n"
+       "Specify vpp-ifindex\n"
+       "Specify vpp-ifindex\n")
+{
+  uint32_t k_index = strtol(argv[4]->arg, NULL, 0);
+  uint32_t v_index = strtol(argv[6]->arg, NULL, 0);
+  vty_out(vty, "%s kern%u, vpp%u\n", __func__, k_index, v_index);
+  rd_ctx.add_interface(k_index, v_index);
+  return CMD_SUCCESS;
+}
+
+DEFUN (show_netlink_interface_pair,
+       show_netlink_interface_pair_cmd,
+       "show netlink interface pair",
+       SHOW_STR
+       "Show netlink information\n"
+       "Show netlink-interface information\n"
+       "Show netlink-interface-pair (kern/vpp) information\n")
+{
+  for (size_t i=0; i<rd_ctx.interfaces.size(); i++) {
+    auto &iface = rd_ctx.interfaces[i];
+    vty_out(vty, " interfaces[%zd]: <kern%u,vpp%u>\n",
+        i, iface.kern_ifindex, iface.vpp_ifindex);
+  }
+  return CMD_SUCCESS;
+}
+
 void
 setup_netlink_node(vui_t *vui)
 {
@@ -119,6 +154,8 @@ setup_netlink_node(vui_t *vui)
   vui_install_element(vui, ENABLE_NODE, &show_netlink_filter_cmd);
   vui_install_element(vui, ENABLE_NODE, &show_netlink_cache_cmd);
   vui_install_element(vui, ENABLE_NODE, &show_netlink_counter_cmd);
+  vui_install_element(vui, ENABLE_NODE, &show_netlink_interface_pair_cmd);
   vui_install_element(vui, netlink_node->node, &filter_ifinfo_msg_flag_cmd);
+  vui_install_element(vui, netlink_node->node, &set_interface_pair_cmd);
 }
 

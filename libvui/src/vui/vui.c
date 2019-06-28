@@ -107,3 +107,10 @@ void vui_install_default_element(vui_t *vui, int node)
 {
   install_default(node);
 }
+
+void vui_read_conf(vui_t *vui, const char *file)
+{
+  void *nb_config = NULL;
+  void *default_config = NULL;
+  vty_read_config(nb_config, file, default_config);
+}

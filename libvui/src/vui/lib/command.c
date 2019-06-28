@@ -1717,3 +1717,26 @@ void cmd_terminate(void)
   list_delete(&varhandlers);
   qobj_finish();
 }
+
+/* Configuration make from file. */
+int config_from_file(struct vty *vty, FILE *fp, unsigned int *line_num)
+{
+	int ret, error_ret = 0;
+	*line_num = 0;
+
+	while (fgets(vty->buf, VTY_BUFSIZ, fp)) {
+		++(*line_num);
+
+		ret = command_config_read_one_line(vty, NULL, *line_num, 0);
+
+		if (ret != CMD_SUCCESS && ret != CMD_WARNING
+		    && ret != CMD_ERR_NOTHING_TODO)
+			error_ret = ret;
+	}
+
+	if (error_ret) {
+		return error_ret;
+	}
+
+	return CMD_SUCCESS;
+}

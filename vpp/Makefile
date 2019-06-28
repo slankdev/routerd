@@ -55,3 +55,16 @@ clean:
 
 run:
 	sudo build/a.out
+
+create_tap:
+	ip tuntap add vpp0 mode tap
+	ip tuntap add vpp1 mode tap
+	ip tuntap add vpp2 mode tap
+	ip tuntap add vpp3 mode tap
+
+delete_tap:
+	ip link del vpp0
+	ip link del vpp1
+	ip link del vpp2
+	ip link del vpp3
+

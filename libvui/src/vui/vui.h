@@ -43,6 +43,7 @@ void vui_run(void);
 int vui_alloc_new_node_id(vui_t *vui, const char *name, int parent);
 void vui_install_default_element(vui_t *vui, int node);
 void vui_node_install(vui_t *vui, vui_node_t *node);
+void vui_read_conf(vui_t *vui, const char *file);
 
 #ifdef __cplusplus
 }
