@@ -81,8 +81,10 @@ myplugin_main_t *myplugin_get_main(void) { return &myplugin_main; }
 
 /* List of message types that this plugin understands */
 
-#define foreach_myplugin_plugin_api_msg                           \
-_(MYPLUGIN_ENABLE_DISABLE, myplugin_enable_disable)
+#define foreach_myplugin_plugin_api_msg \
+_(TAP_INJECT_ENABLE_DISABLE, tap_inject_enable_disable) \
+_(TAP_INJECT_DUMP, tap_inject_dump) \
+_(TAP_INJECT_DETAILS, tap_inject_details) \
 
 #define MTU 1500
 #define MTU_BUFFERS ((MTU + VLIB_BUFFER_DATA_SIZE - 1) / VLIB_BUFFER_DATA_SIZE)
@@ -317,19 +319,17 @@ tap_inject_enable_disable_all_interfaces (int enable)
   /* Collect all the interface indices. */
   vnet_hw_interface_t * interfaces = vnet_main->interface_main.hw_interfaces;
   u32 ** indices = enable ? &im->interfaces_to_enable : &im->interfaces_to_disable;
-
   vnet_hw_interface_t * hw;
   pool_foreach (hw, interfaces, vec_add1 (*indices, hw - interfaces));
 
   if (tap_inject_iface_isr (vlib_get_main (), 0, 0))
     return clib_error_return (0, "tap-inject interface add del isr failed");
-
   return 0;
 }
 
 int
 myplugin_enable_disable(myplugin_main_t * mmp, u32 sw_if_index,
-                                   int enable_disable)
+                                   int is_enable)
 {
   printf("SLANKDEV: %s\n", __func__);
   return 0;
@@ -337,13 +337,66 @@ myplugin_enable_disable(myplugin_main_t * mmp, u32 sw_if_index,
 
 /* API message handler */
 static void
-vl_api_myplugin_enable_disable_t_handler(vl_api_myplugin_enable_disable_t * mp)
+  vl_api_tap_inject_enable_disable_t_handler
+  (vl_api_tap_inject_enable_disable_t * mp)
 {
-  vl_api_myplugin_enable_disable_reply_t * rmp;
+  printf("[tap-inject API] %s\n", __func__);
+  vl_api_tap_inject_enable_disable_reply_t * rmp;
   myplugin_main_t * mmp = &myplugin_main;
-  int rv = myplugin_enable_disable (mmp,
-      ntohl(mp->sw_if_index), (int) (mp->enable_disable));
-  REPLY_MACRO(VL_API_MYPLUGIN_ENABLE_DISABLE_REPLY);
+
+  int rv = 0;
+  clib_error_t * err = tap_inject_enable_disable_all_interfaces (mp->is_enable ? 1 : 0);
+  if (err) {
+    tap_inject_enable_disable_all_interfaces (0);
+    rv = -1;
+  }
+
+  REPLY_MACRO (VL_API_TAP_INJECT_ENABLE_DISABLE_REPLY);
+}
+
+static void
+send_tap_inject_details(myplugin_main_t *am,
+    vl_api_registration_t * rp, uint32_t context,
+    uint32_t vpp_index, uint32_t kern_index)
+{
+  vl_api_tap_inject_details_t *mp =
+    vl_msg_api_alloc (sizeof (*mp));
+  clib_memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs(VL_API_TAP_INJECT_DETAILS);
+  mp->sw_if_index = htonl(vpp_index);
+  mp->kernel_if_index = htonl(kern_index);
+  mp->context = context;
+
+  vl_api_send_msg(rp, (uint8_t*)mp);
+}
+
+static void
+  vl_api_tap_inject_dump_t_handler
+  (vl_api_tap_inject_dump_t * mp)
+{
+  myplugin_main_t *mm = &myplugin_main;
+  vl_api_registration_t *rp =
+    vl_api_client_index_to_registration (mp->client_index);
+  printf("[tap-inject API] %s\n", __func__);
+
+  uint32_t if_index = 3;
+  uint32_t kern_index, vpp_index;
+  vnet_main_t *vnet_main = vnet_get_main ();
+  tap_inject_main_t *tm = tap_inject_get_main ();
+  hash_foreach (kern_index, vpp_index, tm->tap_if_index_to_sw_if_index, {
+      send_tap_inject_details(mm, rp, mp->context, vpp_index, kern_index);
+      printf("%s: v/k: %u/%u\n", __func__, vpp_index, kern_index);
+    }
+  );
+
+  return;
+}
+
+static void
+  vl_api_tap_inject_details_t_handler
+  (vl_api_tap_inject_details_t * mp)
+{
+  printf("[tap-inject API] %s\n", __func__);
 }
 
 /* Set up the API message handling tables */

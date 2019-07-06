@@ -51,8 +51,10 @@ link_analyze_and_hook(const routerd::link &link,
   if (affected_flag & IFF_UP) {
     bool next_is_up = target_bit & affected_flag;
     uint32_t vpp_ifindex = ifindex_kernel2vpp(link.ifi->ifi_index);
-    if (vpp_ifindex == 0)
-      printf("ignore kern%u\r\n", link.ifi->ifi_index);
+    if (vpp_ifindex == 0) {
+      //printf("ignore kern%u\r\n", link.ifi->ifi_index);
+      return;
+    }
     set_link(vpp_ifindex, next_is_up);
   }
 }

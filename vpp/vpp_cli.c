@@ -19,6 +19,9 @@
 #define vl_printfun
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_printfun
+#define vl_typedefs
+#include <myplugin/myplugin_all_api_h.h>
+#undef vl_typedefs
 
 #include "vpp.h"
 #define VPP_STR "Show VPP information\n"
@@ -154,20 +157,22 @@ DEFUN (show_vpp_vpe_message_table,
     vty_out(vty, "Couldn't connect to vpe, exiting...\n");
     return CMD_WARNING_CONFIG_FAILED;
   }
-  vty_out(vty, "CONTROL_PING_MESSAGE          : %04x\n", find_msg_id(CONTROL_PING_MESSAGE          ));
-  vty_out(vty, "CONTROL_PING_REPLY_MESSAGE    : %04x\n", find_msg_id(CONTROL_PING_REPLY_MESSAGE    ));
-  vty_out(vty, "DUMP_IFC_MESSAGE              : %04x\n", find_msg_id(DUMP_IFC_MESSAGE              ));
-  vty_out(vty, "IFC_DETAIL_MESSAGE            : %04x\n", find_msg_id(IFC_DETAIL_MESSAGE            ));
-  vty_out(vty, "SET_IFC_FLAGS                 : %04x\n", find_msg_id(SET_IFC_FLAGS                 ));
-  vty_out(vty, "SET_IFC_FLAGS_REPLY           : %04x\n", find_msg_id(SET_IFC_FLAGS_REPLY           ));
-  vty_out(vty, "SET_IFC_ADDR                  : %04x\n", find_msg_id(SET_IFC_ADDR                  ));
-  vty_out(vty, "SET_IFC_ADDR_REPLY            : %04x\n", find_msg_id(SET_IFC_ADDR_REPLY            ));
-  vty_out(vty, "DUMP_IP_ADDR_MESSAGE          : %04x\n", find_msg_id(DUMP_IP_ADDR_MESSAGE          ));
-  vty_out(vty, "IP_ADDR_DETAILS_DETAIL_MESSAGE: %04x\n", find_msg_id(IP_ADDR_DETAILS_DETAIL_MESSAGE));
-  vty_out(vty, "CRT_LOOPBACK                  : %04x\n", find_msg_id(CRT_LOOPBACK                  ));
-  vty_out(vty, "CRT_LOOPBACK_REPLY            : %04x\n", find_msg_id(CRT_LOOPBACK_REPLY            ));
-  vty_out(vty, "IP_ADDDEL_ROUTE               : %04x\n", find_msg_id(IP_ADDDEL_ROUTE               ));
-  vty_out(vty, "IP_ADDDEL_ROUTE_REPLY         : %04x\n", find_msg_id(IP_ADDDEL_ROUTE_REPLY         ));
+  vty_out(vty, "CONTROL_PING_MESSAGE             : %04x\n", find_msg_id(CONTROL_PING_MESSAGE          ));
+  vty_out(vty, "CONTROL_PING_REPLY_MESSAGE       : %04x\n", find_msg_id(CONTROL_PING_REPLY_MESSAGE    ));
+  vty_out(vty, "DUMP_IFC_MESSAGE                 : %04x\n", find_msg_id(DUMP_IFC_MESSAGE              ));
+  vty_out(vty, "IFC_DETAIL_MESSAGE               : %04x\n", find_msg_id(IFC_DETAIL_MESSAGE            ));
+  vty_out(vty, "SET_IFC_FLAGS                    : %04x\n", find_msg_id(SET_IFC_FLAGS                 ));
+  vty_out(vty, "SET_IFC_FLAGS_REPLY              : %04x\n", find_msg_id(SET_IFC_FLAGS_REPLY           ));
+  vty_out(vty, "SET_IFC_ADDR                     : %04x\n", find_msg_id(SET_IFC_ADDR                  ));
+  vty_out(vty, "SET_IFC_ADDR_REPLY               : %04x\n", find_msg_id(SET_IFC_ADDR_REPLY            ));
+  vty_out(vty, "DUMP_IP_ADDR_MESSAGE             : %04x\n", find_msg_id(DUMP_IP_ADDR_MESSAGE          ));
+  vty_out(vty, "IP_ADDR_DETAILS_DETAIL_MESSAGE   : %04x\n", find_msg_id(IP_ADDR_DETAILS_DETAIL_MESSAGE));
+  vty_out(vty, "CRT_LOOPBACK                     : %04x\n", find_msg_id(CRT_LOOPBACK                  ));
+  vty_out(vty, "CRT_LOOPBACK_REPLY               : %04x\n", find_msg_id(CRT_LOOPBACK_REPLY            ));
+  vty_out(vty, "IP_ADDDEL_ROUTE                  : %04x\n", find_msg_id(IP_ADDDEL_ROUTE               ));
+  vty_out(vty, "IP_ADDDEL_ROUTE_REPLY            : %04x\n", find_msg_id(IP_ADDDEL_ROUTE_REPLY         ));
+  vty_out(vty, "ENABLE_DISABLE_TAPINJECT         : %04x\n", find_msg_id(ENABLE_DISABLE_TAPINJECT       ));
+  vty_out(vty, "ENABLE_DISABLE_TAPINJECT_REPLAY  : %04x\n", find_msg_id(ENABLE_DISABLE_TAPINJECT_REPLAY));
   vl_client_disconnect_from_vlib ();
   return CMD_SUCCESS;
 }
@@ -501,6 +506,67 @@ DEFUN (ip_adddel_route,
   return CMD_WARNING_CONFIG_FAILED;
 }
 
+DEFUN (show_vpp_tap_inject,
+       show_vpp_tap_inject_cmd,
+       "show vpp tap-inject",
+       SHOW_STR
+       VPP_STR
+       "Show VPP tap-inject information\n")
+{
+  vty_out(vty, "%s\n", __func__);
+  if (connect_to_vpp("routerd", true) < 0) {
+    svm_region_exit ();
+    vty_out(vty, "%s: Couldn't connect to vpe, exiting...\r\n", __func__);
+    return CMD_WARNING_CONFIG_FAILED;
+  }
+
+  api_main_t *am = &api_main;
+  void *msg = NULL;
+
+  tap_inject_dump(find_msg_id(TAPINJECT_DUMP_MESSAGE), 2);
+  send_ping(find_msg_id(CONTROL_PING_MESSAGE), 1);
+  while (!svm_queue_sub (am->vl_input_queue, (u8 *) & msg, SVM_Q_TIMEDWAIT, 3)) {
+    uint16_t msg_id = ntohs(*((uint16_t*)msg));
+    uint16_t pong_id = find_msg_id(CONTROL_PING_REPLY_MESSAGE);
+    if (msg_id == pong_id) {
+      vty_out(vty, "pong recv\n");
+      break;
+    }
+
+    vl_api_tap_inject_details_t *mp = msg;
+    vty_out(vty, "recv interface info v/k=%u/%u\n",
+        ntohl(mp->sw_if_index), ntohl(mp->kernel_if_index));
+    /* memcpy(&interfaces[ntohl(mp->sw_if_index)].link, mp, sizeof(*mp)); */
+    /* interfaces[ntohl(mp->sw_if_index)].enable = true; */
+  }
+
+  disconnect_from_vpp ();
+  return CMD_SUCCESS;
+}
+
+DEFUN (enable_tap_inject,
+       enable_tap_inject_cmd,
+       "<enable|disable> tap-inject",
+       "Enable parameter\n"
+       "Disable parameter\n"
+       "vpp\'s dataplane tap-inject\n")
+{
+  const size_t is_enable = strcmp(argv[0]->arg, "enable") == 0;
+
+  if (connect_to_vpp("routerd", true) < 0) {
+    svm_region_exit ();
+    vty_out(vty, "%s: Couldn't connect to vpe, exiting...\r\n", __func__);
+    return CMD_WARNING_CONFIG_FAILED;
+  }
+
+  uint16_t vl_msg_id = find_msg_id(ENABLE_DISABLE_TAPINJECT);
+  uint16_t msg_id = random();
+  enable_disable_tap_inject(vl_msg_id, msg_id, is_enable);
+  int32_t retval = enable_disable_tap_inject_retval();
+  disconnect_from_vpp ();
+  return retval != -1 ? CMD_WARNING_CONFIG_FAILED : CMD_SUCCESS;
+}
+
 void
 setup_vpp_node(vui_t *vui)
 {
@@ -526,4 +592,6 @@ setup_vpp_node(vui_t *vui)
   vui_install_element(vui, ENABLE_NODE, &set_interface_state_cmd);
   vui_install_element(vui, ENABLE_NODE, &create_loopback_interface_cmd);
   vui_install_element(vui, ENABLE_NODE, &ip_adddel_route_cmd);
+  vui_install_element(vui, ENABLE_NODE, &enable_tap_inject_cmd);
+  vui_install_element(vui, ENABLE_NODE, &show_vpp_tap_inject_cmd);
 }

@@ -27,15 +27,36 @@ option version = "0.1.0";
 import "vnet/interface_types.api";
 
 
-/** @brief API to enable / disable myplugin on an interface
+/** @brief enable/disable tap-inject
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param enable_disable - 1 to enable, 0 to disable the feature
-    @param sw_if_index - interface handle
+    @param is_enable - bool value
 */
-autoreply define myplugin_enable_disable {
-    u32 client_index; /* Client identifier, set from api_main.my_client_index */
-    u32 context; /* Arbitrary context, so client can match reply to request */
-    bool enable_disable; /* Enable / disable the feature */
-    vl_api_interface_index_t sw_if_index; /* Interface handle */
+autoreply define tap_inject_enable_disable {
+  u32 client_index;
+  u32 context;
+  bool is_enable;
 };
+
+/** @brief Dump tap-inject information
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define tap_inject_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Dump details of tap-inject information
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - software index of the interface
+    @param sw_if_index - interface index of vpp's network interface
+    @param kernel_if_index - interface index of kernel's network interface
+*/
+define tap_inject_details {
+  u32 client_index;
+  u32 context;
+	u32 sw_if_index;
+	u32 kernel_if_index;
+};
+

@@ -18,6 +18,9 @@
 #define vl_printfun
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_printfun
+#define vl_typedefs
+#include <myplugin/myplugin_all_api_h.h>
+#undef vl_typedefs
 #include "hexdump.h"
 #include "vpp.h"
 
@@ -129,6 +132,19 @@ dump_ipaddrs(u32 dump_id, u32 message_id, uint32_t ifindex, bool is_ipv6)
 }
 
 int
+tap_inject_dump(uint16_t vl_msg_id, uint16_t msg_id)
+{
+  routerd_main_t *jm = &routerd_main;
+  vl_api_tap_inject_dump_t *mp =
+    vl_msg_api_alloc(sizeof(*mp));
+  memset(mp, 0, sizeof(*mp));
+  mp->_vl_msg_id = ntohs(vl_msg_id);
+  mp->client_index = jm->my_client_index;
+  mp->context = clib_host_to_net_u32(msg_id);
+  vl_msg_api_send_shmem(jm->vl_input_queue, (u8 *) &mp);
+}
+
+int
 set_interface_flag(u32 set_id, u32 message_id, uint32_t ifindex, bool is_up)
 {
   routerd_main_t *jm = &routerd_main;
@@ -161,6 +177,33 @@ set_interface_addr(uint32_t set_id, uint32_t msg_id,
   mp->address_length = addr_len;
   memcpy(mp->address, addr_buffer, mp->address_length);
   vl_msg_api_send_shmem(jm->vl_input_queue, (u8 *) &mp);
+}
+
+int
+enable_disable_tap_inject(uint16_t vl_msg_id, uint16_t msg_id, bool is_enable)
+{
+  routerd_main_t *jm = &routerd_main;
+  vl_api_tap_inject_enable_disable_t *mp =
+    vl_msg_api_alloc(sizeof(*mp));
+  memset(mp, 0, sizeof(*mp));
+  mp->_vl_msg_id = ntohs(vl_msg_id);
+  mp->client_index = jm->my_client_index;
+  mp->context = clib_host_to_net_u32(msg_id);
+  mp->is_enable = is_enable;
+  vl_msg_api_send_shmem(jm->vl_input_queue, (u8 *) &mp);
+}
+
+int32_t
+enable_disable_tap_inject_retval(void)
+{
+  void *msg = NULL;
+  api_main_t *am = &api_main;
+  while (!svm_queue_sub (am->vl_input_queue, (u8 *) & msg, SVM_Q_TIMEDWAIT, 1)) {
+    vl_api_tap_inject_enable_disable_reply_t *mp = msg;
+    int32_t retval = ntohl(mp->retval);
+    return retval;
+  }
+  return (int32_t)-1;
 }
 
 void

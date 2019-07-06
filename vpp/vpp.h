@@ -25,6 +25,10 @@
 #define CRT_LOOPBACK_REPLY "create_loopback_reply"
 #define IP_ADDDEL_ROUTE "ip_add_del_route"
 #define IP_ADDDEL_ROUTE_REPLY "ip_add_del_route_reply"
+#define ENABLE_DISABLE_TAPINJECT "tap_inject_enable_disable"
+#define ENABLE_DISABLE_TAPINJECT_REPLAY "tap_inject_enable_disable"
+#define TAPINJECT_DUMP_MESSAGE "tap_inject_dump"
+#define TAPINJECT_DETAIL_MESSAGE "tap_inject_detail"
 
 #ifdef __cplusplus
 extern "C" {
@@ -55,6 +59,9 @@ int set_interface_flag(uint32_t vl_msg_id, uint32_t message_id, uint32_t ifindex
 int set_interface_addr(uint32_t vl_msg_id, uint32_t msg_id,
     uint32_t ifindex, bool is_add, bool is_ipv6,
     const void *addr_buffer, size_t addr_len);
+int enable_disable_tap_inject(uint16_t vl_msg_id, uint16_t msg_id, bool is_enable);
+int32_t enable_disable_tap_inject_retval(void);
+int tap_inject_dump(uint16_t vl_msg_id, uint16_t msg_id);
 int ip_add_del_route(uint16_t vl_msg_id, uint16_t msg_id,
     bool is_add, const struct prefix *route,
     const struct prefix *nexthop, uint32_t nh_ifindex);

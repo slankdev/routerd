@@ -21,6 +21,7 @@ LDFLAGS += -L$(YALIN) -lyalin
 
 # for vlib
 CFLAGS += -I/usr/include/vpp_plugins
+CFLAGS += -I$(HOME)/git/vpp/build-root/install-vpp_debug-native/vpp/include/vpp_plugins
 LDFLAGS += \
   -lvlibmemoryclient -lvatplugin \
   -lvppinfra -lvlib -lsvm -lrt -ldl \
@@ -44,7 +45,7 @@ $(BUILD_DIR)/$(TARGET): $(OBJ)
 
 $(BUILD_DIR)/%.c.o: %.c
 	@mkdir -p ./build
-	@$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/%.cc.o: %.cc
 	@mkdir -p ./build
@@ -55,6 +56,9 @@ clean:
 
 run:
 	sudo build/a.out
+
+debug:
+	sudo gdb -ex run build/a.out
 
 create_tap:
 	ip tuntap add vpp0 mode tap

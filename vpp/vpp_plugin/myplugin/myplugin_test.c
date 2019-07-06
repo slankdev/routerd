@@ -60,7 +60,7 @@ myplugin_test_main_t myplugin_test_main;
 #include <vlibapi/vat_helper_macros.h>
 
 #define foreach_standard_reply_retval_handler   \
-_(myplugin_enable_disable_reply)
+_(tap_inject_enable_disable_reply)
 
 #define _(n)                                            \
     static void vl_api_##n##_t_handler                  \
@@ -83,12 +83,12 @@ foreach_standard_reply_retval_handler;
  * we just generated
  */
 #define foreach_vpe_api_reply_msg \
-_(MYPLUGIN_ENABLE_DISABLE_REPLY, myplugin_enable_disable_reply)
+_(TAP_INJECT_ENABLE_DISABLE_REPLY, tap_inject_enable_disable_reply)
 
 static int
-api_myplugin_enable_disable (vat_main_t * vam)
+api_tap_inject_enable_disable (vat_main_t * vam)
 {
-  int32_t enable_disable = 1;
+  int32_t is_enable = 1;
   uint32_t sw_if_index = ~0;
   unformat_input_t * i = vam->input;
 
@@ -99,7 +99,7 @@ api_myplugin_enable_disable (vat_main_t * vam)
     else if (unformat (i, "sw_if_index %d", &sw_if_index))
       ;
     else if (unformat (i, "disable"))
-      enable_disable = 0;
+      is_enable = 0;
     else
       break;
   }
@@ -110,10 +110,9 @@ api_myplugin_enable_disable (vat_main_t * vam)
   }
 
   /* Construct the API message */
-  vl_api_myplugin_enable_disable_t *mp;
-  M(MYPLUGIN_ENABLE_DISABLE, mp);
-  mp->sw_if_index = ntohl (sw_if_index);
-  mp->enable_disable = enable_disable;
+  vl_api_tap_inject_enable_disable_t *mp;
+  M(TAP_INJECT_ENABLE_DISABLE, mp);
+  mp->is_enable = is_enable;
 
   /* send it... */
   S(mp);
@@ -129,7 +128,7 @@ api_myplugin_enable_disable (vat_main_t * vam)
  * and that the data plane plugin processes
  */
 #define foreach_vpe_api_msg \
-_(myplugin_enable_disable, "<intfc> [disable]")
+_(tap_inject_enable_disable, "[disable]")
 
 static void myplugin_api_hookup (vat_main_t *vam)
 {
