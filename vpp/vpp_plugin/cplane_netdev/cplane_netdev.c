@@ -16,6 +16,7 @@
 #include <vnet/plugin/plugin.h>
 #include <vnet/osi/osi.h>
 #include <vnet/fib/fib_types.h>
+#include <vnet/ethernet/arp_packet.h>
 
 #include <cplane_netdev/cplane_netdev.h>
 #include <vlibapi/api.h>
@@ -25,6 +26,7 @@
 #include <vnet/unix/tuntap.h>
 #include <vlib/unix/unix.h>
 
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -70,9 +72,14 @@ _(TAP_INJECT_DETAILS, tap_inject_details) \
 #define NUM_BUFFERS_TO_ALLOC 32
 #define VLIB_BUFFER_DATA_SIZE (2048)
 
+enum {
+  NEXT_NEIGHBOR_ARP,
+  NEXT_NEIGHBOR_ICMP6,
+};
 
 vlib_node_registration_t tap_inject_tx_node;
 vlib_node_registration_t tap_inject_rx_node;
+vlib_node_registration_t tap_inject_neighbor_node;
 
 static cplane_netdev_main_t *
 cplane_netdev_get_main(void)
@@ -111,12 +118,12 @@ tap_inject_enable (void)
   if (tap_inject_is_enabled ())
     return 0;
 
-  /* ethernet_register_input_type (vm, ETHERNET_TYPE_ARP, im->neighbor_node_index); */
-  ethernet_register_input_type (vm, ETHERNET_TYPE_ARP, im->tx_node_index);
+  ethernet_register_input_type (vm, ETHERNET_TYPE_ARP, im->neighbor_node_index);
   ip4_register_protocol (IP_PROTOCOL_ICMP, im->tx_node_index);
   ip4_register_protocol (IP_PROTOCOL_OSPF, im->tx_node_index);
   ip4_register_protocol (IP_PROTOCOL_TCP , im->tx_node_index);
   ip4_register_protocol (IP_PROTOCOL_UDP , im->tx_node_index);
+
   /* ip6_register_protocol (IP_PROTOCOL_ICMP6, im->neighbor_node_index); */
   /* ip6_register_protocol (IP_PROTOCOL_OSPF, im->tx_node_index); */
   /* ip6_register_protocol (IP_PROTOCOL_TCP, im->tx_node_index); */
@@ -126,28 +133,20 @@ tap_inject_enable (void)
 #if 0
   {
     dpo_id_t dpo = DPO_INVALID;
-
-    /* const mfib_prefix_t pfx_224_0_0_0 = { */
-    /*     .fp_len = 24, */
-    /*     .fp_proto = FIB_PROTOCOL_IP4, */
-    /*     .fp_grp_addr = { */
-    /*         .ip4.as_uint32_t = clib_host_to_net_uint32_t(0xe0000000), */
-    /*     }, */
-    /*     .fp_src_addr = { */
-    /*         .ip4.as_uint32_t = 0, */
-    /*     }, */
-    /* }; */
+    const mfib_prefix_t pfx_224_0_0_0 = {
+        .fp_len = 24,
+        .fp_proto = FIB_PROTOCOL_IP4,
+        .fp_grp_addr = { .ip4.as_uint32_t = clib_host_to_net_uint32_t(0xe0000000), },
+        .fp_src_addr = { .ip4.as_uint32_t = 0, },
+    };
 
     dpo_set(&dpo, tap_inject_dpo_type, DPO_PROTO_IP4, ~0);
     index_t repi = replicate_create(1, DPO_PROTO_IP4);
     replicate_set_bucket(repi, 0, &dpo);
 
-    /* mfib_table_entry_special_add(0, */
-    /*                              &pfx_224_0_0_0, */
-    /*                              MFIB_SOURCE_API, */
-    /*                              MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF, */
-    /*                              repi); */
-
+    mfib_table_entry_special_add(0,
+         &pfx_224_0_0_0, MFIB_SOURCE_API,
+         MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF, repi);
     dpo_reset(&dpo);
   }
 #endif
@@ -424,6 +423,7 @@ cplane_netdev_init (vlib_main_t *vm)
   mmp->vnet_main = vnet_get_main();
   mmp->tx_node_index = tap_inject_tx_node.index;
   mmp->rx_node_index = tap_inject_rx_node.index;
+  mmp->neighbor_node_index = tap_inject_neighbor_node.index;
 
   uint8_t * name = format (0, "cplane_netdev_%08x%c", api_version, 0);
   mmp->msg_id_base = vl_msg_api_get_msg_ids
@@ -531,7 +531,6 @@ tap_inject_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * f)
 {
   /* printf("SLANKDEV %s\n", __func__); */
   uint32_t* pkts = vlib_frame_vector_args (f);
-
   for (uint32_t i = 0; i < f->n_vectors; ++i) {
     vlib_buffer_t *b = vlib_get_buffer (vm, pkts[i]);
     uint32_t sw_ifindex = vnet_buffer (b)->sw_if_index[VLIB_RX];
@@ -549,6 +548,63 @@ tap_inject_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * f)
   vlib_buffer_free (vm, pkts, f->n_vectors);
   return f->n_vectors;
 }
+
+static uint64_t
+tap_inject_neighbor (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * f)
+{
+  /* printf("SLANKDEV %s\n", __func__); */
+  uint32_t* pkts = vlib_frame_vector_args (f);
+  for (uint32_t i = 0; i < f->n_vectors; ++i) {
+
+    uint32_t bi = pkts[i];
+    vlib_buffer_t *b = vlib_get_buffer (vm, bi);
+    uint32_t sw_ifindex = vnet_buffer (b)->sw_if_index[VLIB_RX];
+    uint32_t fd = tap_inject_lookup_tap_fd (sw_ifindex);
+    if (fd == ~0) {
+      printf("SLANKDEV %s: sw-idx=%u, not found\n", __func__, sw_ifindex);
+      continue;
+    }
+
+    /* Re-wind the buffer to the start of the Ethernet header. */
+    vlib_buffer_advance (b, -b->current_data);
+    tap_inject_tap_send_buffer (fd, b);
+
+    ethernet_header_t * eth = vlib_buffer_get_current (b);
+    const uint16_t ether_type = htons(eth->type);
+    assert (ether_type == ETHERNET_TYPE_ARP ||
+            ether_type == ETHERNET_TYPE_IP6);
+
+    uint32_t next = ~0;
+    if (ether_type == ETHERNET_TYPE_ARP) {
+        ethernet_arp_header_t * arp = (void *)(eth + 1);
+        if (arp->opcode == ntohs (ETHERNET_ARP_OPCODE_reply))
+          next = NEXT_NEIGHBOR_ARP;
+    } else if (ether_type == ETHERNET_TYPE_IP6) {
+      ip6_header_t * ip = (void *)(eth + 1);
+      icmp46_header_t * icmp = (void *)(ip + 1);
+      assert (ip->protocol == IP_PROTOCOL_ICMP6);
+      if (icmp->type == ICMP6_neighbor_advertisement)
+        next = NEXT_NEIGHBOR_ICMP6;
+    }
+
+    if (next == ~0) {
+      vlib_buffer_free (vm, &bi, 1);
+      continue;
+    }
+
+    /* ARP and ICMP6 expect to start processing after the Ethernet header. */
+    uint32_t next_index = node->cached_next_index;
+    uint32_t n_left, *to_next;
+    vlib_buffer_advance (b, sizeof (ethernet_header_t));
+    vlib_get_next_frame (vm, node, next_index, to_next, n_left);
+    *(to_next++) = bi;
+    --n_left;
+    vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next, n_left, bi, next);
+    vlib_put_next_frame (vm, node, next_index, n_left);
+  }
+  return f->n_vectors;
+}
+
 
 static uint32_t
 tap_inject_lookup_sw_if_index_from_tap_fd (uint32_t tap_fd)
@@ -702,5 +758,18 @@ VLIB_REGISTER_NODE (tap_inject_rx_node) = {
   .vector_size = sizeof (uint32_t),
   .type = VLIB_NODE_TYPE_INPUT,
   .state = VLIB_NODE_STATE_INTERRUPT,
+};
+
+VLIB_REGISTER_NODE (tap_inject_neighbor_node) = {
+  .function = tap_inject_neighbor,
+  .name = "cplane_netdev-tap-inject-neigh",
+  .vector_size = sizeof (uint32_t),
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .state = VLIB_NODE_STATE_INTERRUPT,
+  .n_next_nodes = 2,
+  .next_nodes = {
+    [NEXT_NEIGHBOR_ARP] = "arp-input",
+    [NEXT_NEIGHBOR_ICMP6] = "icmp6-neighbor-solicitation",
+  },
 };
 
