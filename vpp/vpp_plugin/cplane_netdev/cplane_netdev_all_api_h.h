@@ -1,4 +1,3 @@
-
 /*
  * Copyright (c) 2019 Hiroki Shirokura
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,4 +12,4 @@
  * limitations under the License.
  */
 /* Include the generated file, see BUILT_SOURCES in Makefile.am */
-#include <myplugin/myplugin.api.h>
+#include <cplane_netdev/cplane_netdev.api.h>

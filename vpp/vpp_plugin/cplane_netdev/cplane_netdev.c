@@ -17,7 +17,7 @@
 #include <vnet/osi/osi.h>
 #include <vnet/fib/fib_types.h>
 
-#include <myplugin/myplugin.h>
+#include <cplane_netdev/cplane_netdev.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <vpp/app/version.h>
@@ -25,10 +25,10 @@
 #include <vnet/unix/tuntap.h>
 #include <vlib/unix/unix.h>
 
-#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
@@ -40,48 +40,27 @@
 #include <linux/if_tun.h>
 #include <netinet/in.h>
 
-/* define message IDs */
-#include <myplugin/myplugin_msg_enum.h>
-
-/* define message structures */
+#include <cplane_netdev/cplane_netdev_msg_enum.h>
 #define vl_typedefs
-#include <myplugin/myplugin_all_api_h.h>
+#include <cplane_netdev/cplane_netdev_all_api_h.h>
 #undef vl_typedefs
-
-/* define generated endian-swappers */
 #define vl_endianfun
-#include <myplugin/myplugin_all_api_h.h>
+#include <cplane_netdev/cplane_netdev_all_api_h.h>
 #undef vl_endianfun
-
-/* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
-#include <myplugin/myplugin_all_api_h.h>
+#include <cplane_netdev/cplane_netdev_all_api_h.h>
 #undef vl_printfun
-
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <myplugin/myplugin_all_api_h.h>
+#define vl_api_version(n,v) static uint32_t api_version=(v);
+#include <cplane_netdev/cplane_netdev_all_api_h.h>
 #undef vl_api_version
-
 #define REPLY_MSG_ID_BASE mmp->msg_id_base
 #include <vlibapi/api_helper_macros.h>
-
 #define vl_msg_name_crc_list
-#include <myplugin/myplugin_all_api_h.h>
+#include <cplane_netdev/cplane_netdev_all_api_h.h>
 #undef vl_msg_name_crc_list
 
-#define tap_inject_main_t myplugin_main_t
-#define tap_inject_get_main myplugin_get_main
-
-vlib_node_registration_t tap_inject_tx_node;
-vlib_node_registration_t tap_inject_rx_node;
-myplugin_main_t myplugin_main;
-myplugin_main_t *myplugin_get_main(void) { return &myplugin_main; }
-
-/* List of message types that this plugin understands */
-
-#define foreach_myplugin_plugin_api_msg \
+#define foreach_cplane_netdev_plugin_api_msg \
 _(TAP_INJECT_ENABLE_DISABLE, tap_inject_enable_disable) \
 _(TAP_INJECT_DUMP, tap_inject_dump) \
 _(TAP_INJECT_DETAILS, tap_inject_details) \
@@ -91,11 +70,35 @@ _(TAP_INJECT_DETAILS, tap_inject_details) \
 #define NUM_BUFFERS_TO_ALLOC 32
 #define VLIB_BUFFER_DATA_SIZE (2048)
 
-/* Action function shared between message handler and debug CLI */
+
+vlib_node_registration_t tap_inject_tx_node;
+vlib_node_registration_t tap_inject_rx_node;
+
+static cplane_netdev_main_t *
+cplane_netdev_get_main(void)
+{
+  static cplane_netdev_main_t cplane_netdev_main;
+  return &cplane_netdev_main;
+}
+
+static int
+tap_inject_is_enabled (void)
+{
+  cplane_netdev_main_t * im = cplane_netdev_get_main ();
+  return !!(im->flags & TAP_INJECT_F_ENABLED);
+}
+
+static int
+tap_inject_is_config_disabled (void)
+{
+  cplane_netdev_main_t * im = cplane_netdev_get_main ();
+  return !!(im->flags & TAP_INJECT_F_CONFIG_DISABLE);
+}
+
 static void
 tap_inject_disable (void)
 {
-  myplugin_main_t * im = myplugin_get_main ();
+  cplane_netdev_main_t * im = cplane_netdev_get_main ();
   im->flags &= ~TAP_INJECT_F_ENABLED;
   clib_warning ("tap-inject is not actually disabled.");
 }
@@ -104,8 +107,7 @@ static clib_error_t *
 tap_inject_enable (void)
 {
   vlib_main_t * vm = vlib_get_main ();
-  myplugin_main_t * im = myplugin_get_main ();
-
+  cplane_netdev_main_t * im = cplane_netdev_get_main ();
   if (tap_inject_is_enabled ())
     return 0;
 
@@ -129,10 +131,10 @@ tap_inject_enable (void)
     /*     .fp_len = 24, */
     /*     .fp_proto = FIB_PROTOCOL_IP4, */
     /*     .fp_grp_addr = { */
-    /*         .ip4.as_u32 = clib_host_to_net_u32(0xe0000000), */
+    /*         .ip4.as_uint32_t = clib_host_to_net_uint32_t(0xe0000000), */
     /*     }, */
     /*     .fp_src_addr = { */
-    /*         .ip4.as_u32 = 0, */
+    /*         .ip4.as_uint32_t = 0, */
     /*     }, */
     /* }; */
 
@@ -154,11 +156,11 @@ tap_inject_enable (void)
   return 0;
 }
 
-void
-tap_inject_insert_tap (u32 sw_if_index, u32 tap_fd, u32 tap_if_index)
+static void
+tap_inject_insert_tap (uint32_t sw_if_index, uint32_t tap_fd, uint32_t tap_if_index)
 {
   printf("SLANKDEV: %s\n", __func__);
-  tap_inject_main_t * im = tap_inject_get_main ();
+  cplane_netdev_main_t * im = cplane_netdev_get_main ();
   vec_validate_init_empty (im->sw_if_index_to_tap_fd, sw_if_index, ~0);
   vec_validate_init_empty (im->sw_if_index_to_tap_if_index, sw_if_index, ~0);
   vec_validate_init_empty (im->tap_fd_to_sw_if_index, tap_fd, ~0);
@@ -173,7 +175,7 @@ tap_inject_tap_read (clib_file_t * f)
 {
   /* printf("SLANKDEV: %s 1\n", __func__); */
   vlib_main_t * vm = vlib_get_main ();
-  tap_inject_main_t * im = tap_inject_get_main ();
+  cplane_netdev_main_t * im = cplane_netdev_get_main ();
   vec_add1 (im->rx_file_descriptors, f->file_descriptor);
   vlib_node_set_interrupt_pending (vm, im->rx_node_index);
   return 0;
@@ -189,14 +191,14 @@ tap_inject_tap_connect (vnet_hw_interface_t * hw)
   int fd;
   struct ifreq ifr;
   clib_file_t template;
-  u8 * name;
+  uint8_t * name;
 
   memset (&ifr, 0, sizeof (ifr));
   memset (&template, 0, sizeof (template));
   ASSERT (hw->hw_if_index == sw->sw_if_index);
 
   /* Create the tap. */
-  u32 tap_fd = open ("/dev/net/tun", O_RDWR);
+  uint32_t tap_fd = open ("/dev/net/tun", O_RDWR);
   if ((int)tap_fd < 0)
     return clib_error_return (0, "failed to open tun device");
 
@@ -250,29 +252,29 @@ tap_inject_tap_connect (vnet_hw_interface_t * hw)
 }
 
 static void
-tap_inject_delete_tap (u32 sw_if_index)
+tap_inject_delete_tap (uint32_t sw_if_index)
 {
-  tap_inject_main_t * im = tap_inject_get_main ();
-  u32 tap_fd = im->sw_if_index_to_tap_fd[sw_if_index];
-  u32 tap_if_index = im->sw_if_index_to_tap_if_index[sw_if_index];
+  cplane_netdev_main_t * im = cplane_netdev_get_main ();
+  uint32_t tap_fd = im->sw_if_index_to_tap_fd[sw_if_index];
+  uint32_t tap_if_index = im->sw_if_index_to_tap_if_index[sw_if_index];
   im->sw_if_index_to_tap_if_index[sw_if_index] = ~0;
   im->sw_if_index_to_tap_fd[sw_if_index] = ~0;
   im->tap_fd_to_sw_if_index[tap_fd] = ~0;
   hash_unset (im->tap_if_index_to_sw_if_index, tap_if_index);
 }
 
-static u32
-tap_inject_lookup_tap_fd (u32 sw_if_index)
+static uint32_t
+tap_inject_lookup_tap_fd (uint32_t sw_if_index)
 {
-  tap_inject_main_t * im = tap_inject_get_main ();
+  cplane_netdev_main_t * im = cplane_netdev_get_main ();
   vec_validate_init_empty (im->sw_if_index_to_tap_fd, sw_if_index, ~0);
   return im->sw_if_index_to_tap_fd[sw_if_index];
 }
 
 static clib_error_t *
-tap_inject_tap_disconnect (u32 sw_if_index)
+tap_inject_tap_disconnect (uint32_t sw_if_index)
 {
-  u32 tap_fd = tap_inject_lookup_tap_fd (sw_if_index);
+  uint32_t tap_fd = tap_inject_lookup_tap_fd (sw_if_index);
   if (tap_fd == ~0)
     return clib_error_return (0, "failed to disconnect tap");
 
@@ -281,13 +283,13 @@ tap_inject_tap_disconnect (u32 sw_if_index)
   return 0;
 }
 
-static uword
+static uint64_t
 tap_inject_iface_isr (vlib_main_t * vm, vlib_node_runtime_t * node,
                       vlib_frame_t * f)
 {
   clib_error_t * err;
-  u32 * hw_if_index;
-  myplugin_main_t * im = myplugin_get_main ();
+  uint32_t * hw_if_index;
+  cplane_netdev_main_t * im = cplane_netdev_get_main ();
   vec_foreach (hw_if_index, im->interfaces_to_enable) {
     vnet_hw_interface_t *hw = vnet_get_hw_interface (vnet_get_main (), *hw_if_index);
     if (hw->hw_class_index == ethernet_hw_interface_class.index) {
@@ -309,7 +311,7 @@ static clib_error_t *
 tap_inject_enable_disable_all_interfaces (int enable)
 {
   vnet_main_t * vnet_main = vnet_get_main ();
-  myplugin_main_t * im = myplugin_get_main ();
+  cplane_netdev_main_t * im = cplane_netdev_get_main ();
 
   if (enable)
     tap_inject_enable ();
@@ -318,7 +320,7 @@ tap_inject_enable_disable_all_interfaces (int enable)
 
   /* Collect all the interface indices. */
   vnet_hw_interface_t * interfaces = vnet_main->interface_main.hw_interfaces;
-  u32 ** indices = enable ? &im->interfaces_to_enable : &im->interfaces_to_disable;
+  uint32_t ** indices = enable ? &im->interfaces_to_enable : &im->interfaces_to_disable;
   vnet_hw_interface_t * hw;
   pool_foreach (hw, interfaces, vec_add1 (*indices, hw - interfaces));
 
@@ -327,22 +329,13 @@ tap_inject_enable_disable_all_interfaces (int enable)
   return 0;
 }
 
-int
-myplugin_enable_disable(myplugin_main_t * mmp, u32 sw_if_index,
-                                   int is_enable)
-{
-  printf("SLANKDEV: %s\n", __func__);
-  return 0;
-}
-
-/* API message handler */
 static void
   vl_api_tap_inject_enable_disable_t_handler
   (vl_api_tap_inject_enable_disable_t * mp)
 {
   printf("[tap-inject API] %s\n", __func__);
   vl_api_tap_inject_enable_disable_reply_t * rmp;
-  myplugin_main_t * mmp = &myplugin_main;
+  cplane_netdev_main_t * mmp = cplane_netdev_get_main();
 
   int rv = 0;
   clib_error_t * err = tap_inject_enable_disable_all_interfaces (mp->is_enable ? 1 : 0);
@@ -355,7 +348,7 @@ static void
 }
 
 static void
-send_tap_inject_details(myplugin_main_t *am,
+send_tap_inject_details(cplane_netdev_main_t *am,
     vl_api_registration_t * rp, uint32_t context,
     uint32_t vpp_index, uint32_t kern_index)
 {
@@ -374,7 +367,7 @@ static void
   vl_api_tap_inject_dump_t_handler
   (vl_api_tap_inject_dump_t * mp)
 {
-  myplugin_main_t *mm = &myplugin_main;
+  cplane_netdev_main_t *mm = cplane_netdev_get_main();
   vl_api_registration_t *rp =
     vl_api_client_index_to_registration (mp->client_index);
   printf("[tap-inject API] %s\n", __func__);
@@ -382,14 +375,12 @@ static void
   uint32_t if_index = 3;
   uint32_t kern_index, vpp_index;
   vnet_main_t *vnet_main = vnet_get_main ();
-  tap_inject_main_t *tm = tap_inject_get_main ();
+  cplane_netdev_main_t *tm = cplane_netdev_get_main ();
   hash_foreach (kern_index, vpp_index, tm->tap_if_index_to_sw_if_index, {
       send_tap_inject_details(mm, rp, mp->context, vpp_index, kern_index);
       printf("%s: v/k: %u/%u\n", __func__, vpp_index, kern_index);
     }
   );
-
-  return;
 }
 
 static void
@@ -401,9 +392,9 @@ static void
 
 /* Set up the API message handling tables */
 static clib_error_t *
-myplugin_plugin_api_hookup(vlib_main_t *vm)
+cplane_netdev_plugin_api_hookup(vlib_main_t *vm)
 {
-  myplugin_main_t * mmp = &myplugin_main;
+  cplane_netdev_main_t * mmp = cplane_netdev_get_main();
 #define _(N,n)                                                  \
     vl_msg_api_set_handlers((VL_API_##N + mmp->msg_id_base),     \
                            #n,					\
@@ -412,33 +403,33 @@ myplugin_plugin_api_hookup(vlib_main_t *vm)
                            vl_api_##n##_t_endian,               \
                            vl_api_##n##_t_print,                \
                            sizeof(vl_api_##n##_t), 1);
-    foreach_myplugin_plugin_api_msg;
+    foreach_cplane_netdev_plugin_api_msg;
 #undef _
     return 0;
 }
 
 static void
-setup_message_id_table(myplugin_main_t *mmp, api_main_t *am)
+setup_message_id_table(cplane_netdev_main_t *mmp, api_main_t *am)
 {
 #define _(id,n,crc)   vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + mmp->msg_id_base);
-  foreach_vl_msg_name_crc_myplugin ;
+  foreach_vl_msg_name_crc_cplane_netdev ;
 #undef _
 }
 
 static clib_error_t *
-myplugin_init (vlib_main_t *vm)
+cplane_netdev_init (vlib_main_t *vm)
 {
-  myplugin_main_t * mmp = &myplugin_main;
+  cplane_netdev_main_t * mmp = cplane_netdev_get_main();
   mmp->vlib_main = vm;
   mmp->vnet_main = vnet_get_main();
   mmp->tx_node_index = tap_inject_tx_node.index;
   mmp->rx_node_index = tap_inject_rx_node.index;
 
-  u8 * name = format (0, "myplugin_%08x%c", api_version, 0);
+  uint8_t * name = format (0, "cplane_netdev_%08x%c", api_version, 0);
   mmp->msg_id_base = vl_msg_api_get_msg_ids
       ((char *) name, VL_MSG_FIRST_AVAILABLE);
 
-  clib_error_t *error = myplugin_plugin_api_hookup (vm);
+  clib_error_t *error = cplane_netdev_plugin_api_hookup (vm);
   setup_message_id_table (mmp, &api_main);
   vec_free(name);
   vec_alloc (mmp->rx_buffers, NUM_BUFFERS_TO_ALLOC);
@@ -450,7 +441,7 @@ static clib_error_t *
 tap_inject_cli (vlib_main_t * vm, unformat_input_t * input,
                  vlib_cli_command_t * cmd)
 {
-  myplugin_main_t * im = myplugin_get_main ();
+  cplane_netdev_main_t * im = cplane_netdev_get_main ();
   if (cmd->function_arg) {
     if (tap_inject_is_config_disabled ())
       return clib_error_return (0, "tap-inject is disabled in config, thus cannot be enabled.");
@@ -472,8 +463,8 @@ tap_inject_cli (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-static u8 *
-format_tap_inject_tap_name (u8 * s, va_list * args)
+static uint8_t *
+format_tap_inject_tap_name (uint8_t * s, va_list * args)
 {
   int fd = socket (PF_PACKET, SOCK_RAW, htons (ETH_P_ALL));
   if (fd < 0)
@@ -481,7 +472,7 @@ format_tap_inject_tap_name (u8 * s, va_list * args)
 
   struct ifreq ifr;
   memset (&ifr, 0, sizeof (ifr));
-  ifr.ifr_ifindex = va_arg (*args, u32);
+  ifr.ifr_ifindex = va_arg (*args, uint32_t);
   if (ioctl (fd, SIOCGIFNAME, &ifr) < 0) {
     close (fd);
     return 0;
@@ -505,9 +496,9 @@ show_tap_inject (vlib_main_t * vm, unformat_input_t * input,
     return 0;
   }
 
-  u32 k, v;
+  uint32_t k, v;
   vnet_main_t * vnet_main = vnet_get_main ();
-  tap_inject_main_t * im = tap_inject_get_main ();
+  cplane_netdev_main_t * im = cplane_netdev_get_main ();
   hash_foreach (k, v, im->tap_if_index_to_sw_if_index,
     /* routine */ {
       vnet_sw_interface_t *iface = vnet_get_sw_interface(vnet_main, v);
@@ -535,11 +526,11 @@ tap_inject_tap_send_buffer (int fd, vlib_buffer_t * b)
     clib_warning ("buffer truncated");
 }
 
-static uword
+static uint64_t
 tap_inject_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * f)
 {
   /* printf("SLANKDEV %s\n", __func__); */
-  u32* pkts = vlib_frame_vector_args (f);
+  uint32_t* pkts = vlib_frame_vector_args (f);
 
   for (uint32_t i = 0; i < f->n_vectors; ++i) {
     vlib_buffer_t *b = vlib_get_buffer (vm, pkts[i]);
@@ -559,19 +550,18 @@ tap_inject_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * f)
   return f->n_vectors;
 }
 
-static u32
-tap_inject_lookup_sw_if_index_from_tap_fd (u32 tap_fd)
+static uint32_t
+tap_inject_lookup_sw_if_index_from_tap_fd (uint32_t tap_fd)
 {
-  tap_inject_main_t * im = tap_inject_get_main ();
+  cplane_netdev_main_t * im = cplane_netdev_get_main ();
   vec_validate_init_empty (im->tap_fd_to_sw_if_index, tap_fd, ~0);
   return im->tap_fd_to_sw_if_index[tap_fd];
 }
 
-static inline uword
+static inline uint64_t
 tap_rx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * f, int fd)
 {
-  tap_inject_main_t * im = tap_inject_get_main ();
-
+  cplane_netdev_main_t * im = cplane_netdev_get_main ();
   uint32_t sw_if_index = tap_inject_lookup_sw_if_index_from_tap_fd (fd);
   if (sw_if_index == ~0)
     return 0;
@@ -633,7 +623,7 @@ tap_rx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * f, int fd)
   {
     vnet_hw_interface_t * hw;
     vlib_frame_t * new_frame;
-    u32 * to_next;
+    uint32_t * to_next;
 
     hw = vnet_get_hw_interface (vnet_get_main (), sw_if_index);
     new_frame = vlib_get_frame_to_node (vm, hw->output_node_index);
@@ -646,12 +636,12 @@ tap_rx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * f, int fd)
   return 1;
 }
 
-static uword
+static uint64_t
 tap_inject_rx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * f)
 {
-  tap_inject_main_t * im = tap_inject_get_main ();
-  uword count = 0;
-  u32 * fd;
+  cplane_netdev_main_t * im = cplane_netdev_get_main ();
+  uint64_t count = 0;
+  uint32_t * fd;
   vec_foreach (fd, im->rx_file_descriptors) {
     if (tap_rx (vm, node, f, *fd) != 1) {
       clib_warning ("rx failed");
@@ -664,33 +654,19 @@ tap_inject_rx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * f)
   return count;
 }
 
-int
-tap_inject_is_enabled (void)
-{
-  myplugin_main_t * im = myplugin_get_main ();
-  return !!(im->flags & TAP_INJECT_F_ENABLED);
-}
+VLIB_INIT_FUNCTION (cplane_netdev_init);
 
-int
-tap_inject_is_config_disabled (void)
-{
-  myplugin_main_t * im = myplugin_get_main ();
-  return !!(im->flags & TAP_INJECT_F_CONFIG_DISABLE);
-}
-
-VLIB_INIT_FUNCTION (myplugin_init);
-
-VNET_FEATURE_INIT (myplugin, static) =
+VNET_FEATURE_INIT (cplane_netdev, static) =
 {
   .arc_name = "device-input",
-  .node_name = "myplugin",
+  .node_name = "cplane_netdev",
   .runs_before = VNET_FEATURES ("ethernet-input"),
 };
 
 VLIB_PLUGIN_REGISTER () =
 {
   .version = VPP_BUILD_VER,
-  .description = "myplugin plugin description goes here",
+  .description = "cplane_netdev plugin description goes here",
 };
 
 VLIB_CLI_COMMAND (enable_tap_cmd, static) = {
@@ -715,15 +691,15 @@ VLIB_CLI_COMMAND (show_tap_inject_cmd, static) = {
 
 VLIB_REGISTER_NODE (tap_inject_tx_node) = {
   .function = tap_inject_tx,
-  .name = "myplugin-tap-inject-tx",
-  .vector_size = sizeof (u32),
+  .name = "cplane_netdev-tap-inject-tx",
+  .vector_size = sizeof (uint32_t),
   .type = VLIB_NODE_TYPE_INTERNAL,
 };
 
 VLIB_REGISTER_NODE (tap_inject_rx_node) = {
   .function = tap_inject_rx,
-  .name = "myplugin-tap-inject-rx",
-  .vector_size = sizeof (u32),
+  .name = "cplane_netdev-tap-inject-rx",
+  .vector_size = sizeof (uint32_t),
   .type = VLIB_NODE_TYPE_INPUT,
   .state = VLIB_NODE_STATE_INTERRUPT,
 };

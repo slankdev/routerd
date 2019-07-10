@@ -1,4 +1,3 @@
-
 /*
  * Copyright (c) 2019 Hiroki Shirokura
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,17 +11,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef included_myplugin_msg_enum_h
-#define included_myplugin_msg_enum_h
+#ifndef included_cplane_netdev_msg_enum_h
+#define included_cplane_netdev_msg_enum_h
 
 #include <vppinfra/byte_order.h>
 
 #define vl_msg_id(n,h) n,
 typedef enum {
-#include <myplugin/myplugin_all_api_h.h>
+#include <cplane_netdev/cplane_netdev_all_api_h.h>
     /* We'll want to know how many messages IDs we need... */
     VL_MSG_FIRST_AVAILABLE,
 } vl_msg_id_t;
 #undef vl_msg_id
 
-#endif /* included_myplugin_msg_enum_h */
+#endif /* included_cplane_netdev_msg_enum_h */

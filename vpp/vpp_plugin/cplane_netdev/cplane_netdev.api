@@ -1,11 +1,10 @@
 /*
- * myplugin.api - binary API skeleton
+ * cplane_netdev.api - binary API cplane_netdev plugin
  *
  * Copyright (c) 2019 Hiroki Shirokrua
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
- *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
@@ -16,8 +15,8 @@
  */
 
 /**
- * @file myplugin.api
- * @brief VPP control-plane API messages.
+ * @file cplane_netdev.api
+ * @brief VPP control-plane netdev API messages.
  * This file defines VPP control-plane binary API messages which are generally
  * called through a shared memory interface.
  */
@@ -25,7 +24,6 @@
 /* Version and type recitations */
 option version = "0.1.0";
 import "vnet/interface_types.api";
-
 
 /** @brief enable/disable tap-inject
     @param client_index - opaque cookie to identify the sender
