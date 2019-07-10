@@ -108,7 +108,7 @@ tap_inject_disable (void)
   vlib_main_t * vm = vlib_get_main();
   cplane_netdev_main_t * im = cplane_netdev_get_main ();
   if (! tap_inject_is_enabled ())
-    return 0;
+    return;
 
   printf("%s: start\n", __func__);
   ethernet_register_input_type (vm, ETHERNET_TYPE_ARP, vlib_get_node_by_name(vm, "arp-input")->index);
@@ -221,7 +221,8 @@ tap_inject_tap_connect (vnet_hw_interface_t * hw)
 
   if (ioctl (tap_fd, TUNSETIFF, (void *)&ifr) < 0) {
     close (tap_fd);
-    return clib_error_return (0, "failed to create tap");
+    return 0;
+    /* return clib_error_return (0, "failed to create tap"); */
   }
 
   if (ioctl (tap_fd, FIONBIO, &one) < 0) {
@@ -299,15 +300,19 @@ static uint64_t
 tap_inject_iface_isr (vlib_main_t * vm, vlib_node_runtime_t * node,
                       vlib_frame_t * f)
 {
-  clib_error_t * err;
-  uint32_t * hw_if_index;
   cplane_netdev_main_t * im = cplane_netdev_get_main ();
+
+  clib_error_t *err;
+  uint32_t *hw_if_index;
   vec_foreach (hw_if_index, im->interfaces_to_enable) {
+    printf("%s: hw_if_index: %u\n", __func__, *hw_if_index);
     vnet_hw_interface_t *hw = vnet_get_hw_interface (vnet_get_main (), *hw_if_index);
     if (hw->hw_class_index == ethernet_hw_interface_class.index) {
       err = tap_inject_tap_connect (hw);
-      if (err)
+      if (err) {
+        printf("%s: err: %s(%ld)\n", __func__, err->what, err->code);
         break;
+      }
     }
   }
 
@@ -325,6 +330,7 @@ tap_inject_enable_disable_all_interfaces (int enable)
   vnet_main_t * vnet_main = vnet_get_main ();
   cplane_netdev_main_t * im = cplane_netdev_get_main ();
 
+  /* configure ip,ethernet nodes table */
   if (enable)
     tap_inject_enable ();
   else
@@ -450,8 +456,55 @@ cplane_netdev_init (vlib_main_t *vm)
   return error;
 }
 
+static clib_error_t*
+create_cplane_netdev(vlib_main_t *vm, uint32_t ifindex, const char *name)
+{
+  vlib_cli_output (vm, "%s id %u name %s\n", __func__, ifindex, name);
+
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnet_get_main(), ifindex);
+  if (! hw)
+    return clib_error_return(0, "invalid ifindex (%u)", ifindex);
+
+  if (hw->hw_class_index == ethernet_hw_interface_class.index) {
+    clib_error_t *err = tap_inject_tap_connect (hw);
+    if (err)
+      return clib_error_return(0, "%s: err: %s(%d)\n", __func__, err->what, err->code);
+  }
+
+  return 0;
+}
+
 static clib_error_t *
-tap_inject_cli (vlib_main_t * vm, unformat_input_t * input,
+create_cplane_netdev_command_fn (vlib_main_t * vm,
+    unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vlib_cli_output (vm, "%s\n", __func__);
+  uint32_t id = ~0;
+  char *name;
+
+  if (unformat_user (input, unformat_line_input, line_input)) {
+    while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT) {
+      if (unformat (line_input, "id %u", &id)) ;
+      else if (unformat (line_input, "name %s", &name)) ;
+
+      else {
+        unformat_free (line_input);
+        return clib_error_return (0, "unknown input `%U'",
+          format_unformat_error, input);
+      }
+
+    }
+    unformat_free (line_input);
+  }
+
+  clib_error_t *err = create_cplane_netdev(vm, id, name);
+  vec_free(name);
+  return err;
+}
+
+static clib_error_t *
+enable_disable_tap_inject_cmd_fn (vlib_main_t * vm, unformat_input_t * input,
                  vlib_cli_command_t * cmd)
 {
   cplane_netdev_main_t * im = cplane_netdev_get_main ();
@@ -738,17 +791,23 @@ VLIB_PLUGIN_REGISTER () =
   .description = "cplane_netdev plugin description goes here",
 };
 
-VLIB_CLI_COMMAND (enable_tap_cmd, static) = {
+VLIB_CLI_COMMAND (create_cplane_netdev_command, static) = {
+  .path = "create cplane-netdev",
+  .short_help ="create cplane-netdev {id <if-id>} [name <name>]",
+  .function = create_cplane_netdev_command_fn,
+};
+
+VLIB_CLI_COMMAND (enable_tap_inject_cmd, static) = {
   .path = "enable tap-inject",
   .short_help ="enable tap-inject",
-  .function = tap_inject_cli,
+  .function = enable_disable_tap_inject_cmd_fn,
   .function_arg = 1,
 };
 
-VLIB_CLI_COMMAND (disable_tap_cmd, static) = {
+VLIB_CLI_COMMAND (disable_tap_inject_cmd, static) = {
   .path = "disable tap-inject",
   .short_help ="disable tap-inject",
-  .function = tap_inject_cli,
+  .function = enable_disable_tap_inject_cmd_fn,
   .function_arg = 0,
 };
 
