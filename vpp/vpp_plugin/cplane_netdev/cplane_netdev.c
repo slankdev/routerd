@@ -105,9 +105,20 @@ tap_inject_is_config_disabled (void)
 static void
 tap_inject_disable (void)
 {
+  vlib_main_t * vm = vlib_get_main();
   cplane_netdev_main_t * im = cplane_netdev_get_main ();
+  if (! tap_inject_is_enabled ())
+    return 0;
+
+  printf("%s: start\n", __func__);
+  ethernet_register_input_type (vm, ETHERNET_TYPE_ARP, vlib_get_node_by_name(vm, "arp-input")->index);
+  ip4_register_protocol (IP_PROTOCOL_ICMP, vlib_get_node_by_name(vm, "ip4-icmp-input")->index);
+  ip4_unregister_protocol (IP_PROTOCOL_OSPF);
+  ip4_unregister_protocol (IP_PROTOCOL_TCP);
+  ip4_unregister_protocol (IP_PROTOCOL_UDP);
+
+  printf("%s: done\n", __func__);
   im->flags &= ~TAP_INJECT_F_ENABLED;
-  clib_warning ("tap-inject is not actually disabled.");
 }
 
 static clib_error_t *
@@ -118,6 +129,7 @@ tap_inject_enable (void)
   if (tap_inject_is_enabled ())
     return 0;
 
+  printf("%s: start\n", __func__);
   ethernet_register_input_type (vm, ETHERNET_TYPE_ARP, im->neighbor_node_index);
   ip4_register_protocol (IP_PROTOCOL_ICMP, im->tx_node_index);
   ip4_register_protocol (IP_PROTOCOL_OSPF, im->tx_node_index);
@@ -151,6 +163,7 @@ tap_inject_enable (void)
   }
 #endif
 
+  printf("%s: done\n", __func__);
   im->flags |= TAP_INJECT_F_ENABLED;
   return 0;
 }
@@ -158,7 +171,7 @@ tap_inject_enable (void)
 static void
 tap_inject_insert_tap (uint32_t sw_if_index, uint32_t tap_fd, uint32_t tap_if_index)
 {
-  printf("SLANKDEV: %s\n", __func__);
+  /* printf("SLANKDEV: %s\n", __func__); */
   cplane_netdev_main_t * im = cplane_netdev_get_main ();
   vec_validate_init_empty (im->sw_if_index_to_tap_fd, sw_if_index, ~0);
   vec_validate_init_empty (im->sw_if_index_to_tap_if_index, sw_if_index, ~0);
@@ -183,7 +196,7 @@ tap_inject_tap_read (clib_file_t * f)
 static clib_error_t *
 tap_inject_tap_connect (vnet_hw_interface_t * hw)
 {
-  printf("SLANKDEV: %s\n", __func__);
+  /* printf("SLANKDEV: %s\n", __func__); */
   vnet_main_t * vnet_main = vnet_get_main ();
   vnet_sw_interface_t * sw = vnet_get_sw_interface (vnet_main, hw->hw_if_index);
   static const int one = 1;
@@ -536,7 +549,7 @@ tap_inject_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * f)
     uint32_t sw_ifindex = vnet_buffer (b)->sw_if_index[VLIB_RX];
     uint32_t fd = tap_inject_lookup_tap_fd (sw_ifindex);
     if (fd == ~0) {
-      printf("SLANKDEV %s: sw-idx=%u, not found\n", __func__, sw_ifindex);
+      /* printf("SLANKDEV %s: sw-idx=%u, not found\n", __func__, sw_ifindex); */
       continue;
     }
 
@@ -561,7 +574,7 @@ tap_inject_neighbor (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t 
     uint32_t sw_ifindex = vnet_buffer (b)->sw_if_index[VLIB_RX];
     uint32_t fd = tap_inject_lookup_tap_fd (sw_ifindex);
     if (fd == ~0) {
-      printf("SLANKDEV %s: sw-idx=%u, not found\n", __func__, sw_ifindex);
+      /* printf("SLANKDEV %s: sw-idx=%u, not found\n", __func__, sw_ifindex); */
       continue;
     }
 
