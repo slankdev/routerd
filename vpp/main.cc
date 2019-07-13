@@ -14,7 +14,7 @@ void th1()
   vui_set_password(vui, "slank");
   vui_set_hostname(vui, "slank");
   vui_serv_sock(vui, NULL, 9077);
-  vui_serv_stdio(vui);
+  // vui_serv_stdio(vui);
   setup_netlink_node(vui);
   setup_vpp_node(vui);
   setup_tap_node(vui);
@@ -27,6 +27,7 @@ void th1()
 int main(int argc, char **argv)
 {
   std::thread thrd1(th1);
+  sleep(1); //XXX
   std::thread thrd2(netlink_manager);
   thrd1.join();
   thrd2.join();

@@ -105,12 +105,12 @@ DEFUN (show_netlink_counter,
   return CMD_SUCCESS;
 }
 
-DEFUN (set_interface_pair,
-       set_interface_pair_cmd,
-       "set interface pair kernel-ifindex <(0-4294967295)> vpp-ifindex <(0-4294967295)>",
+DEFUN (set_interface_netlink_pair,
+       set_interface_netlink_pair_cmd,
+       "set interface netlink-pair kernel-ifindex <(0-4294967295)> vpp-ifindex <(0-4294967295)>",
        "Setting\n"
        "Interface setting\n"
-       "Interface pair (kern/vpp) setting\n"
+       "Interface netlink-pair (kern/vpp) setting\n"
        "Specify kernel-ifindex\n"
        "Specify kernel-ifindex\n"
        "Specify vpp-ifindex\n"
@@ -118,17 +118,15 @@ DEFUN (set_interface_pair,
 {
   uint32_t k_index = strtol(argv[4]->arg, NULL, 0);
   uint32_t v_index = strtol(argv[6]->arg, NULL, 0);
-  vty_out(vty, "%s kern%u, vpp%u\n", __func__, k_index, v_index);
   rd_ctx.add_interface(k_index, v_index);
   return CMD_SUCCESS;
 }
 
-DEFUN (show_netlink_interface_pair,
-       show_netlink_interface_pair_cmd,
-       "show netlink interface pair",
+DEFUN (show_interface_netlink_pair,
+       show_interface_netlink_pair_cmd,
+       "show interface netlink-pair",
        SHOW_STR
-       "Show netlink information\n"
-       "Show netlink-interface information\n"
+       "Show interface information\n"
        "Show netlink-interface-pair (kern/vpp) information\n")
 {
   for (size_t i=0; i<rd_ctx.interfaces.size(); i++) {
@@ -150,12 +148,11 @@ setup_netlink_node(vui_t *vui)
 
   vui_install_default_element(vui, netlink_node->node);
   vui_install_element(vui, CONFIG_NODE, &netlink_cmd);
-
   vui_install_element(vui, ENABLE_NODE, &show_netlink_filter_cmd);
   vui_install_element(vui, ENABLE_NODE, &show_netlink_cache_cmd);
   vui_install_element(vui, ENABLE_NODE, &show_netlink_counter_cmd);
-  vui_install_element(vui, ENABLE_NODE, &show_netlink_interface_pair_cmd);
+  vui_install_element(vui, ENABLE_NODE, &show_interface_netlink_pair_cmd);
   vui_install_element(vui, netlink_node->node, &filter_ifinfo_msg_flag_cmd);
-  vui_install_element(vui, netlink_node->node, &set_interface_pair_cmd);
+  vui_install_element(vui, netlink_node->node, &set_interface_netlink_pair_cmd);
 }
 

@@ -38,6 +38,8 @@
 
 #include <vui/vui.h>
 
+extern void routerd_context_add_interface(uint32_t kernl_index, uint32_t vpp_index);
+
 static int
 snprintf_ether_addr(char *str, size_t size, const void *buffer)
 {
@@ -564,7 +566,43 @@ DEFUN (enable_tap_inject,
   enable_disable_tap_inject(vl_msg_id, msg_id, is_enable);
   int32_t retval = enable_disable_tap_inject_retval();
   disconnect_from_vpp ();
+  return CMD_SUCCESS; // XXX
   return retval != -1 ? CMD_WARNING_CONFIG_FAILED : CMD_SUCCESS;
+}
+
+DEFUN (enable_cplane_netdev_sync,
+       enable_cplane_netdev_sync_cmd,
+       "<enable|disable> cplane-netdev sync",
+       "Enable parameter\n"
+       "Disable parameter\n"
+       "vpp\'s cplane-netdev using tap-inject\n"
+       "Sync info\n")
+{
+  if (connect_to_vpp("routerd", true) < 0) {
+    svm_region_exit ();
+    vty_out(vty, "%s: Couldn't connect to vpe, exiting...\r\n", __func__);
+    return CMD_WARNING_CONFIG_FAILED;
+  }
+
+  api_main_t *am = &api_main;
+  void *msg = NULL;
+  tap_inject_dump(find_msg_id(TAPINJECT_DUMP_MESSAGE), 2);
+  send_ping(find_msg_id(CONTROL_PING_MESSAGE), 1);
+  while (!svm_queue_sub (am->vl_input_queue, (u8 *) & msg, SVM_Q_TIMEDWAIT, 3)) {
+    uint16_t msg_id = ntohs(*((uint16_t*)msg));
+    uint16_t pong_id = find_msg_id(CONTROL_PING_REPLY_MESSAGE);
+    if (msg_id == pong_id) {
+      break;
+    }
+
+    vl_api_tap_inject_details_t *mp = msg;
+    uint32_t vpp_index = ntohl(mp->sw_if_index);
+    uint32_t kern_index = ntohl(mp->kernel_if_index);
+    routerd_context_add_interface(kern_index, vpp_index);
+  }
+
+  disconnect_from_vpp ();
+  return CMD_SUCCESS;
 }
 
 void
@@ -584,14 +622,13 @@ setup_vpp_node(vui_t *vui)
   vui_install_element(vui, CONFIG_NODE, &vpp_cmd);
   vui_install_element(vui, ENABLE_NODE, &show_vpp_interface_cmd);
   vui_install_element(vui, ENABLE_NODE, &show_vpp_vpe_message_table_cmd);
+  vui_install_element(vui, ENABLE_NODE, &show_vpp_tap_inject_cmd);
   vui_install_element(vui, vpp_node->node, &vpe_connect_cmd);
   vui_install_element(vui, vpp_node->node, &vpe_disconnect_cmd);
-
-  // TODO: change node ENABLE_NODE -> vpp_node->node
-  vui_install_element(vui, ENABLE_NODE, &set_interface_address_cmd);
-  vui_install_element(vui, ENABLE_NODE, &set_interface_state_cmd);
-  vui_install_element(vui, ENABLE_NODE, &create_loopback_interface_cmd);
-  vui_install_element(vui, ENABLE_NODE, &ip_adddel_route_cmd);
-  vui_install_element(vui, ENABLE_NODE, &enable_tap_inject_cmd);
-  vui_install_element(vui, ENABLE_NODE, &show_vpp_tap_inject_cmd);
+  vui_install_element(vui, vpp_node->node, &enable_tap_inject_cmd);
+  vui_install_element(vui, vpp_node->node, &enable_cplane_netdev_sync_cmd);
+  vui_install_element(vui, vpp_node->node, &set_interface_address_cmd);
+  vui_install_element(vui, vpp_node->node, &set_interface_state_cmd);
+  vui_install_element(vui, vpp_node->node, &create_loopback_interface_cmd);
+  vui_install_element(vui, vpp_node->node, &ip_adddel_route_cmd);
 }

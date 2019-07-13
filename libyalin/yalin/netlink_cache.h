@@ -32,6 +32,7 @@ extern "C" {
 struct buffer {
   std::vector<uint8_t> raw;
   uint8_t* data() { return raw.data(); }
+  const uint8_t* data() const { return raw.data(); }
   size_t size() { return raw.size(); }
   void memcpy(const void* src, size_t len)
   {
@@ -55,6 +56,7 @@ const ifinfomsg* netlink_cache_get_link(netlink_cache_t* nlc, uint16_t index);
 void netlink_cache_update_link(netlink_cache_t* nlc,
     const struct ifinfomsg* ifm, size_t rta_len);
 void netlink_dump_link(netlink_t* nl);
+void netlink_dump_addr(netlink_t* nl);
 
 #ifdef __cplusplus
 }

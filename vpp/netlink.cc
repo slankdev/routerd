@@ -32,6 +32,22 @@ static void set_link(uint32_t vpp_ifindex, bool is_up)
   disconnect_from_vpp ();
 }
 
+static void set_addr(uint32_t vpp_ifindex, uint32_t addr, uint8_t addr_len, bool is_add)
+{
+  if (connect_to_vpp("routerd", true) < 0) {
+    printf("%s: Couldn't connect to vpe, exiting...\r\n", __func__);
+    return;
+  }
+  uint16_t msg_id = random();
+  set_interface_addr(find_msg_id(SET_IFC_ADDR), msg_id, vpp_ifindex, is_add,
+      false/*is_ipv6*/, &addr, addr_len);
+  int ret = vpp_waitmsg_retval();
+  if (ret < 0) {
+    printf("%s: failed\r\n", __func__);
+  }
+  disconnect_from_vpp ();
+}
+
 static uint32_t
 ifindex_kernel2vpp(uint32_t k_idx)
 {
@@ -57,6 +73,26 @@ link_analyze_and_hook(const routerd::link &link,
     }
     set_link(vpp_ifindex, next_is_up);
   }
+}
+
+static void
+addr_analyze_and_hook(const routerd::ifaddr &addr, bool is_new)
+{
+  if (addr.ifa->ifa_family != AF_INET) {
+    printf("is not AF_INET ignore\n");
+    return;
+  }
+
+  const void *addr_ptr = (const void*)rta_readptr(addr.rtas->get(IFLA_ADDRESS));
+  if (!addr_ptr) {
+    printf("addr not found\n\r");
+    return;
+  }
+
+  uint32_t vpp_ifindex = ifindex_kernel2vpp(addr.ifa->ifa_index);
+  uint32_t addr_ = *((uint32_t*)addr_ptr);
+  uint8_t addr_len = addr.ifa->ifa_prefixlen;
+  set_addr(vpp_ifindex, addr_, addr_len, is_new);
 }
 
 static void
@@ -95,6 +131,8 @@ monitor_NEWADDR(const struct nlmsghdr* hdr)
 
   std::string cli = addr.to_iproute2_cli(RTM_NEWADDR).c_str();
   printf(" --> %s\r\n", cli.c_str());
+
+  addr_analyze_and_hook(addr, true);
 }
 
 static void
@@ -107,6 +145,8 @@ monitor_DELADDR(const struct nlmsghdr* hdr)
 
   std::string cli = addr.to_iproute2_cli(RTM_DELADDR).c_str();
   printf(" --> %s\r\n", cli.c_str());
+
+  addr_analyze_and_hook(addr, false);
 }
 
 static void
@@ -176,12 +216,31 @@ monitor(const struct sockaddr_nl *who [[gnu::unused]],
   return 0;
 }
 
+static void
+vpp_sync_with_nlc(const netlink_cache_t *nlc)
+{
+  size_t n_link = nlc->links.size();
+  for (size_t i=0; i<n_link; i++) {
+    const struct ifinfomsg *ifi =
+      (const struct ifinfomsg*)nlc->links[i].data();
+    uint32_t vpp_index = ifindex_kernel2vpp(ifi->ifi_index);
+    if (vpp_index == 0)
+      continue;
+
+    printf("link[%zd]: vpp%u kern%u\n", i, vpp_index, ifi->ifi_index);
+    bool is_up = ifi->ifi_flags & IFF_UP;
+    set_link(vpp_index, is_up);
+  }
+}
+
 void
 netlink_manager()
 {
   uint32_t groups = ~0U;
   netlink_t *nl = netlink_open(groups, NETLINK_ROUTE);
   nlc = netlink_cache_alloc(nl);
+  vpp_sync_with_nlc(nlc);
+  netlink_dump_addr(nl);
   netlink_listen(nl, monitor, nullptr);
   netlink_close(nl);
 }

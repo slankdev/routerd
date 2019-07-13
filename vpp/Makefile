@@ -36,7 +36,8 @@ LDFLAGS += $(shell pkg-config json-c --libs)
 BUILD_DIR = build
 SRC = main.cc log.cc tap.c \
   netlink_cli.cc netlink.cc \
-  vpp.c vpp_cli.c
+  vpp.c vpp_cli.c \
+  routerd.cc
 OBJ = $(SRC:%=$(BUILD_DIR)/%.o)
 TARGET = a.out
 
