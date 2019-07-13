@@ -5,7 +5,8 @@ CFLAGS += -Wno-unused-parameter \
 					-Wno-return-type \
 					-Wno-sign-compare \
 					-Wno-type-limits \
-					-Wno-unused-function
+					-Wno-unused-function \
+					-Wno-error
 CFLAGS += -g -O0
 CXXFLAGS += $(CFLAGS)
 

@@ -24,6 +24,11 @@
 #include "hexdump.h"
 #include "vpp.h"
 
+#define NO_VPP
+#ifdef NO_VPP
+#warning NO_VPP defined
+#endif
+
 routerd_main_t routerd_main;
 
 uint32_t
@@ -48,6 +53,7 @@ ip_add_del_route(uint16_t vl_msg_id, uint16_t msg_id, bool is_add,
     const struct prefix *route, const struct prefix *nexthop,
     uint32_t nh_ifindex)
 {
+#ifndef NO_VPP
   routerd_main_t *rm = &routerd_main;
   vl_api_ip_add_del_route_t *mp =
     vl_msg_api_alloc(sizeof(*mp));
@@ -74,6 +80,7 @@ ip_add_del_route(uint16_t vl_msg_id, uint16_t msg_id, bool is_add,
   memcpy(mp->dst_address, route->u.raw, mp->is_ipv6 ? 16 : 4);
   memcpy(mp->next_hop_address, nexthop->u.raw, mp->is_ipv6 ? 16 : 4);
   vl_msg_api_send_shmem(rm->vl_input_queue, (u8 *) &mp);
+#endif
 }
 
 int
@@ -134,6 +141,7 @@ dump_ipaddrs(u32 dump_id, u32 message_id, uint32_t ifindex, bool is_ipv6)
 int
 tap_inject_dump(uint16_t vl_msg_id, uint16_t msg_id)
 {
+#ifndef NO_VPP
   routerd_main_t *jm = &routerd_main;
   vl_api_tap_inject_dump_t *mp =
     vl_msg_api_alloc(sizeof(*mp));
@@ -142,6 +150,7 @@ tap_inject_dump(uint16_t vl_msg_id, uint16_t msg_id)
   mp->client_index = jm->my_client_index;
   mp->context = clib_host_to_net_u32(msg_id);
   vl_msg_api_send_shmem(jm->vl_input_queue, (u8 *) &mp);
+#endif
 }
 
 int
@@ -182,6 +191,7 @@ set_interface_addr(uint32_t set_id, uint32_t msg_id,
 int
 enable_disable_tap_inject(uint16_t vl_msg_id, uint16_t msg_id, bool is_enable)
 {
+#ifndef NO_VPP
   routerd_main_t *jm = &routerd_main;
   vl_api_tap_inject_enable_disable_t *mp =
     vl_msg_api_alloc(sizeof(*mp));
@@ -191,11 +201,13 @@ enable_disable_tap_inject(uint16_t vl_msg_id, uint16_t msg_id, bool is_enable)
   mp->context = clib_host_to_net_u32(msg_id);
   mp->is_enable = is_enable;
   vl_msg_api_send_shmem(jm->vl_input_queue, (u8 *) &mp);
+#endif
 }
 
 int32_t
 enable_disable_tap_inject_retval(void)
 {
+#ifndef NO_VPP
   void *msg = NULL;
   api_main_t *am = &api_main;
   while (!svm_queue_sub (am->vl_input_queue, (u8 *) & msg, SVM_Q_TIMEDWAIT, 1)) {
@@ -204,6 +216,7 @@ enable_disable_tap_inject_retval(void)
     return retval;
   }
   return (int32_t)-1;
+#endif
 }
 
 void

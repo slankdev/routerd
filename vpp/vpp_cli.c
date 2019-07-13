@@ -38,6 +38,11 @@
 
 #include <vui/vui.h>
 
+#define NO_VPP
+#ifdef NO_VPP
+#warning NO_VPP defined
+#endif
+
 extern void routerd_context_add_interface(uint32_t kernl_index, uint32_t vpp_index);
 
 static int
@@ -186,6 +191,7 @@ DEFUN (show_vpp_interface,
        VPP_STR
        "Show VPP interface information\n")
 {
+#ifndef NO_VPP
   if (connect_to_vpp("routerd", true) < 0) {
     svm_region_exit ();
     vty_out(vty, "Couldn't connect to vpe, exiting...\n");
@@ -282,6 +288,7 @@ DEFUN (show_vpp_interface,
 
   }
 
+#endif
   return CMD_SUCCESS;
 }
 
@@ -515,6 +522,7 @@ DEFUN (show_vpp_tap_inject,
        VPP_STR
        "Show VPP tap-inject information\n")
 {
+#ifndef NO_VPP
   vty_out(vty, "%s\n", __func__);
   if (connect_to_vpp("routerd", true) < 0) {
     svm_region_exit ();
@@ -544,6 +552,7 @@ DEFUN (show_vpp_tap_inject,
 
   disconnect_from_vpp ();
   return CMD_SUCCESS;
+#endif
 }
 
 DEFUN (enable_tap_inject,
@@ -578,6 +587,7 @@ DEFUN (enable_cplane_netdev_sync,
        "vpp\'s cplane-netdev using tap-inject\n"
        "Sync info\n")
 {
+#ifndef NO_VPP
   if (connect_to_vpp("routerd", true) < 0) {
     svm_region_exit ();
     vty_out(vty, "%s: Couldn't connect to vpe, exiting...\r\n", __func__);
@@ -602,6 +612,7 @@ DEFUN (enable_cplane_netdev_sync,
   }
 
   disconnect_from_vpp ();
+#endif
   return CMD_SUCCESS;
 }
 
