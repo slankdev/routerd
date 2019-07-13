@@ -38,7 +38,7 @@ BUILD_DIR = build
 SRC = main.cc log.cc tap.c \
   netlink_cli.cc netlink.cc \
   vpp.c vpp_cli.c \
-  routerd.cc
+  routerd.cc debug.cc
 OBJ = $(SRC:%=$(BUILD_DIR)/%.o)
 TARGET = a.out
 

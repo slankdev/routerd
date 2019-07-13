@@ -12,6 +12,7 @@
 #include "netlink.h"
 #include "vpp.h"
 #include "routerd.h"
+#include "debug.h"
 
 netlink_cache_t* nlc;
 netlink_counter counter;
@@ -103,8 +104,10 @@ monitor_NEWLINK(const struct nlmsghdr* hdr)
   const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
   routerd::link link(ifi, ifa_payload_len);
 
-  std::string cli = link.to_iproute2_cli(RTM_NEWLINK, nlc).c_str();
-  printf(" --> %s\r\n", cli.c_str());
+  if (debug_enabled(NETLINK)) {
+    std::string cli = link.to_iproute2_cli(RTM_NEWLINK, nlc).c_str();
+    printf(" --> %s\r\n", cli.c_str());
+  }
 
   link_analyze_and_hook(link, nlc);
 }
@@ -117,8 +120,10 @@ monitor_DELLINK(const struct nlmsghdr* hdr)
   const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
   routerd::link link(ifi, ifa_payload_len);
 
-  std::string cli = link.to_iproute2_cli(RTM_DELLINK, nlc).c_str();
-  printf(" --> %s\r\n", cli.c_str());
+  if (debug_enabled(NETLINK)) {
+    std::string cli = link.to_iproute2_cli(RTM_DELLINK, nlc).c_str();
+    printf(" --> %s\r\n", cli.c_str());
+  }
 }
 
 static void
@@ -129,8 +134,10 @@ monitor_NEWADDR(const struct nlmsghdr* hdr)
   const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
   routerd::ifaddr addr(ifa, ifa_payload_len);
 
-  std::string cli = addr.to_iproute2_cli(RTM_NEWADDR).c_str();
-  printf(" --> %s\r\n", cli.c_str());
+  if (debug_enabled(NETLINK)) {
+    std::string cli = addr.to_iproute2_cli(RTM_NEWADDR).c_str();
+    printf(" --> %s\r\n", cli.c_str());
+  }
 
   addr_analyze_and_hook(addr, true);
 }
@@ -143,8 +150,10 @@ monitor_DELADDR(const struct nlmsghdr* hdr)
   const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
   routerd::ifaddr addr(ifa, ifa_payload_len);
 
-  std::string cli = addr.to_iproute2_cli(RTM_DELADDR).c_str();
-  printf(" --> %s\r\n", cli.c_str());
+  if (debug_enabled(NETLINK)) {
+    std::string cli = addr.to_iproute2_cli(RTM_DELADDR).c_str();
+    printf(" --> %s\r\n", cli.c_str());
+  }
 
   addr_analyze_and_hook(addr, false);
 }
@@ -157,8 +166,10 @@ monitor_NEWROUTE(const struct nlmsghdr* hdr)
   const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
   routerd::route route(rtm, ifa_payload_len);
 
-  std::string cli = route.to_iproute2_cli(RTM_NEWROUTE).c_str();
-  printf(" --> %s\r\n", cli.c_str());
+  if (debug_enabled(NETLINK)) {
+    std::string cli = route.to_iproute2_cli(RTM_NEWROUTE).c_str();
+    printf(" --> %s\r\n", cli.c_str());
+  }
 }
 
 static void
@@ -169,8 +180,10 @@ monitor_DELROUTE(const struct nlmsghdr* hdr)
   const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
   routerd::route route(rtm, ifa_payload_len);
 
-  std::string cli = route.to_iproute2_cli(RTM_DELROUTE).c_str();
-  printf(" --> %s\r\n", cli.c_str());
+  if (debug_enabled(NETLINK)) {
+    std::string cli = route.to_iproute2_cli(RTM_DELROUTE).c_str();
+    printf(" --> %s\r\n", cli.c_str());
+  }
 }
 
 static void
@@ -181,8 +194,10 @@ monitor_NEWNEIGH(const struct nlmsghdr* hdr)
   const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
   routerd::neigh nei(ndm, ifa_payload_len);
 
-  std::string cli = nei.to_iproute2_cli(RTM_NEWNEIGH).c_str();
-  printf(" --> %s\r\n", cli.c_str());
+  if (debug_enabled(NETLINK)) {
+    std::string cli = nei.to_iproute2_cli(RTM_NEWNEIGH).c_str();
+    printf(" --> %s\r\n", cli.c_str());
+  }
 }
 
 static void
@@ -193,8 +208,10 @@ monitor_DELNEIGH(const struct nlmsghdr* hdr)
   const size_t ifa_payload_len = IFA_PAYLOAD(hdr);
   routerd::neigh nei(ndm, ifa_payload_len);
 
-  std::string cli = nei.to_iproute2_cli(RTM_DELNEIGH).c_str();
-  printf(" --> %s\r\n", cli.c_str());
+  if (debug_enabled(NETLINK)) {
+    std::string cli = nei.to_iproute2_cli(RTM_DELNEIGH).c_str();
+    printf(" --> %s\r\n", cli.c_str());
+  }
 }
 
 static int

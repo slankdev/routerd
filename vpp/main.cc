@@ -7,6 +7,7 @@
 #include "netlink_cli.h"
 #include "vpp_cli.h"
 #include "tap.h"
+#include "debug.h"
 
 void th1()
 {
@@ -18,6 +19,7 @@ void th1()
   setup_netlink_node(vui);
   setup_vpp_node(vui);
   setup_tap_node(vui);
+  setup_debug_node(vui);
   vui_read_conf(vui, "./routerd.conf");
 
   vui_run();
