@@ -1,4 +1,7 @@
 
+EXTRA_CFLAGS=
+EXTRA_CXXFLAGS=
+
 CFLAGS += -Wall -Werror -Wextra
 CFLAGS += -Wno-unused-parameter \
 					-Wno-unused-variable \
@@ -7,8 +10,8 @@ CFLAGS += -Wno-unused-parameter \
 					-Wno-type-limits \
 					-Wno-unused-function \
 					-Wno-error
-CFLAGS += -g -O0
-CXXFLAGS += $(CFLAGS)
+CFLAGS += -g -O0 $(EXTRA_CFLAGS)
+CXXFLAGS += $(CFLAGS) $(EXTRA_CXXFLAGS)
 
 # for libvui
 VUI = ../libvui/src

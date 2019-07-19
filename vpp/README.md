@@ -44,4 +44,8 @@ netlink
   exit
 ```
 
+## BUILD without VPP-apis
+```
+make -DNO_VPP
+```
 

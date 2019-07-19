@@ -38,7 +38,6 @@
 
 #include <vui/vui.h>
 
-#define NO_VPP
 #ifdef NO_VPP
 #warning NO_VPP defined
 #endif
