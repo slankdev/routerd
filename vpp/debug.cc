@@ -13,7 +13,7 @@ static uint64_t debug_bitmap = 0;
 bool debug_enabled(debug_t debug)
 {
   assert(debug < debug_t_max);
-  return debug_bitmap & 0x01 << debug;
+  return debug_bitmap & (0x01 << debug);
 }
 
 void set_debug(debug_t debug, bool is_on)
