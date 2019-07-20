@@ -1,0 +1,12 @@
+#!/usr/bin/make -f
+%:
+	dh $@
+
+override_dh_auto_install:
+	mkdir -p `pwd`/debian/routerd/etc/routerd
+	mkdir -p `pwd`/debian/routerd/etc/systemd/system
+	install -D -m 0755 build/routerd.out `pwd`/debian/routerd/usr/bin/routerd
+	cp -f routerd.conf `pwd`/debian/routerd/etc/routerd/routerd.conf
+
+override_dh_usrlocal:
+	install -D -m 0755 build/routerd.out `pwd`/debian/routerd/usr/bin/routerd

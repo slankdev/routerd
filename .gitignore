@@ -1,4 +1,5 @@
 .DS_Store
+/vpp/output
 
 # Debian package
 debhelper-build-stamp

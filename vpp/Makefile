@@ -25,6 +25,7 @@ LDFLAGS += -L$(YALIN) -lyalin
 
 # for vlib
 CFLAGS += -I/usr/include/vpp_plugins
+CFLAGS += -I$(HOME)/git/vpp/build-root/install-vpp_debug-native/vpp/include/
 CFLAGS += -I$(HOME)/git/vpp/build-root/install-vpp_debug-native/vpp/include/vpp_plugins
 LDFLAGS += \
   -lvlibmemoryclient -lvatplugin \
@@ -43,7 +44,7 @@ SRC = main.cc log.cc tap.c \
   vpp.c vpp_cli.c \
   routerd.cc debug.cc
 OBJ = $(SRC:%=$(BUILD_DIR)/%.o)
-TARGET = a.out
+TARGET = routerd.out
 
 $(BUILD_DIR)/$(TARGET): $(OBJ)
 	$(CXX) $(CXXFLAGS) $(OBJ) -o $@ $(LDFLAGS)
@@ -58,22 +59,25 @@ $(BUILD_DIR)/%.cc.o: %.cc
 
 clean:
 	rm -f $(OBJ) $(TARGET)
+	rm -f  debian/routerd.substvars
+	rm -f  debian/debhelper-build-stamp
+	rm -rf debian/routerd
+	rm -rf debian/output
 
 run:
-	sudo build/a.out --conf ./routerd.conf --interactive
+	sudo build/routerd.out --conf ./routerd.conf --interactive
 
 debug:
-	sudo gdb -ex run build/a.out
+	sudo gdb -ex run --conf ./routerd.conf --interactive build/routerd.out
 
-create_tap:
-	ip tuntap add vpp0 mode tap
-	ip tuntap add vpp1 mode tap
-	ip tuntap add vpp2 mode tap
-	ip tuntap add vpp3 mode tap
-
-delete_tap:
-	ip link del vpp0
-	ip link del vpp1
-	ip link del vpp2
-	ip link del vpp3
+pkg-deb:
+	debuild -uc -us
+	mkdir -p debian/output
+	mv ../routerd-dbgsym_*.ddeb debian/output/
+	mv ../routerd_*.dsc debian/output/
+	mv ../routerd_*.tar.gz debian/output/
+	mv ../routerd_*.build debian/output/
+	mv ../routerd_*.buildinfo debian/output/
+	mv ../routerd_*.changes debian/output/
+	mv ../routerd_*.deb debian/output/
 

@@ -111,8 +111,8 @@ tap_inject_disable (void)
     return;
 
   printf("%s: start\n", __func__);
-  ethernet_register_input_type (vm, ETHERNET_TYPE_ARP, vlib_get_node_by_name(vm, "arp-input")->index);
-  ip4_register_protocol (IP_PROTOCOL_ICMP, vlib_get_node_by_name(vm, "ip4-icmp-input")->index);
+  ethernet_register_input_type (vm, ETHERNET_TYPE_ARP, vlib_get_node_by_name(vm, (uint8_t*)"arp-input")->index);
+  ip4_register_protocol (IP_PROTOCOL_ICMP, vlib_get_node_by_name(vm, (uint8_t*)"ip4-icmp-input")->index);
   ip4_unregister_protocol (IP_PROTOCOL_OSPF);
   ip4_unregister_protocol (IP_PROTOCOL_TCP);
   ip4_unregister_protocol (IP_PROTOCOL_UDP);
@@ -390,9 +390,7 @@ static void
     vl_api_client_index_to_registration (mp->client_index);
   printf("[tap-inject API] %s\n", __func__);
 
-  uint32_t if_index = 3;
   uint32_t kern_index, vpp_index;
-  vnet_main_t *vnet_main = vnet_get_main ();
   cplane_netdev_main_t *tm = cplane_netdev_get_main ();
   hash_foreach (kern_index, vpp_index, tm->tap_if_index_to_sw_if_index, {
       send_tap_inject_details(mm, rp, mp->context, vpp_index, kern_index);

@@ -1,0 +1,100 @@
+
+nodes:
+  - name: R1
+    image: slankdev/frr
+    interfaces:
+      - { name: net0, type: direct, args: R2#net0 }
+      - { name: net1, type: direct, args: R3#net0 }
+  - name: R2
+    image: slankdev/frr
+    interfaces:
+      - { name: net0, type: direct, args: R1#net0 }
+      - { name: net1, type: direct, args: R4#net0 }
+  - name: R3
+    image: slankdev/frr
+    interfaces:
+      - { name: net0, type: direct, args: R1#net1 }
+      - { name: net1, type: direct, args: R4#net1 }
+  - name: R4
+    image: slankdev/frr
+    interfaces:
+      - { name: net0, type: direct, args: R2#net1 }
+      - { name: net1, type: direct, args: R3#net1 }
+
+node_configs:
+  - name: R1
+    cmds:
+      - cmd: /usr/lib/frr/frr start
+      - cmd: ip addr add 10.255.0.1/32 dev lo
+      - cmd: ip addr add 10.1.0.1/24 dev net0
+      - cmd: ip addr add 10.2.0.1/24 dev net1
+      - cmd: >-
+          vtysh -c "conf t"
+          -c "router ospf"
+          -c " ospf router-id 10.255.0.1"
+          -c " network 10.255.0.1/32 area 0"
+          -c " network 10.1.0.0/24 area 0"
+          -c " network 10.2.0.0/24 area 0"
+  - name: R2
+    cmds:
+      - cmd: /usr/lib/frr/frr start
+      - cmd: ip addr add 10.255.0.2/32 dev lo
+      - cmd: ip addr add 10.1.0.2/24 dev net0
+      - cmd: ip addr add 10.3.0.2/24 dev net1
+      - cmd: >-
+          vtysh -c "conf t"
+          -c "router ospf"
+          -c " ospf router-id 10.255.0.2"
+          -c " network 10.255.0.2/32 area 0"
+          -c " network 10.1.0.0/24 area 0"
+          -c " network 10.3.0.0/24 area 0"
+  - name: R3
+    cmds:
+      - cmd: /usr/lib/frr/frr start
+      - cmd: ip addr add 10.255.0.3/32 dev lo
+      - cmd: ip addr add 10.2.0.3/24 dev net0
+      - cmd: ip addr add 10.4.0.3/24 dev net1
+      - cmd: >-
+          vtysh -c "conf t"
+          -c "router ospf"
+          -c " ospf router-id 10.255.0.3"
+          -c " network 10.255.0.3/32 area 0"
+          -c " network 10.2.0.0/24 area 0"
+          -c " network 10.4.0.0/24 area 0"
+  - name: R4
+    cmds:
+      - cmd: /usr/lib/frr/frr start
+      - cmd: ip addr add 10.255.0.4/32 dev lo
+      - cmd: ip addr add 10.3.0.4/24 dev net0
+      - cmd: ip addr add 10.4.0.4/24 dev net1
+      - cmd: >-
+          vtysh -c "conf t"
+          -c "router ospf"
+          -c " ospf router-id 10.255.0.4"
+          -c " network 10.255.0.4/32 area 0"
+          -c " network 10.3.0.0/24 area 0"
+          -c " network 10.4.0.0/24 area 0"
+
+test:
+  - name: p2p
+    cmds:
+    - cmd: docker exec R1 ping -f -c2 10.1.0.1
+    - cmd: docker exec R1 ping -f -c2 10.1.0.2
+    - cmd: docker exec R1 ping -f -c2 10.2.0.1
+    - cmd: docker exec R1 ping -f -c2 10.2.0.3
+
+    - cmd: docker exec R2 ping -f -c2 10.1.0.2
+    - cmd: docker exec R2 ping -f -c2 10.1.0.1
+    - cmd: docker exec R2 ping -f -c2 10.3.0.2
+    - cmd: docker exec R2 ping -f -c2 10.3.0.4
+
+    - cmd: docker exec R3 ping -f -c2 10.2.0.3
+    - cmd: docker exec R3 ping -f -c2 10.2.0.1
+    - cmd: docker exec R3 ping -f -c2 10.4.0.3
+    - cmd: docker exec R3 ping -f -c2 10.4.0.4
+
+    - cmd: docker exec R4 ping -f -c2 10.3.0.4
+    - cmd: docker exec R4 ping -f -c2 10.3.0.2
+    - cmd: docker exec R4 ping -f -c2 10.4.0.4
+    - cmd: docker exec R4 ping -f -c2 10.4.0.3
+

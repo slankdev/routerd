@@ -1,7 +1,7 @@
 
-YALIN = ../../libyalin
+YALIN = ../../../libyalin
 CXXFLAGS += -Wall -Werror -Wextra -std=c++11 -fsanitize=address -g -O0
-CXXFLAGS += -I$(YALIN) -I../../libslankdev
+CXXFLAGS += -I$(YALIN) -I../../../libslankdev
 LDFLAGS += -L$(YALIN) -lyalin
 
 SRC = main.cc

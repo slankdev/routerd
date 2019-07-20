@@ -19,7 +19,7 @@
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_printfun
 #define vl_typedefs
-#include <myplugin/myplugin_all_api_h.h>
+#include <cplane_netdev/cplane_netdev_all_api_h.h>
 #undef vl_typedefs
 #include "hexdump.h"
 #include "vpp.h"
