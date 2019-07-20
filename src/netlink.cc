@@ -80,7 +80,7 @@ static void
 addr_analyze_and_hook(const routerd::ifaddr &addr, bool is_new)
 {
   if (addr.ifa->ifa_family != AF_INET) {
-    printf("is not AF_INET ignore\n");
+    printf("is not AF_INET ignore\n\r");
     return;
   }
 
@@ -244,7 +244,7 @@ vpp_sync_with_nlc(const netlink_cache_t *nlc)
     if (vpp_index == 0)
       continue;
 
-    printf("link[%zd]: vpp%u kern%u\n", i, vpp_index, ifi->ifi_index);
+    printf("link[%zd]: vpp%u kern%u\r\n", i, vpp_index, ifi->ifi_index);
     bool is_up = ifi->ifi_flags & IFF_UP;
     set_link(vpp_index, is_up);
   }
