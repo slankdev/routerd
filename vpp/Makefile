@@ -60,7 +60,7 @@ clean:
 	rm -f $(OBJ) $(TARGET)
 
 run:
-	sudo build/a.out
+	sudo build/a.out --conf ./routerd.conf --interactive
 
 debug:
 	sudo gdb -ex run build/a.out
