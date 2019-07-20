@@ -296,13 +296,13 @@ tap_inject_tap_disconnect (uint32_t sw_if_index)
   return 0;
 }
 
-static uint64_t
+static int
 tap_inject_iface_isr (vlib_main_t * vm, vlib_node_runtime_t * node,
                       vlib_frame_t * f)
 {
   cplane_netdev_main_t * im = cplane_netdev_get_main ();
 
-  clib_error_t *err;
+  clib_error_t *err = NULL;
   uint32_t *hw_if_index;
   vec_foreach (hw_if_index, im->interfaces_to_enable) {
     printf("%s: hw_if_index: %u\n", __func__, *hw_if_index);
@@ -342,7 +342,8 @@ tap_inject_enable_disable_all_interfaces (int enable)
   vnet_hw_interface_t * hw;
   pool_foreach (hw, interfaces, vec_add1 (*indices, hw - interfaces));
 
-  if (tap_inject_iface_isr (vlib_get_main (), 0, 0))
+  int ret = tap_inject_iface_isr (vlib_get_main (), 0, 0);
+  if (ret < 0)
     return clib_error_return (0, "tap-inject interface add del isr failed");
   return 0;
 }
@@ -560,6 +561,7 @@ show_tap_inject (vlib_main_t * vm, unformat_input_t * input,
     return 0;
   }
 
+  vlib_cli_output (vm, "tap-inject is enabled.\n");
   uint32_t k, v;
   vnet_main_t * vnet_main = vnet_get_main ();
   cplane_netdev_main_t * im = cplane_netdev_get_main ();
