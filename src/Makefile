@@ -72,12 +72,12 @@ debug:
 
 pkg-deb:
 	debuild -uc -us
-	mkdir -p debian/output
-	mv ../routerd-dbgsym_*.ddeb debian/output/
-	mv ../routerd_*.dsc debian/output/
-	mv ../routerd_*.tar.gz debian/output/
-	mv ../routerd_*.build debian/output/
-	mv ../routerd_*.buildinfo debian/output/
-	mv ../routerd_*.changes debian/output/
-	mv ../routerd_*.deb debian/output/
+	mkdir -p build
+	mv ../routerd-dbgsym_*.ddeb build
+	mv ../routerd_*.dsc build
+	mv ../routerd_*.tar.gz build
+	mv ../routerd_*.build build
+	mv ../routerd_*.buildinfo build
+	mv ../routerd_*.changes build
+	mv ../routerd_*.deb build
 

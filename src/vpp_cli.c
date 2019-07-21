@@ -44,7 +44,9 @@
 
 #include "debug.h"
 
-extern void routerd_context_add_interface(uint32_t kernl_index, uint32_t vpp_index);
+extern void routerd_context_add_interface(
+    uint32_t kernl_index, const char *kern_name,
+    uint32_t vpp_index, const char *vpp_name);
 
 static int
 snprintf_ether_addr(char *str, size_t size, const void *buffer)
@@ -614,7 +616,14 @@ DEFUN (enable_cplane_netdev_sync,
     vl_api_tap_inject_details_t *mp = msg;
     uint32_t vpp_index = ntohl(mp->sw_if_index);
     uint32_t kern_index = ntohl(mp->kernel_if_index);
-    routerd_context_add_interface(kern_index, vpp_index);
+
+    char kern_name[256];
+    char *ret = if_indextoname(kern_index, kern_name);
+    assert(ret);
+
+    routerd_context_add_interface(
+        kern_index, kern_name,
+        vpp_index, "vpp");
   }
 
   disconnect_from_vpp ();

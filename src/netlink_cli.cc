@@ -107,7 +107,7 @@ DEFUN (show_netlink_counter,
 
 DEFUN (set_interface_netlink_pair,
        set_interface_netlink_pair_cmd,
-       "set interface netlink-pair kernel-ifindex <(0-4294967295)> vpp-ifindex <(0-4294967295)>",
+       "set interface netlink-pair kernel-ifindex <(0-4294967295)> kernel-name NAME vpp-ifindex <(0-4294967295)> vpp-name NAME",
        "Setting\n"
        "Interface setting\n"
        "Interface netlink-pair (kern/vpp) setting\n"
@@ -117,8 +117,10 @@ DEFUN (set_interface_netlink_pair,
        "Specify vpp-ifindex\n")
 {
   uint32_t k_index = strtol(argv[4]->arg, NULL, 0);
-  uint32_t v_index = strtol(argv[6]->arg, NULL, 0);
-  rd_ctx.add_interface(k_index, v_index);
+  uint32_t v_index = strtol(argv[8]->arg, NULL, 0);
+  const char* k_name = argv[6]->arg;
+  const char* v_name = argv[10]->arg;
+  rd_ctx.add_interface(k_index, k_name, v_index, v_name);
   return CMD_SUCCESS;
 }
 
@@ -131,8 +133,9 @@ DEFUN (show_interface_netlink_pair,
 {
   for (size_t i=0; i<rd_ctx.interfaces.size(); i++) {
     auto &iface = rd_ctx.interfaces[i];
-    vty_out(vty, " interfaces[%zd]: <kern%u,vpp%u>\n",
-        i, iface.kern_ifindex, iface.vpp_ifindex);
+    vty_out(vty, " interfaces[%zd]: kern[%u]@%s, -> vpp[%u]@%s\n", i,
+        iface.kern_ifindex, iface.kern_ifname.c_str(),
+        iface.vpp_ifindex, iface.vpp_ifname.c_str());
   }
   return CMD_SUCCESS;
 }

@@ -92,6 +92,9 @@ addr_analyze_and_hook(const routerd::ifaddr &addr, bool is_new)
   }
 
   uint32_t vpp_ifindex = ifindex_kernel2vpp(addr.ifa->ifa_index);
+  if (vpp_ifindex == 0)
+    return;
+
   uint32_t addr_ = *((uint32_t*)addr_ptr);
   uint8_t addr_len = addr.ifa->ifa_prefixlen;
   set_addr(vpp_ifindex, addr_, addr_len, is_new);

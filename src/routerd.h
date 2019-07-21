@@ -8,8 +8,15 @@
 struct routerd_interface {
   uint32_t kern_ifindex;
   uint32_t vpp_ifindex;
-  routerd_interface(uint32_t k, uint32_t v) :
-    kern_ifindex(k), vpp_ifindex(v) {}
+  std::string kern_ifname;
+  std::string vpp_ifname;
+
+  routerd_interface(uint32_t k, const char *k_name,
+      uint32_t v, const char *v_name) :
+    kern_ifindex(k),
+    vpp_ifindex(v),
+    kern_ifname(k_name),
+    vpp_ifname(v_name) {}
 };
 
 struct routerd_context {
@@ -26,9 +33,10 @@ struct routerd_context {
     global_config.config_path = "/etc/routerd/routerd.conf";
   }
 
-  void add_interface(uint32_t k, uint32_t v)
+  void add_interface(uint32_t k, const char *k_name,
+      uint32_t v, const char *v_name)
   {
-    routerd_interface iface(k, v);
+    routerd_interface iface(k, k_name, v, v_name);
     interfaces.push_back(iface);
   }
 
