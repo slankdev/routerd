@@ -29,6 +29,10 @@
 #define ENABLE_DISABLE_TAPINJECT_REPLAY "tap_inject_enable_disable"
 #define TAPINJECT_DUMP_MESSAGE "tap_inject_dump"
 #define TAPINJECT_DETAIL_MESSAGE "tap_inject_detail"
+#define GET_NODE_INFO "get_node_info"
+#define GET_NODE_INFO_REPLY "get_node_info_reply"
+#define GET_PROC_INFO "get_proc_info"
+#define GET_PROC_INFO_REPLY "get_proc_info_reply"
 
 #ifdef __cplusplus
 extern "C" {
@@ -51,6 +55,9 @@ typedef struct {
 
 extern routerd_main_t routerd_main;
 
+/*
+ * Binary API wrapper
+ */
 int create_loopback(uint16_t vl_msg_id, uint16_t msg_id);
 int send_ping(uint16_t vl_msg_id, uint16_t msg_id);
 int dump_ifcs(uint32_t vl_msg_id, uint32_t message_id);
@@ -65,6 +72,14 @@ int tap_inject_dump(uint16_t vl_msg_id, uint16_t msg_id);
 int ip_add_del_route(uint16_t vl_msg_id, uint16_t msg_id,
     bool is_add, const struct prefix *route,
     const struct prefix *nexthop, uint32_t nh_ifindex);
+int get_node_info(uint16_t vl_msg_id, uint16_t msg_id, const char *node_name);
+int get_proc_info(uint16_t vl_msg_id, uint16_t msg_id, const char *node_name);
+
+/*
+ * Helper
+ */
+const char* vpp_node_type_str(uint8_t num);
+const char* vpp_proc_flags_to_state(uint16_t flags);
 int connect_to_vpp (const char *name, bool no_rx_pthread);
 void disconnect_from_vpp(void);
 uint32_t find_msg_id(const char* msg);

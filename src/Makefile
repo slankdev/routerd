@@ -68,7 +68,7 @@ run:
 	sudo build/routerd.out --conf ./routerd.conf --interactive
 
 debug:
-	sudo gdb -ex run --conf ./routerd.conf --interactive build/routerd.out
+	sudo gdb -ex 'run --conf ./routerd.conf --interactive' build/routerd.out
 
 pkg-deb:
 	debuild -uc -us

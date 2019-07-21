@@ -80,7 +80,8 @@ static void
 addr_analyze_and_hook(const routerd::ifaddr &addr, bool is_new)
 {
   if (addr.ifa->ifa_family != AF_INET) {
-    printf("is not AF_INET ignore\n\r");
+    if (debug_enabled(NETLINK))
+      printf("is not AF_INET ignore\n\r");
     return;
   }
 

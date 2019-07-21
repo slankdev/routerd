@@ -30,6 +30,82 @@
 
 routerd_main_t routerd_main;
 
+const char*
+vpp_node_type_str(uint8_t num)
+{
+  static char *table[] = {
+    [0] = "internale",
+    [1] = "input",
+    [2] = "pre_input",
+    [3] = "process",
+    [4] = NULL,
+  };
+  assert(table[num]);
+  return table[num];
+}
+
+const char*
+vpp_proc_flags_to_state(uint16_t flags)
+{
+#ifndef VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK
+#define VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK (1 << 0)
+#endif
+#ifdef VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT
+#define VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT (1 << 1)
+#endif
+  switch (flags &
+      (VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK |
+       VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT)) {
+  default:
+    if (!(flags & VLIB_PROCESS_IS_RUNNING))
+      return "done";
+    break;
+
+  case VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK:
+    return "time wait";
+
+  case VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT:
+    return "event wait";
+
+  case (VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT |
+        VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK):
+    return "any wait";
+  }
+  return "active";
+}
+
+int
+get_node_info(uint16_t vl_msg_id, uint16_t msg_id, const char *node_name)
+{
+  routerd_main_t *rm = &routerd_main;
+  vl_api_get_node_info_t *mp =
+    vl_msg_api_alloc(sizeof(*mp));
+  memset(mp, 0, sizeof(*mp));
+  mp->_vl_msg_id = ntohs(vl_msg_id);
+  mp->client_index = rm->my_client_index;
+  mp->context = htonl(msg_id);
+
+  memcpy(mp->node_name, node_name, strlen(node_name));
+  vl_msg_api_send_shmem(rm->vl_input_queue, (u8 *) &mp);
+  return 0;
+}
+
+int
+get_proc_info(uint16_t vl_msg_id, uint16_t msg_id, const char *node_name)
+{
+  routerd_main_t *rm = &routerd_main;
+  vl_api_get_proc_info_t *mp =
+    vl_msg_api_alloc(sizeof(*mp));
+  memset(mp, 0, sizeof(*mp));
+  mp->_vl_msg_id = ntohs(vl_msg_id);
+  mp->client_index = rm->my_client_index;
+  mp->context = htonl(msg_id);
+
+  memcpy(mp->node_name, node_name, strlen(node_name));
+  vl_msg_api_send_shmem(rm->vl_input_queue, (u8 *) &mp);
+  return 0;
+}
+
 uint32_t
 find_msg_id(const char* msg)
 {

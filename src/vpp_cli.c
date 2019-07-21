@@ -615,6 +615,87 @@ DEFUN (enable_cplane_netdev_sync,
   return CMD_SUCCESS;
 }
 
+DEFUN (show_vpp_proc_info,
+       show_vpp_proc_info_cmd,
+       "show vpp proc-info NAME",
+       SHOW_STR
+       VPP_STR
+       "Show VPP process information\n"
+       "Specify VPP process name (as-node-name)\n")
+{
+  if (connect_to_vpp("routerd", true) < 0) {
+    svm_region_exit ();
+    vty_out(vty, "Couldn't connect to vpe, exiting...\n");
+    return CMD_WARNING_CONFIG_FAILED;
+  }
+
+  api_main_t *am = &api_main;
+  void *msg = NULL;
+  const char *name = argv[3]->arg;
+  get_proc_info(find_msg_id(GET_PROC_INFO), random(), name);
+  while (!svm_queue_sub (am->vl_input_queue, (u8 *) & msg, SVM_Q_TIMEDWAIT, 1)) {
+    vl_api_get_proc_info_reply_t *mp = msg;
+    if (mp->retval < 0) {
+      vty_out(vty, "not such proc or node-type isn't process\n");
+      disconnect_from_vpp();
+      return CMD_SUCCESS;
+    }
+
+    vty_out(vty, "flags: %u (%s)\n", mp->proc_flags,
+        vpp_proc_flags_to_state(mp->proc_flags));
+    disconnect_from_vpp();
+    return CMD_SUCCESS;
+  }
+
+  // timeout
+  vty_out(vty, "timeout\n");
+  disconnect_from_vpp();
+  return CMD_WARNING_CONFIG_FAILED;
+}
+
+DEFUN (show_vpp_node_info,
+       show_vpp_node_info_cmd,
+       "show vpp node-info NAME",
+       SHOW_STR
+       VPP_STR
+       "Show VPP node information\n"
+       "Specify VPP node name\n")
+{
+  if (connect_to_vpp("routerd", true) < 0) {
+    svm_region_exit ();
+    vty_out(vty, "Couldn't connect to vpe, exiting...\n");
+    return CMD_WARNING_CONFIG_FAILED;
+  }
+
+  api_main_t *am = &api_main;
+  void *msg = NULL;
+  const char *name = argv[3]->arg;
+  get_node_info(find_msg_id(GET_NODE_INFO), random(), name);
+  while (!svm_queue_sub (am->vl_input_queue, (u8 *) & msg, SVM_Q_TIMEDWAIT, 1)) {
+    vl_api_get_node_info_reply_t *mp = msg;
+    if (mp->retval < 0) {
+      vty_out(vty, "not such node\n");
+      disconnect_from_vpp();
+      return CMD_SUCCESS;
+    }
+
+    vty_out(vty, "index: %u\n", mp->node_index);
+    vty_out(vty, "type : %u (%s)\n",
+        mp->node_type,
+        vpp_node_type_str(mp->node_type)
+        );
+    vty_out(vty, "state: %u\n", mp->node_state);
+    vty_out(vty, "flags: %u\n", mp->node_flags);
+    disconnect_from_vpp();
+    return CMD_SUCCESS;
+  }
+
+  // timeout
+  vty_out(vty, "timeout\n");
+  disconnect_from_vpp();
+  return CMD_WARNING_CONFIG_FAILED;
+}
+
 void
 setup_vpp_node(vui_t *vui)
 {
@@ -633,6 +714,8 @@ setup_vpp_node(vui_t *vui)
   vui_install_element(vui, ENABLE_NODE, &show_vpp_interface_cmd);
   vui_install_element(vui, ENABLE_NODE, &show_vpp_vpe_message_table_cmd);
   vui_install_element(vui, ENABLE_NODE, &show_vpp_tap_inject_cmd);
+  vui_install_element(vui, ENABLE_NODE, &show_vpp_node_info_cmd);
+  vui_install_element(vui, ENABLE_NODE, &show_vpp_proc_info_cmd);
   vui_install_element(vui, vpp_node->node, &vpe_connect_cmd);
   vui_install_element(vui, vpp_node->node, &vpe_disconnect_cmd);
   vui_install_element(vui, vpp_node->node, &enable_tap_inject_cmd);
