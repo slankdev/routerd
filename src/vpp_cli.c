@@ -42,6 +42,8 @@
 #warning NO_VPP defined
 #endif
 
+#include "debug.h"
+
 extern void routerd_context_add_interface(uint32_t kernl_index, uint32_t vpp_index);
 
 static int
@@ -562,6 +564,8 @@ DEFUN (enable_tap_inject,
        "vpp\'s dataplane tap-inject\n")
 {
   const size_t is_enable = strcmp(argv[0]->arg, "enable") == 0;
+  if (debug_enabled(CLI))
+    printf("%s\r\n", __func__);
 
   if (connect_to_vpp("routerd", true) < 0) {
     svm_region_exit ();
@@ -587,6 +591,9 @@ DEFUN (enable_cplane_netdev_sync,
        "Sync info\n")
 {
 #ifndef NO_VPP
+  if (debug_enabled(CLI))
+    printf("%s\r\n", __func__);
+
   if (connect_to_vpp("routerd", true) < 0) {
     svm_region_exit ();
     vty_out(vty, "%s: Couldn't connect to vpe, exiting...\r\n", __func__);

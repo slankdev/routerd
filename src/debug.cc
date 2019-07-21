@@ -44,11 +44,12 @@ DEFUN (show_debug,
 
 DEFUN (debug,
        debug_cmd,
-       "[no] debug <netlink|vpp>",
+       "[no] debug <netlink|vpp|cli>",
        "Negate information\n"
        "Configure debug information\n"
        "Set netlink debug options\n"
-       "Set vpp debug options\n")
+       "Set vpp debug options\n"
+       "Set cli debug options\n")
 {
   const bool is_negate = strcmp(argv[0]->arg, "no") == 0;
   const char *name = argv[is_negate ? 2 : 1]->arg;
@@ -68,4 +69,5 @@ setup_debug_node(vui_t *vui)
 {
   vui_install_element(vui, ENABLE_NODE, &show_debug_cmd);
   vui_install_element(vui, ENABLE_NODE, &debug_cmd);
+  vui_install_element(vui, CONFIG_NODE, &debug_cmd);
 }
