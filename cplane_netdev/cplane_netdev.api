@@ -46,6 +46,7 @@ define tap_inject_dump {
 };
 
 /** \brief Dump details of tap-inject information
+    @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param sw_if_index - software index of the interface
     @param sw_if_index - interface index of vpp's network interface
@@ -56,5 +57,63 @@ define tap_inject_details {
   u32 context;
 	u32 sw_if_index;
 	u32 kernel_if_index;
+};
+
+/** \brief Get node's information by node-name
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param node_name - node name
+*/
+define get_node_info {
+  u32 client_index;
+  u32 context;
+  u8 node_name[64];
+};
+
+/** \brief Get node info using name request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+
+    @param node_index - node index
+    @param node_type  - node type
+    @param node_state - node state
+    @param node_flags - node flags
+*/
+define get_node_info_reply {
+  u32 client_index;
+  u32 context;
+  i32 retval;
+
+  u32 node_index;
+  u32 node_type;
+	u16 node_flags;
+	u8  node_state;
+};
+
+/** \brief Get process information by node-name
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param node_name - node name
+*/
+define get_proc_info {
+  u32 client_index;
+  u32 context;
+  u8 node_name[64];
+};
+
+/** \brief Reply process info
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+
+    @param proc_flags - node flags
+*/
+define get_proc_info_reply {
+  u32 client_index;
+  u32 context;
+  i32 retval;
+
+	u16 proc_flags;
 };
 

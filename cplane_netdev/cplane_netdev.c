@@ -66,6 +66,10 @@
 _(TAP_INJECT_ENABLE_DISABLE, tap_inject_enable_disable) \
 _(TAP_INJECT_DUMP, tap_inject_dump) \
 _(TAP_INJECT_DETAILS, tap_inject_details) \
+_(GET_NODE_INFO, get_node_info) \
+_(GET_NODE_INFO_REPLY, get_node_info_reply) \
+_(GET_PROC_INFO, get_proc_info) \
+_(GET_PROC_INFO_REPLY, get_proc_info_reply) \
 
 #define MTU 1500
 #define MTU_BUFFERS ((MTU + VLIB_BUFFER_DATA_SIZE - 1) / VLIB_BUFFER_DATA_SIZE)
@@ -349,6 +353,83 @@ tap_inject_enable_disable_all_interfaces (int enable)
 }
 
 static void
+  vl_api_get_proc_info_t_handler
+  (vl_api_get_proc_info_t *mp)
+{
+  printf("[slankdev API] %s\n", __func__);
+  vl_api_registration_t *rp =
+    vl_api_client_index_to_registration (mp->client_index);
+
+  vl_api_get_proc_info_reply_t *reply_mp =
+    vl_msg_api_alloc (sizeof (*reply_mp));
+  clib_memset (reply_mp, 0, sizeof (*reply_mp));
+  reply_mp->_vl_msg_id = ntohs(VL_API_GET_PROC_INFO_REPLY);
+
+  printf("name: %s\n", (const char*)mp->node_name);
+  vlib_node_t *node = vlib_get_node_by_name(vlib_get_main(), (uint8_t*)mp->node_name);;
+  if (!node) {
+    printf("node-name: %s not found\n", (const char*)mp->node_name);
+    reply_mp->retval = -1;
+    vl_api_send_msg(rp, (uint8_t*)reply_mp);
+    return;
+  }
+
+  vlib_process_t *proc = vlib_get_process_from_node(vlib_get_main(), node);
+  if (!proc) {
+    printf("proc: %s not found\n", (const char*)mp->node_name);
+    reply_mp->retval = -1;
+    vl_api_send_msg(rp, (uint8_t*)reply_mp);
+    return;
+  }
+
+  reply_mp->proc_flags = proc->flags;
+  vl_api_send_msg(rp, (uint8_t*)reply_mp);
+}
+
+static void
+  vl_api_get_proc_info_reply_t_handler
+  (vl_api_get_proc_info_reply_t *mp)
+{
+  printf("[slankdev API] %s\n", __func__);
+}
+
+static void
+  vl_api_get_node_info_t_handler
+  (vl_api_get_node_info_t *mp)
+{
+  printf("[slankdev API] %s\n", __func__);
+  vl_api_registration_t *rp =
+    vl_api_client_index_to_registration (mp->client_index);
+
+  vl_api_get_node_info_reply_t *reply_mp =
+    vl_msg_api_alloc (sizeof (*reply_mp));
+  clib_memset (reply_mp, 0, sizeof (*reply_mp));
+  reply_mp->_vl_msg_id = ntohs(VL_API_GET_NODE_INFO_REPLY);
+
+  printf("name: %s\n", (const char*)mp->node_name);
+  vlib_node_t *node = vlib_get_node_by_name(vlib_get_main(), (uint8_t*)mp->node_name);;
+  if (!node) {
+    printf("name: %s not found\n", (const char*)mp->node_name);
+    reply_mp->retval = -1;
+    vl_api_send_msg(rp, (uint8_t*)reply_mp);
+    return;
+  }
+
+  reply_mp->node_type = node->type;
+  reply_mp->node_index = node->index;
+  reply_mp->node_state = node->state;
+  reply_mp->node_flags = node->flags;
+  vl_api_send_msg(rp, (uint8_t*)reply_mp);
+}
+
+static void
+  vl_api_get_node_info_reply_t_handler
+  (vl_api_get_node_info_reply_t * mp)
+{
+  printf("[slankdev API] %s\n", __func__);
+}
+
+static void
   vl_api_tap_inject_enable_disable_t_handler
   (vl_api_tap_inject_enable_disable_t * mp)
 {
@@ -375,6 +456,7 @@ send_tap_inject_details(cplane_netdev_main_t *am,
     vl_msg_api_alloc (sizeof (*mp));
   clib_memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs(VL_API_TAP_INJECT_DETAILS);
+
   mp->sw_if_index = htonl(vpp_index);
   mp->kernel_if_index = htonl(kern_index);
   mp->context = context;
