@@ -703,6 +703,60 @@ DEFUN (show_vpp_node_info,
   return CMD_WARNING_CONFIG_FAILED;
 }
 
+static bool
+vpp_startup_config_process_is_done()
+{
+  if (connect_to_vpp("routerd-wait", true) < 0) {
+    svm_region_exit ();
+    return false;
+  }
+
+  api_main_t *am = &api_main;
+  void *msg = NULL;
+  get_proc_info(find_msg_id(GET_PROC_INFO), random(), "startup-config-process");
+  while (!svm_queue_sub (am->vl_input_queue, (u8 *) & msg, SVM_Q_TIMEDWAIT, 1)) {
+    vl_api_get_proc_info_reply_t *mp = msg;
+    if (mp->retval < 0) {
+      disconnect_from_vpp();
+      return false;
+    }
+
+    bool done = (mp->proc_flags == 0);
+    disconnect_from_vpp();
+    return done;
+  }
+
+  // timeout
+  disconnect_from_vpp();
+  return false;
+}
+
+DEFUN (wait_startup_config_process_done,
+       wait_startup_config_process_done_cmd,
+       "wait-startup-config-process-done try-count <(1-99)> interval <(0-10)>",
+       "Wait VPP's startup-config-process was done\n"
+       "Specify try count\n"
+       "Specify try count\n"
+       "Specify try interval (second) \n"
+       "Specify try interval (second) \n")
+{
+  size_t try_cnt = strtol(argv[2]->arg, NULL, 0);
+  size_t interval = strtol(argv[4]->arg, NULL, 0);
+  if (debug_enabled(CLI))
+    printf("waiting startup-config-process\r\n");
+
+  for (size_t i=0; i<try_cnt; i++) {
+    bool done = vpp_startup_config_process_is_done();
+    if (done)
+      break;
+    sleep(interval);
+  }
+
+  if (debug_enabled(CLI))
+    printf("waiting startup-config-process...done\r\n");
+  return CMD_SUCCESS;
+}
+
 void
 setup_vpp_node(vui_t *vui)
 {
@@ -731,4 +785,5 @@ setup_vpp_node(vui_t *vui)
   vui_install_element(vui, vpp_node->node, &set_interface_state_cmd);
   vui_install_element(vui, vpp_node->node, &create_loopback_interface_cmd);
   vui_install_element(vui, vpp_node->node, &ip_adddel_route_cmd);
+  vui_install_element(vui, vpp_node->node, &wait_startup_config_process_done_cmd);
 }

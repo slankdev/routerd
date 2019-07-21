@@ -11,6 +11,9 @@
 #include "debug.h"
 #include "routerd.h"
 
+static bool vui_manager_started = false;
+static bool netlink_manager_started = false;
+
 static void
 vui_manager(bool interactive, const char* config_path)
 {
@@ -25,6 +28,7 @@ vui_manager(bool interactive, const char* config_path)
   setup_tap_node(vui);
   setup_debug_node(vui);
   vui_read_conf(vui, config_path);
+  vui_manager_started = true;
 
   vui_run();
   vui_delete(vui);
@@ -81,9 +85,29 @@ int main(int argc, char **argv)
   std::thread thrd1(vui_manager,
       rd_ctx.global_config.enable_interactive,
       rd_ctx.global_config.config_path.c_str());
-  sleep(1); //XXX
-  std::thread thrd2(netlink_manager);
+
+  std::thread *thrd2 = NULL;
+  for (size_t i=0; i<10; i++) {
+    if (vui_manager_started) {
+      thrd2 = new std::thread(netlink_manager);
+      printf("netlink_manager launched\r\n");
+      netlink_manager_started = true;
+      break;
+    }
+    printf("waiting vui_manager_start\r\n");
+    sleep(1);
+  }
+
+  if (!netlink_manager_started |
+      !vui_manager_started) {
+    printf("manager start failed");
+    exit(1);
+  }
+
   thrd1.join();
-  thrd2.join();
+  if (thrd2) {
+    thrd2->join();
+    delete thrd2;
+  }
 }
 
