@@ -104,6 +104,7 @@ set_route(const char* route_str, const char* nh_str, uint32_t vpp_oif, bool is_n
   int ret = vpp_waitmsg_retval();
   if (ret < 0)
     printf("%s: failed\r\n", __func__);
+  disconnect_from_vpp ();
   return;
 }
 
@@ -372,9 +373,15 @@ netlink_manager()
 {
   uint32_t groups = ~0U;
   netlink_t *nl = netlink_open(groups, NETLINK_ROUTE);
+
   nlc = netlink_cache_alloc(nl);
   vpp_sync_with_nlc(nlc);
+
   netlink_dump_addr(nl);
+  netlink_listen_until_done(nl, monitor, nullptr);
+  netlink_dump_route(nl);
+  netlink_listen_until_done(nl, monitor, nullptr);
+
   netlink_listen(nl, monitor, nullptr);
   netlink_close(nl);
 }

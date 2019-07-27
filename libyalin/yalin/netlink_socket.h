@@ -47,6 +47,7 @@ struct rtnl_ctrl_data {
 };
 
 int netlink_listen(netlink_t *rtnl, rtnl_listen_filter_t handler, void *arg);
+int netlink_listen_until_done(netlink_t *rtnl, rtnl_listen_filter_t handler, void *arg);
 netlink_t* netlink_open(uint32_t subscriptions, int32_t protocol);
 void netlink_close(netlink_t *nl);
 
