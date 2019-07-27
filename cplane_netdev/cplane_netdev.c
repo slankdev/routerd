@@ -240,6 +240,12 @@ tap_inject_tap_connect (vnet_hw_interface_t * hw)
   } else if (strncmp((const char*)hw->name, "host-", strlen("host-")) == 0) {
     static size_t host_if_cnt = 0;
     name = format (0, "host-0-0-%u%c", host_if_cnt++, 0);
+  } else if (strncmp((const char*)hw->name, "GigabitEthernet", strlen("GigabitEthernet")) == 0) {
+    static size_t giga_if_cnt = 0;
+    name = format (0, "giga-0-0-%u%c", giga_if_cnt++, 0);
+  } else if (strncmp((const char*)hw->name, "tap", strlen("tap")) == 0) {
+    static size_t tap_if_cnt = 0;
+    name = format (0, "tap-0-0-%u%c", tap_if_cnt++, 0);
   } else {
     static size_t other_if_cnt = 0;
     name = format (0, "vpp-0-0-%u%c", other_if_cnt++, 0);
