@@ -83,6 +83,7 @@ const char* vpp_proc_flags_to_state(uint16_t flags);
 int connect_to_vpp (const char *name, bool no_rx_pthread);
 void disconnect_from_vpp(void);
 uint32_t find_msg_id(const char* msg);
+void parse_prefix_str(const char *str, int afi, struct prefix *pref);
 
 int32_t vpp_waitmsg_retval(void);
 

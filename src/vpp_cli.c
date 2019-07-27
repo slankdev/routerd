@@ -81,41 +81,6 @@ strfmt_append(char *str, size_t size, char *fmt, ...)
   snprintf(pos, pos_size, "%s", buf0);
 }
 
-static void
-parse_prefix_str(const char *str, int afi, struct prefix *pref)
-{
-  assert(afi == AF_INET || afi == AF_INET6);
-  pref->afi = afi;
-
-  if (afi == AF_INET) {
-    char *pnt = strchr(str, '/');
-    if (pnt == NULL) {
-      inet_pton(AF_INET, str, &pref->u.in4);
-      pref->plen = 32;
-    } else {
-      char buf[128];
-      strncpy(buf, str, sizeof(buf));
-      buf[pnt - str] = '\0';
-      const char *plen_str = &buf[pnt - str + 1];
-      inet_pton(AF_INET, buf, &pref->u.in4);
-      pref->plen = strtol(plen_str, NULL, 0);
-    }
-  } else {
-    char *pnt = strchr(str, '/');
-    if (pnt == NULL) {
-      inet_pton(AF_INET6, str, &pref->u.in6);
-      pref->plen = 128;
-    } else {
-      char buf[128];
-      strncpy(buf, str, sizeof(buf));
-      buf[pnt - str] = '\0';
-      const char *plen_str = &buf[pnt - str + 1];
-      inet_pton(AF_INET6, buf, &pref->u.in6);
-      pref->plen = strtol(plen_str, NULL, 0);
-    }
-  }
-}
-
 static int
 snprintf_prefix(char *str, size_t size,
     const struct prefix *prefix)
