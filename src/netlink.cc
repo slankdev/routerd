@@ -101,6 +101,45 @@ addr_analyze_and_hook(const routerd::ifaddr &addr, bool is_new)
 }
 
 static void
+route_analyze_and_hook(const routerd::route &route, bool is_new)
+{
+  if (route.rtm->rtm_family != AF_INET) {
+    if (debug_enabled(NETLINK))
+      printf("is not AF_INET ignore\n\r");
+    return;
+  }
+
+  std::string dst;
+  if (route.rtas->get(RTA_DST)) {
+    auto* dst_rta = route.rtas->get(RTA_DST);
+    auto* ptr = (const void*)rta_readptr(dst_rta);
+    if (ptr) dst = inetpton(ptr, route.rtm->rtm_family);
+  }
+
+  std::string oif;
+  if (route.rtas->get(RTA_OIF)) {
+    auto* oif_rta = route.rtas->get(RTA_OIF);
+    uint32_t index = rta_read32(oif_rta);
+    oif = ifindex2str(index);
+  }
+
+  std::string gw;
+  if (route.rtas->get(RTA_GATEWAY)) {
+    auto* gw_rta = route.rtas->get(RTA_GATEWAY);
+    auto* ptr = (const void*)rta_readptr(gw_rta);
+    if (ptr)
+      gw = inetpton(ptr, route.rtm->rtm_family);
+  }
+
+  std::string cli = strfmt("ip -%u route %s %s/%d %s",
+        route.rtm->rtm_family==AF_INET ? 4 : 6, is_new ? "add" : "del",
+        dst.c_str(), route.rtm->rtm_dst_len, gw.c_str());
+  printf("%s: %s\r\n",__func__, cli.c_str());
+  // route_add(is_new)
+  return ;
+}
+
+static void
 monitor_NEWLINK(const struct nlmsghdr* hdr)
 {
   counter.link.new_cnt++;
@@ -174,6 +213,8 @@ monitor_NEWROUTE(const struct nlmsghdr* hdr)
     std::string cli = route.to_iproute2_cli(RTM_NEWROUTE).c_str();
     printf(" --> %s\r\n", cli.c_str());
   }
+
+  route_analyze_and_hook(route, true);
 }
 
 static void
@@ -188,6 +229,8 @@ monitor_DELROUTE(const struct nlmsghdr* hdr)
     std::string cli = route.to_iproute2_cli(RTM_DELROUTE).c_str();
     printf(" --> %s\r\n", cli.c_str());
   }
+
+  route_analyze_and_hook(route, false);
 }
 
 static void
