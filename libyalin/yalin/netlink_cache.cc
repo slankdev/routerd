@@ -48,23 +48,18 @@ cache_callback(const struct sockaddr_nl *who __attribute__((unused)),
 void
 netlink_dump_route(netlink_t* nl)
 {
-  printf("%s\r\n", __func__);
   struct {
     struct nlmsghdr hdr;
     struct rtmsg rt;
   } req;
   memset(&req, 0x0, sizeof(req));
 
-  req.hdr.nlmsg_type = RTM_GETROUTE;
-  req.hdr.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
   req.hdr.nlmsg_len = sizeof(req);
+  req.hdr.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
+  req.hdr.nlmsg_type = RTM_GETROUTE;
   req.hdr.nlmsg_seq = random();
-  // req.hdr.nlmsg_pid = getpid();
+  req.hdr.nlmsg_pid = getpid();
   req.rt.rtm_family = AF_INET;
-  // req.rt.rtm_table = RT_TABLE_MAIN;
-  // req.rt.rtm_protocol = RTPROT_UNSPEC;
-  // req.rt.rtm_dst_len = 0;
-  // req.rt.rtm_src_len = 0;
 
   int ret = write(nl->fd, &req, sizeof(req));
   if (ret < 0) {
@@ -76,7 +71,6 @@ netlink_dump_route(netlink_t* nl)
 void
 netlink_dump_addr(netlink_t* nl)
 {
-  printf("%s\r\n", __func__);
   struct {
     struct nlmsghdr hdr;
     struct rtgenmsg gen;
