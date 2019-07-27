@@ -198,6 +198,12 @@ route_analyze_and_hook(const routerd::route &route, bool is_new)
       gw = inetpton(ptr, route.rtm->rtm_family);
   }
 
+  uint32_t k_index = 0;
+  if (route.rtas->get(RTA_OIF)) {
+    auto* oif_rta = route.rtas->get(RTA_OIF);
+    k_index = rta_read32(oif_rta);
+  }
+
   std::string cli = strfmt("ip -%u route %s %s/%d %s",
         route.rtm->rtm_family==AF_INET ? 4 : 6, is_new ? "add" : "del",
         dst.c_str(), route.rtm->rtm_dst_len, gw.c_str());
@@ -205,7 +211,7 @@ route_analyze_and_hook(const routerd::route &route, bool is_new)
 
   std::string route_str = strfmt("%s/%d", dst.c_str(), route.rtm->rtm_dst_len);
   std::string nh_str = strfmt("%s", gw.c_str());
-  uint32_t vpp_oif = 1;
+  uint32_t vpp_oif = ifindex_kernel2vpp(k_index);
   set_route(route_str.c_str(), nh_str.c_str(), vpp_oif, is_new);
   return ;
 }
