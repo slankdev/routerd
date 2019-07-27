@@ -49,10 +49,61 @@ static void set_addr(uint32_t vpp_ifindex, uint32_t addr, uint8_t addr_len, bool
   disconnect_from_vpp ();
 }
 
+// XXX Duplicate
 static void
-set_route(uint32_t nh4, uint32_t plen, uint32_t gw, bool is_new)
+parse_prefix_str(const char *str, int afi, struct prefix *pref)
 {
+  assert(afi == AF_INET || afi == AF_INET6);
+  pref->afi = afi;
+
+  if (afi == AF_INET) {
+    const char *pnt = strchr(str, '/');
+    if (pnt == NULL) {
+      inet_pton(AF_INET, str, &pref->u.in4);
+      pref->plen = 32;
+    } else {
+      char buf[128];
+      strncpy(buf, str, sizeof(buf));
+      buf[pnt - str] = '\0';
+      const char *plen_str = &buf[pnt - str + 1];
+      inet_pton(AF_INET, buf, &pref->u.in4);
+      pref->plen = strtol(plen_str, NULL, 0);
+    }
+  } else {
+    const char *pnt = strchr(str, '/');
+    if (pnt == NULL) {
+      inet_pton(AF_INET6, str, &pref->u.in6);
+      pref->plen = 128;
+    } else {
+      char buf[128];
+      strncpy(buf, str, sizeof(buf));
+      buf[pnt - str] = '\0';
+      const char *plen_str = &buf[pnt - str + 1];
+      inet_pton(AF_INET6, buf, &pref->u.in6);
+      pref->plen = strtol(plen_str, NULL, 0);
+    }
+  }
+}
+
+static void
+set_route(const char* route_str, const char* nh_str, uint32_t vpp_oif, bool is_new)
+{
+  if (connect_to_vpp("routerd", true) < 0) {
+    printf("%s: Couldn't connect to vpe, exiting...\r\n", __func__);
+    return;
+  }
+
   printf("%s: \r\n",__func__);
+  struct prefix route_pref;
+  struct prefix nexthop_pref;
+  parse_prefix_str(route_str, AF_INET, &route_pref);
+  parse_prefix_str(nh_str, AF_INET, &nexthop_pref);
+
+  ip_add_del_route(find_msg_id(IP_ADDDEL_ROUTE), 10,
+      is_new, &route_pref, &nexthop_pref, vpp_oif);
+  int ret = vpp_waitmsg_retval();
+  if (ret < 0)
+    printf("%s: failed\r\n", __func__);
   return;
 }
 
@@ -151,10 +202,10 @@ route_analyze_and_hook(const routerd::route &route, bool is_new)
         dst.c_str(), route.rtm->rtm_dst_len, gw.c_str());
   // printf("%s: %s\r\n",__func__, cli.c_str());
 
-  uint32_t addr = ip4addr_str2uint32(dst.c_str());
-  uint32_t plen = route.rtm->rtm_dst_len;
-  uint32_t nh4 = ip4addr_str2uint32(gw.c_str());
-  set_route(addr, plen, nh4, is_new);
+  std::string route_str = strfmt("%s/%d", dst.c_str(), route.rtm->rtm_dst_len);
+  std::string nh_str = strfmt("%s", gw.c_str());
+  uint32_t vpp_oif = 1;
+  set_route(route_str.c_str(), nh_str.c_str(), vpp_oif, is_new);
   return ;
 }
 
