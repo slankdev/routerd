@@ -1,5 +1,0 @@
-{
-  "debug": true,
-  "debug_iproute2_cli": true,
-  "ignore_devices": [ 2, 11 ]
-}

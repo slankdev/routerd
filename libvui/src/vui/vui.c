@@ -61,7 +61,7 @@ void vui_install_node(vui_t *vui, struct cmd_node *node)
 }
 
 void vui_install_element(vui_t *vui,
-    enum node_type ntype, struct cmd_element *cmd)
+    int ntype, struct cmd_element *cmd)
 {
   (void*)(vui);
   install_element(ntype, cmd);
@@ -106,4 +106,11 @@ void vui_node_install(vui_t *vui, vui_node_t *node)
 void vui_install_default_element(vui_t *vui, int node)
 {
   install_default(node);
+}
+
+void vui_read_conf(vui_t *vui, const char *file)
+{
+  void *nb_config = NULL;
+  void *default_config = NULL;
+  vty_read_config(nb_config, file, default_config);
 }

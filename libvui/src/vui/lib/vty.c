@@ -42,6 +42,14 @@
 #include <arpa/telnet.h>
 #include <termios.h>
 
+#ifndef DIRECTORY_SEP
+#define DIRECTORY_SEP '/'
+#endif /* DIRECTORY_SEP */
+
+#ifndef IS_DIRECTORY_SEP
+#define IS_DIRECTORY_SEP(c) ((c) == DIRECTORY_SEP)
+#endif
+
 #ifndef VTYSH_EXTRACT_PL
 /* log_commands => "[no] log commands" */
 DEFUN_CMD_FUNC_DECL(log_commands)
@@ -2729,4 +2737,196 @@ void vty_terminate(void)
     vtyvec = NULL;
     Vvty_serv_thread = NULL;
   }
+}
+
+/* Read up configuration file from file_name. */
+static void vty_read_file(struct nb_config *config, FILE *confp)
+{
+	int ret;
+	struct vty *vty;
+	struct vty_error *ve;
+	struct listnode *node;
+	unsigned int line_num = 0;
+
+	vty = vty_new();
+	/* vty_close won't close stderr;  if some config command prints
+	 * something it'll end up there.  (not ideal; it'd be beter if output
+	 * from a file-load went to logging instead.  Also note that if this
+	 * function is called after daemonizing, stderr will be /dev/null.)
+	 *
+	 * vty->fd will be -1 from vty_new()
+	 */
+	vty->wfd = STDERR_FILENO;
+	vty->type = VTY_FILE;
+	vty->node = CONFIG_NODE;
+	vty->config = true;
+
+	/* Execute configuration file */
+	ret = config_from_file(vty, confp, &line_num);
+
+	/* Flush any previous errors before printing messages below */
+	buffer_flush_all(vty->obuf, vty->wfd);
+
+	if (!((ret == CMD_SUCCESS) || (ret == CMD_ERR_NOTHING_TODO))) {
+		const char *message = NULL;
+		char *nl;
+
+		switch (ret) {
+		case CMD_ERR_AMBIGUOUS:
+			message = "Ambiguous command";
+			break;
+		case CMD_ERR_NO_MATCH:
+			message = "No such command";
+			break;
+		case CMD_WARNING:
+			message = "Command returned Warning";
+			break;
+		case CMD_WARNING_CONFIG_FAILED:
+			message = "Command returned Warning Config Failed";
+			break;
+		case CMD_ERR_INCOMPLETE:
+			message = "Command returned Incomplete";
+			break;
+		case CMD_ERR_EXEED_ARGC_MAX:
+			message =
+				"Command exceeded maximum number of Arguments";
+			break;
+		default:
+			message = "Command returned unhandled error message";
+			break;
+		}
+
+		for (ALL_LIST_ELEMENTS_RO(vty->error, node, ve)) {
+			nl = strchr(ve->error_buf, '\n');
+			if (nl)
+				*nl = '\0';
+			fprintf(stderr, "ERROR: %s on config line %u: %s",
+				 message, ve->line_num, ve->error_buf);
+		}
+	}
+
+	/*
+	 * Automatically commit the candidate configuration after
+	 * reading the configuration file.
+	 */
+	/* if (config == NULL && */
+  /*     frr_get_cli_mode() == FRR_CLI_TRANSACTIONAL) { */
+	/* 	ret = nb_candidate_commit(vty->candidate_config, NB_CLIENT_CLI, */
+	/* 				  vty, true, "Read configuration file", */
+	/* 				  NULL); */
+	/* 	if (ret != NB_OK && ret != NB_ERR_NO_CHANGES) */
+	/* 	  fprintf(stderr, "%s: failed to read configuration file.", */
+	/* 			 __func__); */
+	/* } */
+
+	vty_close(vty);
+}
+
+/* Read up configuration file from file_name. */
+bool vty_read_config(struct nb_config *config, const char *config_file,
+		     char *config_default_dir)
+{
+	char cwd[MAXPATHLEN];
+	FILE *confp = NULL;
+	const char *fullpath;
+	char *tmp = NULL;
+	bool read_success = false;
+
+	/* If -f flag specified. */
+	if (config_file != NULL) {
+		if (!IS_DIRECTORY_SEP(config_file[0])) {
+			if (getcwd(cwd, MAXPATHLEN) == NULL) {
+				fprintf(stderr,
+					"%s: failure to determine Current Working Directory %d!",
+					__func__, errno);
+				goto tmp_free_and_out;
+			}
+			tmp = XMALLOC(MTYPE_TMP,
+				      strlen(cwd) + strlen(config_file) + 2);
+			sprintf(tmp, "%s/%s", cwd, config_file);
+			fullpath = tmp;
+		} else
+			fullpath = config_file;
+
+		confp = fopen(fullpath, "r");
+
+		if (confp == NULL) {
+			fprintf(stderr,
+				"%s: failed to open configuration file %s: %s, checking backup",
+				__func__, fullpath, strerror(errno));
+
+			confp = vty_use_backup_config(fullpath);
+			if (confp)
+				fprintf(stderr,
+					"WARNING: using backup configuration file!");
+			else {
+				fprintf(stderr,
+					"%s: can't open configuration file [%s]",
+					__func__, config_file);
+				goto tmp_free_and_out;
+			}
+		}
+	} else {
+
+		host_config_set(config_default_dir);
+
+#ifdef VTYSH
+		int ret;
+		struct stat conf_stat;
+
+		/* !!!!PLEASE LEAVE!!!!
+		 * This is NEEDED for use with vtysh -b, or else you can get
+		 * a real configuration food fight with a lot garbage in the
+		 * merged configuration file it creates coming from the per
+		 * daemon configuration files.  This also allows the daemons
+		 * to start if there default configuration file is not
+		 * present or ignore them, as needed when using vtysh -b to
+		 * configure the daemons at boot - MAG
+		 */
+
+		/* Stat for vtysh Zebra.conf, if found startup and wait for
+		 * boot configuration
+		 */
+
+		if (strstr(config_default_dir, "vtysh") == NULL) {
+			ret = stat(integrate_default, &conf_stat);
+			if (ret >= 0) {
+				read_success = true;
+				goto tmp_free_and_out;
+			}
+		}
+#endif /* VTYSH */
+		confp = fopen(config_default_dir, "r");
+		if (confp == NULL) {
+			fprintf(stderr,
+				"%s: failed to open configuration file %s: %s, checking backup",
+				__func__, config_default_dir,
+				strerror(errno));
+
+			confp = vty_use_backup_config(config_default_dir);
+			if (confp) {
+				fprintf(stderr,
+					"WARNING: using backup configuration file!");
+				fullpath = config_default_dir;
+			} else {
+				fprintf(stderr,
+					 "can't open configuration file [%s]",
+					 config_default_dir);
+				goto tmp_free_and_out;
+			}
+		} else
+			fullpath = config_default_dir;
+	}
+
+	vty_read_file(config, confp);
+	read_success = true;
+
+	fclose(confp);
+
+	host_config_set(fullpath);
+
+tmp_free_and_out:
+	XFREE(MTYPE_TMP, tmp);
+
+	return read_success;
 }

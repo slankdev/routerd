@@ -2,8 +2,8 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <vui/vui.h>
+#include "netlink.h"
 
-void setup_netlink_node(vui_t *vui);
 
 void *th(void *ptr)
 {
@@ -15,6 +15,7 @@ void *th(void *ptr)
   setup_netlink_node(vui);
   vui_run();
   vui_delete(vui);
+  return NULL;
 }
 
 int main(int argc, char **argv)
@@ -22,5 +23,6 @@ int main(int argc, char **argv)
   pthread_t thread1;
   int ret = pthread_create(&thread1, NULL, th, NULL);
   pthread_join(thread1, NULL);
+  return 0;
 }
 
