@@ -49,6 +49,29 @@ static void set_addr(uint32_t vpp_ifindex, uint32_t addr, uint8_t addr_len, bool
   disconnect_from_vpp ();
 }
 
+static void
+set_route(const char* route_str, const char* nh_str, uint32_t vpp_oif, bool is_new)
+{
+  if (connect_to_vpp("routerd", true) < 0) {
+    printf("%s: Couldn't connect to vpe, exiting...\r\n", __func__);
+    return;
+  }
+
+  printf("%s: \r\n",__func__);
+  struct prefix route_pref;
+  struct prefix nexthop_pref;
+  parse_prefix_str(route_str, AF_INET, &route_pref);
+  parse_prefix_str(nh_str, AF_INET, &nexthop_pref);
+
+  ip_add_del_route(find_msg_id(IP_ADDDEL_ROUTE), 10,
+      is_new, &route_pref, &nexthop_pref, vpp_oif);
+  int ret = vpp_waitmsg_retval();
+  if (ret < 0)
+    printf("%s: failed\r\n", __func__);
+  disconnect_from_vpp ();
+  return;
+}
+
 static uint32_t
 ifindex_kernel2vpp(uint32_t k_idx)
 {
@@ -98,6 +121,63 @@ addr_analyze_and_hook(const routerd::ifaddr &addr, bool is_new)
   uint32_t addr_ = *((uint32_t*)addr_ptr);
   uint8_t addr_len = addr.ifa->ifa_prefixlen;
   set_addr(vpp_ifindex, addr_, addr_len, is_new);
+}
+
+static uint32_t
+ip4addr_str2uint32(const char *str)
+{
+  uint32_t num;
+  inet_pton(AF_INET, str, &num);
+  return num;
+}
+
+static void
+route_analyze_and_hook(const routerd::route &route, bool is_new)
+{
+  if (route.rtm->rtm_family != AF_INET) {
+    if (debug_enabled(NETLINK))
+      printf("is not AF_INET ignore\n\r");
+    return;
+  }
+
+  std::string dst;
+  if (route.rtas->get(RTA_DST)) {
+    auto* dst_rta = route.rtas->get(RTA_DST);
+    auto* ptr = (const void*)rta_readptr(dst_rta);
+    if (ptr) dst = inetpton(ptr, route.rtm->rtm_family);
+  }
+
+  std::string oif;
+  if (route.rtas->get(RTA_OIF)) {
+    auto* oif_rta = route.rtas->get(RTA_OIF);
+    uint32_t index = rta_read32(oif_rta);
+    oif = ifindex2str(index);
+  }
+
+  std::string gw;
+  if (route.rtas->get(RTA_GATEWAY)) {
+    auto* gw_rta = route.rtas->get(RTA_GATEWAY);
+    auto* ptr = (const void*)rta_readptr(gw_rta);
+    if (ptr)
+      gw = inetpton(ptr, route.rtm->rtm_family);
+  }
+
+  uint32_t k_index = 0;
+  if (route.rtas->get(RTA_OIF)) {
+    auto* oif_rta = route.rtas->get(RTA_OIF);
+    k_index = rta_read32(oif_rta);
+  }
+
+  std::string cli = strfmt("ip -%u route %s %s/%d %s",
+        route.rtm->rtm_family==AF_INET ? 4 : 6, is_new ? "add" : "del",
+        dst.c_str(), route.rtm->rtm_dst_len, gw.c_str());
+  // printf("%s: %s\r\n",__func__, cli.c_str());
+
+  std::string route_str = strfmt("%s/%d", dst.c_str(), route.rtm->rtm_dst_len);
+  std::string nh_str = strfmt("%s", gw.c_str());
+  uint32_t vpp_oif = ifindex_kernel2vpp(k_index);
+  set_route(route_str.c_str(), nh_str.c_str(), vpp_oif, is_new);
+  return ;
 }
 
 static void
@@ -174,6 +254,8 @@ monitor_NEWROUTE(const struct nlmsghdr* hdr)
     std::string cli = route.to_iproute2_cli(RTM_NEWROUTE).c_str();
     printf(" --> %s\r\n", cli.c_str());
   }
+
+  route_analyze_and_hook(route, true);
 }
 
 static void
@@ -188,6 +270,8 @@ monitor_DELROUTE(const struct nlmsghdr* hdr)
     std::string cli = route.to_iproute2_cli(RTM_DELROUTE).c_str();
     printf(" --> %s\r\n", cli.c_str());
   }
+
+  route_analyze_and_hook(route, false);
 }
 
 static void
@@ -259,9 +343,15 @@ netlink_manager()
 {
   uint32_t groups = ~0U;
   netlink_t *nl = netlink_open(groups, NETLINK_ROUTE);
+
   nlc = netlink_cache_alloc(nl);
   vpp_sync_with_nlc(nlc);
+
   netlink_dump_addr(nl);
+  netlink_listen_until_done(nl, monitor, nullptr);
+  netlink_dump_route(nl);
+  netlink_listen_until_done(nl, monitor, nullptr);
+
   netlink_listen(nl, monitor, nullptr);
   netlink_close(nl);
 }

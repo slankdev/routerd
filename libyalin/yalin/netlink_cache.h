@@ -57,6 +57,7 @@ void netlink_cache_update_link(netlink_cache_t* nlc,
     const struct ifinfomsg* ifm, size_t rta_len);
 void netlink_dump_link(netlink_t* nl);
 void netlink_dump_addr(netlink_t* nl);
+void netlink_dump_route(netlink_t* nl);
 
 #ifdef __cplusplus
 }
