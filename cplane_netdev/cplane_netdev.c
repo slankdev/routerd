@@ -17,6 +17,11 @@
 #include <vnet/osi/osi.h>
 #include <vnet/fib/fib_types.h>
 #include <vnet/ethernet/arp_packet.h>
+#include <vnet/mfib/mfib_types.h>
+#include <vnet/mfib/mfib_table.h>
+#include <vnet/ip/ip6_packet.h>
+#include <vnet/dpo/dpo.h>
+#include <vnet/dpo/replicate_dpo.h>
 
 #include <cplane_netdev/cplane_netdev.h>
 #include <vlibapi/api.h>
@@ -84,6 +89,7 @@ enum {
 vlib_node_registration_t tap_inject_tx_node;
 vlib_node_registration_t tap_inject_rx_node;
 vlib_node_registration_t tap_inject_neighbor_node;
+dpo_type_t dpo_type;
 
 static cplane_netdev_main_t *
 cplane_netdev_get_main(void)
@@ -146,25 +152,34 @@ tap_inject_enable (void)
   /* ip6_register_protocol (IP_PROTOCOL_UDP, im->tx_node_index); */
   /* osi_register_input_protocol (OSI_PROTOCOL_isis, im->tx_node_index); */
 
-#if 0
-  {
-    dpo_id_t dpo = DPO_INVALID;
-    const mfib_prefix_t pfx_224_0_0_0 = {
-        .fp_len = 24,
-        .fp_proto = FIB_PROTOCOL_IP4,
-        .fp_grp_addr = { .ip4.as_uint32_t = clib_host_to_net_uint32_t(0xe0000000), },
-        .fp_src_addr = { .ip4.as_uint32_t = 0, },
-    };
+#define NO_MULTICAST
+#ifndef NO_MULTICAST
+  const mfib_prefix_t pfx_224_0_0_0 = {
+    .fp_len = 24,
+    .fp_proto = FIB_PROTOCOL_IP4,
+    .fp_grp_addr = { .ip4.as_u32 = clib_host_to_net_u32(0xe0000000), },
+    .fp_src_addr = { .ip4.as_u32 = 0, },
+  };
 
-    dpo_set(&dpo, tap_inject_dpo_type, DPO_PROTO_IP4, ~0);
-    index_t repi = replicate_create(1, DPO_PROTO_IP4);
-    replicate_set_bucket(repi, 0, &dpo);
+  dpo_type = dpo_register_new_type(&tap_inject_vft, tap_inject_nodes);
+  printf("new-dpo_type: %u\n", dpo_type);
 
-    mfib_table_entry_special_add(0,
-         &pfx_224_0_0_0, MFIB_SOURCE_API,
-         MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF, repi);
-    dpo_reset(&dpo);
-  }
+  dpo_id_t dpo = DPO_INVALID;
+  dpo_set(&dpo, dpo_type, DPO_PROTO_IP4, ~0);
+
+  index_t rep_index = replicate_create(1, DPO_PROTO_IP4);
+  printf("SLANKDEV? rep_index:%u\n", rep_index);
+  replicate_set_bucket(rep_index, 0, &dpo); //XXX
+  printf("SHIROKURA??\n");
+
+  mfib_table_entry_special_add(0,
+       &pfx_224_0_0_0, MFIB_SOURCE_API,
+       MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF, rep_index);
+  dpo_reset(&dpo);
+
+  (void)(pfx_224_0_0_0);
+  (void)(dpo);
+  (void)(rep_index);
 #endif
 
   printf("%s: done\n", __func__);
@@ -514,6 +529,29 @@ setup_message_id_table(cplane_netdev_main_t *mmp, api_main_t *am)
   foreach_vl_msg_name_crc_cplane_netdev ;
 #undef _
 }
+
+#ifndef NO_MULTICAST
+static void tap_inject_dpo_lock(dpo_id_t * dpo) {}
+static void tap_inject_dpo_unlock(dpo_id_t * dpo) {}
+static u8 *format_tap_inject_dpo(u8 *s, va_list *args)
+{ return (format (s, "tap-inject:[%d]", 0)); }
+
+const static char *const tap_inject_tx_nodes[] = {
+  "tap-inject-tx",
+  NULL,
+};
+
+const static char *const *const tap_inject_nodes[DPO_PROTO_NUM] = {
+  [DPO_PROTO_IP4] = tap_inject_tx_nodes,
+  [DPO_PROTO_IP6] = tap_inject_tx_nodes,
+};
+
+const static dpo_vft_t tap_inject_vft = {
+  .dv_lock = tap_inject_dpo_lock,
+  .dv_unlock = tap_inject_dpo_unlock,
+  .dv_format = format_tap_inject_dpo,
+};
+#endif
 
 static clib_error_t *
 cplane_netdev_init (vlib_main_t *vm)
