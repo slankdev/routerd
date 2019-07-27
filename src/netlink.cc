@@ -49,6 +49,13 @@ static void set_addr(uint32_t vpp_ifindex, uint32_t addr, uint8_t addr_len, bool
   disconnect_from_vpp ();
 }
 
+static void
+set_route(uint32_t nh4, uint32_t plen, uint32_t gw, bool is_new)
+{
+  printf("%s: \r\n",__func__);
+  return;
+}
+
 static uint32_t
 ifindex_kernel2vpp(uint32_t k_idx)
 {
@@ -100,6 +107,14 @@ addr_analyze_and_hook(const routerd::ifaddr &addr, bool is_new)
   set_addr(vpp_ifindex, addr_, addr_len, is_new);
 }
 
+static uint32_t
+ip4addr_str2uint32(const char *str)
+{
+  uint32_t num;
+  inet_pton(AF_INET, str, &num);
+  return num;
+}
+
 static void
 route_analyze_and_hook(const routerd::route &route, bool is_new)
 {
@@ -134,8 +149,12 @@ route_analyze_and_hook(const routerd::route &route, bool is_new)
   std::string cli = strfmt("ip -%u route %s %s/%d %s",
         route.rtm->rtm_family==AF_INET ? 4 : 6, is_new ? "add" : "del",
         dst.c_str(), route.rtm->rtm_dst_len, gw.c_str());
-  printf("%s: %s\r\n",__func__, cli.c_str());
-  // route_add(is_new)
+  // printf("%s: %s\r\n",__func__, cli.c_str());
+
+  uint32_t addr = ip4addr_str2uint32(dst.c_str());
+  uint32_t plen = route.rtm->rtm_dst_len;
+  uint32_t nh4 = ip4addr_str2uint32(gw.c_str());
+  set_route(addr, plen, nh4, is_new);
   return ;
 }
 
