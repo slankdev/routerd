@@ -233,7 +233,7 @@ tap_inject_tap_connect (vnet_hw_interface_t * hw)
   if ((int)tap_fd < 0)
     return clib_error_return (0, "failed to open tun device");
 
-#define TAP_INJECT_TAP_BASE_NAME "neo"
+#define TAP_INJECT_TAP_BASE_NAME "neo" // XXX
   name = format (0, TAP_INJECT_TAP_BASE_NAME "%u%c", hw->hw_instance, 0);
   strncpy (ifr.ifr_name, (char *) name, sizeof (ifr.ifr_name) - 1);
   ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
