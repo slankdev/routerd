@@ -24,9 +24,11 @@ CXXFLAGS += -I$(YALIN) -std=c++11
 LDFLAGS += -L$(YALIN) -lyalin
 
 # for vlib
-CFLAGS += -I/usr/include/vpp_plugins
-CFLAGS += -I$(HOME)/git/vpp/build-root/install-vpp_debug-native/vpp/include/
-CFLAGS += -I$(HOME)/git/vpp/build-root/install-vpp_debug-native/vpp/include/vpp_plugins
+VPP_DIR = $(HOME)/git/vpp.github.fdio
+CFLAGS  += -I/usr/include/vpp_plugins
+CFLAGS  += -I$(VPP_DIR)/build-root/install-vpp_debug-native/vpp/include/
+CFLAGS  += -I$(VPP_DIR)/build-root/install-vpp_debug-native/vpp/include/vpp_plugins
+LDFLAGS += -L$(VPP_DIR)/build-root/install-vpp_debug-native/vpp/lib
 LDFLAGS += \
   -lvlibmemoryclient -lvatplugin \
   -lvppinfra -lvlib -lsvm -lrt -ldl \
