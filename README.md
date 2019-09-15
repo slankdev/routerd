@@ -1,6 +1,15 @@
 
 # routerd
 
+**VPP-VERSION: 1908**
+
+```
+sudo apt update && sudo apt install -y \
+  flex bison libjson-c-dev \
+	python-cffi python-ply python-pycparser \
+	python3-cffi python3-pycparser
+```
+
 **usage**
 ```
 $ git clone <this repo> && cd _
