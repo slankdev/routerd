@@ -25,7 +25,7 @@ static void set_link(uint32_t vpp_ifindex, bool is_up)
     return;
   }
   uint16_t msg_id = random();
-  set_interface_flag(find_msg_id(SET_IFC_FLAGS), msg_id, vpp_ifindex, is_up);
+  set_interface_flag(msg_id, vpp_ifindex, is_up);
   int ret = vpp_waitmsg_retval();
   if (ret < 0) {
     printf("%s: failed\r\n", __func__);
@@ -40,7 +40,7 @@ static void set_addr(uint32_t vpp_ifindex, uint32_t addr, uint8_t addr_len, bool
     return;
   }
   uint16_t msg_id = random();
-  set_interface_addr(find_msg_id(SET_IFC_ADDR), msg_id, vpp_ifindex, is_add,
+  set_interface_addr(msg_id, vpp_ifindex, is_add,
       false/*is_ipv6*/, &addr, addr_len);
   int ret = vpp_waitmsg_retval();
   if (ret < 0) {
@@ -63,8 +63,7 @@ set_route(const char* route_str, const char* nh_str, uint32_t vpp_oif, bool is_n
   parse_prefix_str(route_str, AF_INET, &route_pref);
   parse_prefix_str(nh_str, AF_INET, &nexthop_pref);
 
-  ip_add_del_route(find_msg_id(IP_ADDDEL_ROUTE), 10,
-      is_new, &route_pref, &nexthop_pref, vpp_oif);
+  ip_route_add_del(10, is_new, &route_pref, &nexthop_pref, vpp_oif);
   int ret = vpp_waitmsg_retval();
   if (ret < 0)
     printf("%s: failed\r\n", __func__);

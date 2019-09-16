@@ -119,36 +119,72 @@ DEFUN (vpp,
   return CMD_SUCCESS;
 }
 
-DEFUN (show_vpp_vpe_message_table,
-       show_vpp_vpe_message_table_cmd,
-       "show vpp vpe message-table",
+DEFUN (show_vpp_ip_fib,
+       show_vpp_ip_fib_cmd,
+       "show vpp ip fib",
        SHOW_STR
        VPP_STR
-       "Show VPP VPE information\n"
-       "Show VPP VPE message-table\n")
+       "Show ip information\n"
+       "Show ip-fib information\n")
 {
   if (connect_to_vpp("routerd", true) < 0) {
     svm_region_exit ();
     vty_out(vty, "Couldn't connect to vpe, exiting...\n");
     return CMD_WARNING_CONFIG_FAILED;
   }
-  vty_out(vty, "CONTROL_PING_MESSAGE             : %04x\n", find_msg_id(CONTROL_PING_MESSAGE          ));
-  vty_out(vty, "CONTROL_PING_REPLY_MESSAGE       : %04x\n", find_msg_id(CONTROL_PING_REPLY_MESSAGE    ));
-  vty_out(vty, "DUMP_IFC_MESSAGE                 : %04x\n", find_msg_id(DUMP_IFC_MESSAGE              ));
-  vty_out(vty, "IFC_DETAIL_MESSAGE               : %04x\n", find_msg_id(IFC_DETAIL_MESSAGE            ));
-  vty_out(vty, "SET_IFC_FLAGS                    : %04x\n", find_msg_id(SET_IFC_FLAGS                 ));
-  vty_out(vty, "SET_IFC_FLAGS_REPLY              : %04x\n", find_msg_id(SET_IFC_FLAGS_REPLY           ));
-  vty_out(vty, "SET_IFC_ADDR                     : %04x\n", find_msg_id(SET_IFC_ADDR                  ));
-  vty_out(vty, "SET_IFC_ADDR_REPLY               : %04x\n", find_msg_id(SET_IFC_ADDR_REPLY            ));
-  vty_out(vty, "DUMP_IP_ADDR_MESSAGE             : %04x\n", find_msg_id(DUMP_IP_ADDR_MESSAGE          ));
-  vty_out(vty, "IP_ADDR_DETAILS_DETAIL_MESSAGE   : %04x\n", find_msg_id(IP_ADDR_DETAILS_DETAIL_MESSAGE));
-  vty_out(vty, "CRT_LOOPBACK                     : %04x\n", find_msg_id(CRT_LOOPBACK                  ));
-  vty_out(vty, "CRT_LOOPBACK_REPLY               : %04x\n", find_msg_id(CRT_LOOPBACK_REPLY            ));
-  vty_out(vty, "IP_ADDDEL_ROUTE                  : %04x\n", find_msg_id(IP_ADDDEL_ROUTE               ));
-  vty_out(vty, "IP_ADDDEL_ROUTE_REPLY            : %04x\n", find_msg_id(IP_ADDDEL_ROUTE_REPLY         ));
-  vty_out(vty, "ENABLE_DISABLE_TAPINJECT         : %04x\n", find_msg_id(ENABLE_DISABLE_TAPINJECT       ));
-  vty_out(vty, "ENABLE_DISABLE_TAPINJECT_REPLAY  : %04x\n", find_msg_id(ENABLE_DISABLE_TAPINJECT_REPLAY));
-  vl_client_disconnect_from_vlib ();
+
+  const uint32_t table_id = 0;
+  ip_route_dump(random(), table_id);
+  send_ping(random());
+  printf("\r\n");
+
+  void *msg = NULL;
+  api_main_t *am = &api_main;
+  while (!svm_queue_sub (am->vl_input_queue, (u8 *) & msg, SVM_Q_TIMEDWAIT, 3)) {
+    uint16_t msg_id = ntohs(*((uint16_t*)msg));
+    uint16_t pong_id = find_msg_id(CONTROL_PING_REPLY);
+    if (msg_id == pong_id) {
+      printf("end entry\n\r");
+      break;
+    }
+    vl_api_ip_route_details_t *mp = msg;
+
+    uint32_t table_id = mp->route.table_id;
+    uint32_t stats_index = mp->route.stats_index;
+    uint32_t prefix_len = mp->route.prefix.len;
+    uint32_t afi = mp->route.prefix.address.af;
+    uint8_t n_paths = mp->route.n_paths;
+    uint8_t addr[4] = {0,0,0,0};
+    memcpy(addr, mp->route.prefix.address.un.ip4, prefix_len/8);
+
+    printf(" %u.%u.%u.%u/%u path=[",
+        addr[0], addr[1], addr[2], addr[3],
+        prefix_len);
+
+    for (size_t i=0; i<n_paths; i++) {
+      vl_api_fib_path_t *fib_path = &mp->route.paths[i];
+      uint32_t sw_if_index = ntohl(fib_path->sw_if_index);
+      uint32_t table_id    = ntohl(fib_path->table_id);
+      uint32_t rpf_id      = ntohl(fib_path->rpf_id);
+      uint8_t  weight = fib_path->weight;
+      uint8_t  preference = fib_path->preference;
+      uint32_t type  = ntohl(fib_path->type);
+      uint32_t flags = ntohl(fib_path->flags);
+      uint32_t proto = ntohl(fib_path->proto);
+      printf("{int[%u] table[%u] type=%u proto=%u nh=",
+        sw_if_index, table_id, type, proto);
+
+      vl_api_fib_path_nh_t *nh = &fib_path->nh;
+      vl_api_address_union_t *address = &nh->address;
+      uint8_t *ip4_address = address->ip4;
+      printf("%u.%u.%u.%u}",
+          ip4_address[0], ip4_address[1],
+          ip4_address[2], ip4_address[3]);
+    }
+    printf("]\r\n");
+  }
+
+  vl_client_disconnect_from_vlib();
   return CMD_SUCCESS;
 }
 
@@ -181,28 +217,28 @@ DEFUN (show_vpp_interface,
   /*
    * Get interfaces basic info
    */
-  dump_ifcs(find_msg_id(DUMP_IFC_MESSAGE), 2);
-  send_ping(find_msg_id(CONTROL_PING_MESSAGE), 1);
+  dump_ifcs(random());
+  send_ping(random());
   while (!svm_queue_sub (am->vl_input_queue, (u8 *) & msg, SVM_Q_TIMEDWAIT, 3)) {
     uint16_t msg_id = ntohs(*((uint16_t*)msg));
-    uint16_t pong_id = find_msg_id(CONTROL_PING_REPLY_MESSAGE);
+    uint16_t pong_id = find_msg_id(CONTROL_PING_REPLY);
     if (msg_id == pong_id) {
       break;
     }
     vl_api_sw_interface_details_t *mp = (vl_api_sw_interface_details_t*)msg;
     memcpy(&interfaces[ntohl(mp->sw_if_index)].link, mp, sizeof(*mp));
     interfaces[ntohl(mp->sw_if_index)].enable = true;
-    dump_ipaddrs(find_msg_id(DUMP_IP_ADDR_MESSAGE), 10, ntohl(mp->sw_if_index), false);
-    dump_ipaddrs(find_msg_id(DUMP_IP_ADDR_MESSAGE), 10, ntohl(mp->sw_if_index), true);
+    dump_ipaddrs(random(), ntohl(mp->sw_if_index), false);
+    dump_ipaddrs(random(), ntohl(mp->sw_if_index), true);
   }
 
   /*
    * Get interface ip-addrs info on each interface
    */
-  send_ping(find_msg_id(CONTROL_PING_MESSAGE), 11);
+  send_ping(random());
   while (!svm_queue_sub (am->vl_input_queue, (u8 *) & msg, SVM_Q_TIMEDWAIT, 1)) {
     uint16_t msg_id = ntohs(*((uint16_t*)msg));
-    uint16_t pong_id = find_msg_id(CONTROL_PING_REPLY_MESSAGE);
+    uint16_t pong_id = find_msg_id(CONTROL_PING_REPLY);
     if (msg_id == pong_id) {
       break;
     }
@@ -231,9 +267,10 @@ DEFUN (show_vpp_interface,
     for (size_t j=0; j<interfaces[i].n_addrs; j++) {
       vl_api_ip_address_details_t *mp = &interfaces[i].addrs[j];
       char str[128];
-      inet_ntop(mp->is_ipv6 ? AF_INET6 : AF_INET,
-          mp->ip, str, sizeof(str));
-      strfmt_append(ipaddrs_str_buf, sizeof(ipaddrs_str_buf), "%s/%u ", str, mp->prefix_length);
+      /* inet_ntop(mp->is_ipv6 ? AF_INET6 : AF_INET, */
+      /*     mp->ip, str, sizeof(str)); */
+      /* strfmt_append(ipaddrs_str_buf,
+       * sizeof(ipaddrs_str_buf), "%s/%u ", str, mp->prefix_length); */
     }
     if (strlen(ipaddrs_str_buf) == 0)
       snprintf(ipaddrs_str_buf, sizeof(ipaddrs_str_buf), "none");
@@ -296,7 +333,7 @@ DEFUN(set_interface_address,
     return CMD_WARNING_CONFIG_FAILED;
   }
 
-  set_interface_addr(find_msg_id(SET_IFC_ADDR), 3,
+  set_interface_addr(3,
       ifindex, !negate, is_ipv6, prefix.u.raw, prefix.plen);
 
   void *msg = NULL;
@@ -337,9 +374,9 @@ DEFUN(set_interface_state,
     return CMD_WARNING_CONFIG_FAILED;
   }
 
-	uint32_t ifindex = strtol(argv[4]->arg, NULL, 0);
-	bool is_up = strcmp(argv[5]->arg, "up") == 0 ? true : false;
-  set_interface_flag(find_msg_id(SET_IFC_FLAGS), 2, ifindex, is_up);
+  uint32_t ifindex = strtol(argv[4]->arg, NULL, 0);
+  bool is_up = strcmp(argv[5]->arg, "up") == 0 ? true : false;
+  set_interface_flag(2, ifindex, is_up);
 
   void *msg2;
   api_main_t *am = &api_main;
@@ -376,7 +413,7 @@ DEFUN (create_loopback_interface,
 
   void *msg;
   api_main_t *am = &api_main;
-  create_loopback(find_msg_id(CRT_LOOPBACK), 12);
+  create_loopback(random());
   while (!svm_queue_sub (am->vl_input_queue, (u8 *) & msg, SVM_Q_TIMEDWAIT, 3)) {
     vl_api_create_loopback_reply_t * mp = msg;
     int32_t retval = ntohl(mp->retval);
@@ -459,8 +496,7 @@ DEFUN (ip_adddel_route,
     return CMD_WARNING_CONFIG_FAILED;
   }
 
-  ip_add_del_route(find_msg_id(IP_ADDDEL_ROUTE), 10,
-      !negate, &route_pref, &nexthop_pref, nh_ifindex);
+  ip_route_add_del(10, !negate, &route_pref, &nexthop_pref, nh_ifindex);
 
   void *msg = NULL;
   api_main_t *am = &api_main;
@@ -501,11 +537,11 @@ DEFUN (show_vpp_tap_inject,
   api_main_t *am = &api_main;
   void *msg = NULL;
 
-  tap_inject_dump(find_msg_id(TAPINJECT_DUMP_MESSAGE), 2);
-  send_ping(find_msg_id(CONTROL_PING_MESSAGE), 1);
+  tap_inject_dump(2);
+  send_ping(random());
   while (!svm_queue_sub (am->vl_input_queue, (u8 *) & msg, SVM_Q_TIMEDWAIT, 3)) {
     uint16_t msg_id = ntohs(*((uint16_t*)msg));
-    uint16_t pong_id = find_msg_id(CONTROL_PING_REPLY_MESSAGE);
+    uint16_t pong_id = find_msg_id(CONTROL_PING_REPLY);
     if (msg_id == pong_id) {
       vty_out(vty, "pong recv\n");
       break;
@@ -540,9 +576,7 @@ DEFUN (enable_tap_inject,
     return CMD_WARNING_CONFIG_FAILED;
   }
 
-  uint16_t vl_msg_id = find_msg_id(ENABLE_DISABLE_TAPINJECT);
-  uint16_t msg_id = random();
-  enable_disable_tap_inject(vl_msg_id, msg_id, is_enable);
+  enable_disable_tap_inject(random(), is_enable);
   int32_t retval = enable_disable_tap_inject_retval();
   disconnect_from_vpp ();
   return CMD_SUCCESS; // XXX
@@ -569,11 +603,11 @@ DEFUN (enable_cplane_netdev_sync,
 
   api_main_t *am = &api_main;
   void *msg = NULL;
-  tap_inject_dump(find_msg_id(TAPINJECT_DUMP_MESSAGE), 2);
-  send_ping(find_msg_id(CONTROL_PING_MESSAGE), 1);
+  tap_inject_dump(2);
+  send_ping(random());
   while (!svm_queue_sub (am->vl_input_queue, (u8 *) & msg, SVM_Q_TIMEDWAIT, 3)) {
     uint16_t msg_id = ntohs(*((uint16_t*)msg));
-    uint16_t pong_id = find_msg_id(CONTROL_PING_REPLY_MESSAGE);
+    uint16_t pong_id = find_msg_id(CONTROL_PING_REPLY);
     if (msg_id == pong_id) {
       break;
     }
@@ -613,7 +647,7 @@ DEFUN (show_vpp_proc_info,
   api_main_t *am = &api_main;
   void *msg = NULL;
   const char *name = argv[3]->arg;
-  get_proc_info(find_msg_id(GET_PROC_INFO), random(), name);
+  get_proc_info(random(), name);
   while (!svm_queue_sub (am->vl_input_queue, (u8 *) & msg, SVM_Q_TIMEDWAIT, 1)) {
     vl_api_get_proc_info_reply_t *mp = msg;
     if (mp->retval < 0) {
@@ -651,7 +685,7 @@ DEFUN (show_vpp_node_info,
   api_main_t *am = &api_main;
   void *msg = NULL;
   const char *name = argv[3]->arg;
-  get_node_info(find_msg_id(GET_NODE_INFO), random(), name);
+  get_node_info(random(), name);
   while (!svm_queue_sub (am->vl_input_queue, (u8 *) & msg, SVM_Q_TIMEDWAIT, 1)) {
     vl_api_get_node_info_reply_t *mp = msg;
     if (mp->retval < 0) {
@@ -687,7 +721,7 @@ vpp_startup_config_process_is_done()
 
   api_main_t *am = &api_main;
   void *msg = NULL;
-  get_proc_info(find_msg_id(GET_PROC_INFO), random(), "startup-config-process");
+  get_proc_info(random(), "startup-config-process");
   while (!svm_queue_sub (am->vl_input_queue, (u8 *) & msg, SVM_Q_TIMEDWAIT, 1)) {
     vl_api_get_proc_info_reply_t *mp = msg;
     if (mp->retval < 0) {
@@ -747,7 +781,7 @@ setup_vpp_node(vui_t *vui)
   vui_install_default_element(vui, vpp_node->node);
   vui_install_element(vui, CONFIG_NODE, &vpp_cmd);
   vui_install_element(vui, ENABLE_NODE, &show_vpp_interface_cmd);
-  vui_install_element(vui, ENABLE_NODE, &show_vpp_vpe_message_table_cmd);
+  vui_install_element(vui, ENABLE_NODE, &show_vpp_ip_fib_cmd);
   vui_install_element(vui, ENABLE_NODE, &show_vpp_tap_inject_cmd);
   vui_install_element(vui, ENABLE_NODE, &show_vpp_node_info_cmd);
   vui_install_element(vui, ENABLE_NODE, &show_vpp_proc_info_cmd);

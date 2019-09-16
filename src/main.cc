@@ -80,30 +80,41 @@ int main(int argc, char **argv)
     usage(argv[0]);
     return 1;
   }
-  // rd_ctx.dump(stdout);
 
+  std::thread *thrd2 = NULL;
   std::thread thrd1(vui_manager,
       rd_ctx.global_config.enable_interactive,
       rd_ctx.global_config.config_path.c_str());
 
-  std::thread *thrd2 = NULL;
+  /*
+   * Wait starting VUI for 10sec.
+   * If starting was failed, quit.
+   */
   for (size_t i=0; i<10; i++) {
-    if (vui_manager_started) {
-      thrd2 = new std::thread(netlink_manager);
-      printf("netlink_manager launched\r\n");
-      netlink_manager_started = true;
+    if (vui_manager_started)
       break;
-    }
-    printf("waiting vui_manager_start\r\n");
+    printf("waiting vui_manager\r\n");
     sleep(1);
   }
-
-  if (!netlink_manager_started |
-      !vui_manager_started) {
-    printf("manager start failed");
+  if (!vui_manager_started) {
+    printf("vui_manager start is failed\r\n");
     exit(1);
   }
 
+  /*
+   * If netlink_monitor is configured as enable,
+   * Start netlink_manager thread.
+   */
+  if (netlink_monitor_is_enable()) {
+    thrd2 = new std::thread(netlink_manager);
+    printf("netlink_manager launched\r\n");
+    netlink_manager_started = true;
+  }
+
+  /*
+   * All of thread launched.
+   * Waiting finish
+   */
   thrd1.join();
   if (thrd2) {
     thrd2->join();

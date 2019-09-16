@@ -11,28 +11,30 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 
-#define CONTROL_PING_MESSAGE "control_ping"
-#define CONTROL_PING_REPLY_MESSAGE "control_ping_reply"
-#define DUMP_IFC_MESSAGE "sw_interface_dump"
-#define IFC_DETAIL_MESSAGE "sw_interface_details"
-#define SET_IFC_FLAGS "sw_interface_set_flags"
-#define SET_IFC_FLAGS_REPLY "sw_interface_set_flags_reply"
-#define SET_IFC_ADDR "sw_interface_add_del_address"
-#define SET_IFC_ADDR_REPLY "sw_interface_add_del_address_reply"
-#define DUMP_IP_ADDR_MESSAGE "ip_address_dump"
-#define IP_ADDR_DETAILS_DETAIL_MESSAGE "ip_address_details"
-#define CRT_LOOPBACK "create_loopback"
-#define CRT_LOOPBACK_REPLY "create_loopback_reply"
-#define IP_ADDDEL_ROUTE "ip_add_del_route"
-#define IP_ADDDEL_ROUTE_REPLY "ip_add_del_route_reply"
-#define ENABLE_DISABLE_TAPINJECT "tap_inject_enable_disable"
-#define ENABLE_DISABLE_TAPINJECT_REPLAY "tap_inject_enable_disable"
-#define TAPINJECT_DUMP_MESSAGE "tap_inject_dump"
-#define TAPINJECT_DETAIL_MESSAGE "tap_inject_detail"
+#define CONTROL_PING "control_ping"
+#define CONTROL_PING_REPLY "control_ping_reply"
+#define SW_INTERFACE_DUMP "sw_interface_dump"
+#define SW_INTERFACE_DETAILS "sw_interface_details"
+#define SW_INTERFACE_SET_FLAGS "sw_interface_set_flags"
+#define SW_INTERFACE_SET_FLAGS_REPLY "sw_interface_set_flags_reply"
+#define SW_INTERFACE_ADD_DEL_ADDRESS "sw_interface_add_del_address"
+#define SW_INTERFACE_ADD_DEL_ADDRESS_REPLY "sw_interface_add_del_address_reply"
+#define IP_ADDRESS_DUMP "ip_address_dump"
+#define IP_ADDRESS_DETAILS "ip_address_details"
+#define CREATE_LOOPBACK "create_loopback"
+#define CREATE_LOOPBACK_REPLY "create_loopback_reply"
+#define IP_ROUTE_ADD_DEL "ip_route_add_del"
+#define IP_ROUTE_ADD_DEL_REPLY "ip_route_add_del_reply"
+#define TAP_INJECT_ENABLE_DISABLE "tap_inject_enable_disable"
+#define TAP_INJECT_ENABLE_DISABLE_REPLAY "tap_inject_enable_disable_replay"
+#define TAP_INJECT_DUMP "tap_inject_dump"
+#define TAP_INJECT_DETAIL "tap_inject_detail"
 #define GET_NODE_INFO "get_node_info"
 #define GET_NODE_INFO_REPLY "get_node_info_reply"
 #define GET_PROC_INFO "get_proc_info"
 #define GET_PROC_INFO_REPLY "get_proc_info_reply"
+#define IP_ROUTE_DUMP "ip_route_dump"
+#define IP_ROUTE_DETAILS "ip_route_details"
 
 #ifdef __cplusplus
 extern "C" {
@@ -58,22 +60,19 @@ extern routerd_main_t routerd_main;
 /*
  * Binary API wrapper
  */
-int create_loopback(uint16_t vl_msg_id, uint16_t msg_id);
-int send_ping(uint16_t vl_msg_id, uint16_t msg_id);
-int dump_ifcs(uint32_t vl_msg_id, uint32_t message_id);
-int dump_ipaddrs(uint32_t vl_msg_id, uint32_t message_id, uint32_t ifindex, bool is_ipv6);
-int set_interface_flag(uint32_t vl_msg_id, uint32_t message_id, uint32_t ifindex, bool is_up);
-int set_interface_addr(uint32_t vl_msg_id, uint32_t msg_id,
-    uint32_t ifindex, bool is_add, bool is_ipv6,
-    const void *addr_buffer, size_t addr_len);
-int enable_disable_tap_inject(uint16_t vl_msg_id, uint16_t msg_id, bool is_enable);
+int create_loopback(uint32_t msg_id);
+int send_ping(uint32_t msg_id);
+int dump_ifcs(uint32_t msg_id);
+int ip_route_dump(uint32_t msg_id, uint32_t table_id);
+int dump_ipaddrs(uint32_t msg_id, uint32_t ifindex, bool is_ipv6);
+int set_interface_flag(uint32_t msg_id, uint32_t ifindex, bool is_up);
+int set_interface_addr(uint32_t msg_id, uint32_t ifindex, bool is_add, bool is_ipv6, const void *addr_buffer, size_t addr_len);
+int enable_disable_tap_inject(uint16_t msg_id, bool is_enable);
 int32_t enable_disable_tap_inject_retval(void);
-int tap_inject_dump(uint16_t vl_msg_id, uint16_t msg_id);
-int ip_add_del_route(uint16_t vl_msg_id, uint16_t msg_id,
-    bool is_add, const struct prefix *route,
-    const struct prefix *nexthop, uint32_t nh_ifindex);
-int get_node_info(uint16_t vl_msg_id, uint16_t msg_id, const char *node_name);
-int get_proc_info(uint16_t vl_msg_id, uint16_t msg_id, const char *node_name);
+int tap_inject_dump(uint16_t msg_id);
+int ip_route_add_del(uint16_t msg_id, bool is_add, const struct prefix *route, const struct prefix *nexthop, uint32_t nh_ifindex);
+int get_node_info(uint16_t msg_id, const char *node_name);
+int get_proc_info(uint16_t msg_id, const char *node_name);
 
 /*
  * Helper

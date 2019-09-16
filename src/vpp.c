@@ -30,6 +30,14 @@
 
 routerd_main_t routerd_main;
 
+static void*
+msg_alloc_zero(size_t size)
+{
+  void* ptr = vl_msg_api_alloc(size);
+  memset(ptr, 0, size);
+  return ptr;
+}
+
 const char*
 vpp_node_type_str(uint8_t num)
 {
@@ -75,8 +83,9 @@ vpp_proc_flags_to_state(uint16_t flags)
 }
 
 int
-get_node_info(uint16_t vl_msg_id, uint16_t msg_id, const char *node_name)
+get_node_info(uint16_t msg_id, const char *node_name)
 {
+  uint16_t vl_msg_id = find_msg_id(GET_NODE_INFO);
   routerd_main_t *rm = &routerd_main;
   vl_api_get_node_info_t *mp =
     vl_msg_api_alloc(sizeof(*mp));
@@ -91,8 +100,9 @@ get_node_info(uint16_t vl_msg_id, uint16_t msg_id, const char *node_name)
 }
 
 int
-get_proc_info(uint16_t vl_msg_id, uint16_t msg_id, const char *node_name)
+get_proc_info(uint16_t msg_id, const char *node_name)
 {
+  uint16_t vl_msg_id = find_msg_id(GET_PROC_INFO);
   routerd_main_t *rm = &routerd_main;
   vl_api_get_proc_info_t *mp =
     vl_msg_api_alloc(sizeof(*mp));
@@ -122,50 +132,68 @@ find_msg_id(const char* msg)
       (_HASH_FUNC_IMPL_INSIDE_IMPL_));
 }
 
-
 int
-ip_add_del_route(uint16_t vl_msg_id, uint16_t msg_id, bool is_add,
+ip_route_add_del(uint16_t msg_id, bool is_add,
     const struct prefix *route, const struct prefix *nexthop,
     uint32_t nh_ifindex)
 {
 #ifndef NO_VPP
   routerd_main_t *rm = &routerd_main;
-  vl_api_ip_add_del_route_t *mp =
+  vl_api_ip_route_add_del_t *mp =
     vl_msg_api_alloc(sizeof(*mp));
   memset(mp, 0, sizeof(*mp));
-  mp->_vl_msg_id = ntohs(vl_msg_id);
+  mp->_vl_msg_id = ntohs(find_msg_id(IP_ROUTE_ADD_DEL));
   mp->client_index = rm->my_client_index;
   mp->context = htonl(msg_id);
   assert(route->afi == nexthop->afi);
-
-  /*
-   * [ "u8", "is_add" ],
-   * [ "u8", "is_ipv6" ],
-   * [ "u8", "dst_address_length" ],
-   * [ "u8", "dst_address", 16 ],
-	 * [ "u8", "next_hop_address", 16 ],
-   * [ "u32", "next_hop_sw_if_index" ],
-   * [ "u8", "is_resolve_host" ],
-   */
   mp->is_add = is_add ? 1 : 0;
-  mp->is_ipv6 = route->afi == AF_INET6 ? 1 : 0;
-  mp->is_resolve_host = 1;
-  mp->dst_address_length = route->plen;
-  mp->next_hop_sw_if_index = htonl(nh_ifindex);
-  memcpy(mp->dst_address, route->u.raw, mp->is_ipv6 ? 16 : 4);
-  memcpy(mp->next_hop_address, nexthop->u.raw, mp->is_ipv6 ? 16 : 4);
+  mp->is_multipath = 0;
+
+  vl_api_ip_route_t *route_ = &mp->route;
+  route_->table_id = 0;
+  route_->stats_index = 0;
+  route_->prefix.address.af = (route->afi == AF_INET6) ? 1 : 0;
+  memcpy(&route_->prefix.address.un, route->u.raw, route->afi == AF_INET6 ? 16 : 4);
+  route_->prefix.len = route->plen;
+  route_->n_paths = 1;
+  for (size_t i=0; i<route_->n_paths; i++) {
+    vl_api_fib_path_t *fib_path = &route_->paths[i];
+    fib_path->sw_if_index = htonl(nh_ifindex);
+    fib_path->table_id = 0;
+    fib_path->rpf_id = 0;
+    fib_path->weight = 0;
+    fib_path->preference = 0;
+    fib_path->type = 0;
+    fib_path->flags = 0;
+    fib_path->proto = 0;
+    memcpy(&fib_path->nh.address,
+     nexthop->u.raw, route->afi==AF_INET6 ? 16 : 4);
+  }
+
   vl_msg_api_send_shmem(rm->vl_input_queue, (u8 *) &mp);
 #endif
 }
 
 int
-create_loopback(uint16_t dump_id, uint16_t msg_id)
+create_loopback(uint32_t msg_id)
 {
   routerd_main_t *rm = &routerd_main;
-  vl_api_create_loopback_t *mp =
-    vl_msg_api_alloc(sizeof(*mp));
-  memset(mp, 0, sizeof(*mp));
-  mp->_vl_msg_id = ntohs(dump_id);
+  vl_api_create_loopback_t *mp = msg_alloc_zero(sizeof(*mp));
+
+  mp->_vl_msg_id = ntohs(find_msg_id(CREATE_LOOPBACK));
+  mp->context = htonl(msg_id);
+  mp->client_index = rm->my_client_index;
+
+  vl_msg_api_send_shmem(rm->vl_input_queue, (u8 *) &mp);
+}
+
+int
+send_ping(uint32_t msg_id)
+{
+  routerd_main_t *rm = &routerd_main;
+  vl_api_control_ping_t *mp = msg_alloc_zero(sizeof(vl_api_control_ping_t));
+
+  mp->_vl_msg_id = ntohs(find_msg_id(CONTROL_PING));
   mp->client_index = rm->my_client_index;
   mp->context = htonl(msg_id);
 
@@ -173,86 +201,87 @@ create_loopback(uint16_t dump_id, uint16_t msg_id)
 }
 
 int
-send_ping(u16 ping_id, u16 msg_id)
+ip_route_dump(uint32_t msg_id, uint32_t table_id)
 {
-  routerd_main_t *rm = &routerd_main;
-  vl_api_control_ping_t *mp =
-    vl_msg_api_alloc(sizeof(vl_api_control_ping_t));
-  memset(mp, 0, sizeof(*mp));
-  mp->_vl_msg_id = ntohs(ping_id);
-  mp->client_index = rm->my_client_index;
-  mp->context = htonl(msg_id);
-  vl_msg_api_send_shmem(rm->vl_input_queue, (u8 *) &mp);
+  routerd_main_t *xm = &routerd_main;
+  vl_api_ip_route_dump_t *mp = msg_alloc_zero(sizeof(*mp));
+
+  mp->_vl_msg_id   = clib_host_to_net_u16(find_msg_id(IP_ROUTE_DUMP));
+  mp->client_index = xm->my_client_index;
+  mp->context      = clib_host_to_net_u32(msg_id);
+  mp->table.table_id = clib_host_to_net_u32(table_id);
+  mp->table.is_ip6 = 0;
+
+  vl_msg_api_send_shmem(xm->vl_input_queue, (u8 *) &mp);
 }
 
 int
-dump_ifcs(u32 dump_id, u32 message_id)
+dump_ifcs(uint32_t msg_id)
 {
   routerd_main_t *jm = &routerd_main;
-  vl_api_sw_interface_dump_t *mp;
-  mp = vl_msg_api_alloc(sizeof(*mp));
-  memset(mp, 0, sizeof(*mp));
-  mp->_vl_msg_id = ntohs(dump_id);
+  vl_api_sw_interface_dump_t *mp = msg_alloc_zero(sizeof(*mp));
+
+  mp->_vl_msg_id = ntohs(find_msg_id(SW_INTERFACE_DUMP));
   mp->client_index = jm->my_client_index;
-  mp->context = clib_host_to_net_u32(message_id);
+  mp->context = clib_host_to_net_u32(msg_id);
+
   vl_msg_api_send_shmem(jm->vl_input_queue, (u8 *) &mp);
 }
 
 int
-dump_ipaddrs(u32 dump_id, u32 message_id, uint32_t ifindex, bool is_ipv6)
+dump_ipaddrs(uint32_t msg_id, uint32_t ifindex, bool is_ipv6)
 {
   routerd_main_t *jm = &routerd_main;
-  vl_api_ip_address_dump_t *mp =
-    vl_msg_api_alloc(sizeof(*mp));
-  memset(mp, 0, sizeof(*mp));
-  mp->_vl_msg_id = ntohs(dump_id);
+  vl_api_ip_address_dump_t *mp = msg_alloc_zero(sizeof(*mp));
+
+  mp->_vl_msg_id = ntohs(find_msg_id(IP_ADDRESS_DUMP));
   mp->client_index = jm->my_client_index;
-  mp->context = clib_host_to_net_u32(message_id);
+  mp->context = clib_host_to_net_u32(msg_id);
   mp->sw_if_index = htonl(ifindex);
   mp->is_ipv6 = is_ipv6 ? 1 : 0;
+
   vl_msg_api_send_shmem(jm->vl_input_queue, (u8 *) &mp);
 }
 
 int
-tap_inject_dump(uint16_t vl_msg_id, uint16_t msg_id)
+tap_inject_dump(uint16_t msg_id)
 {
 #ifndef NO_VPP
   routerd_main_t *jm = &routerd_main;
-  vl_api_tap_inject_dump_t *mp =
-    vl_msg_api_alloc(sizeof(*mp));
-  memset(mp, 0, sizeof(*mp));
-  mp->_vl_msg_id = ntohs(vl_msg_id);
+  vl_api_tap_inject_dump_t *mp = msg_alloc_zero(sizeof(*mp));
+
+  mp->_vl_msg_id = ntohs(find_msg_id(TAP_INJECT_DUMP));
   mp->client_index = jm->my_client_index;
   mp->context = clib_host_to_net_u32(msg_id);
+
   vl_msg_api_send_shmem(jm->vl_input_queue, (u8 *) &mp);
 #endif
 }
 
 int
-set_interface_flag(u32 set_id, u32 message_id, uint32_t ifindex, bool is_up)
+set_interface_flag(uint32_t msg_id, uint32_t ifindex, bool is_up)
 {
   routerd_main_t *jm = &routerd_main;
-  vl_api_sw_interface_set_flags_t *mp =
-    vl_msg_api_alloc(sizeof(*mp));
-  memset(mp, 0, sizeof(*mp));
-  mp->_vl_msg_id = ntohs(set_id);
+  vl_api_sw_interface_set_flags_t *mp = msg_alloc_zero(sizeof(*mp));
+
+  mp->_vl_msg_id = ntohs(find_msg_id(SW_INTERFACE_SET_FLAGS));
   mp->client_index = jm->my_client_index;
-  mp->context = clib_host_to_net_u32(message_id);
+  mp->context = clib_host_to_net_u32(msg_id);
   mp->sw_if_index = htonl(ifindex);
   mp->admin_up_down = is_up ? 1 : 0;
+
   vl_msg_api_send_shmem(jm->vl_input_queue, (u8 *) &mp);
 }
 
 int
-set_interface_addr(uint32_t set_id, uint32_t msg_id,
+set_interface_addr(uint32_t msg_id,
     uint32_t ifindex, bool is_add, bool is_ipv6,
     const void *addr_buffer, size_t addr_len)
 {
   routerd_main_t *jm = &routerd_main;
-  vl_api_sw_interface_add_del_address_t *mp =
-    vl_msg_api_alloc(sizeof(*mp));
-  memset(mp, 0, sizeof(*mp));
-  mp->_vl_msg_id = ntohs(set_id);
+  vl_api_sw_interface_add_del_address_t *mp = msg_alloc_zero(sizeof(*mp));
+
+  mp->_vl_msg_id = ntohs(find_msg_id(SW_INTERFACE_ADD_DEL_ADDRESS));
   mp->client_index = jm->my_client_index;
   mp->context = clib_host_to_net_u32(msg_id);
   mp->sw_if_index = htonl(ifindex);
@@ -260,21 +289,22 @@ set_interface_addr(uint32_t set_id, uint32_t msg_id,
   mp->is_ipv6 = is_ipv6 ? 1 : 0;
   mp->address_length = addr_len;
   memcpy(mp->address, addr_buffer, mp->address_length);
+
   vl_msg_api_send_shmem(jm->vl_input_queue, (u8 *) &mp);
 }
 
 int
-enable_disable_tap_inject(uint16_t vl_msg_id, uint16_t msg_id, bool is_enable)
+enable_disable_tap_inject(uint16_t msg_id, bool is_enable)
 {
 #ifndef NO_VPP
   routerd_main_t *jm = &routerd_main;
-  vl_api_tap_inject_enable_disable_t *mp =
-    vl_msg_api_alloc(sizeof(*mp));
-  memset(mp, 0, sizeof(*mp));
-  mp->_vl_msg_id = ntohs(vl_msg_id);
+  vl_api_tap_inject_enable_disable_t *mp = msg_alloc_zero(sizeof(*mp));
+
+  mp->_vl_msg_id = ntohs(find_msg_id(TAP_INJECT_ENABLE_DISABLE));
   mp->client_index = jm->my_client_index;
   mp->context = clib_host_to_net_u32(msg_id);
   mp->is_enable = is_enable;
+
   vl_msg_api_send_shmem(jm->vl_input_queue, (u8 *) &mp);
 #endif
 }

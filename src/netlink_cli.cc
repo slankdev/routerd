@@ -105,6 +105,21 @@ DEFUN (show_netlink_counter,
   return CMD_SUCCESS;
 }
 
+static bool _netlink_monitor_is_enable = false;
+bool netlink_monitor_is_enable()
+{ return _netlink_monitor_is_enable; }
+
+DEFUN (netlink_monitor,
+       netlink_monitor_cmd,
+       "monitor <enable|disable>",
+       "netlink monitor setting\n"
+       "Enable netlink-monitor\n"
+       "Disable netlink-monitor\n")
+{
+  _netlink_monitor_is_enable = strcmp(argv[1]->arg, "enable") == 0;
+  return CMD_SUCCESS;
+}
+
 DEFUN (set_interface_netlink_pair,
        set_interface_netlink_pair_cmd,
        "set interface netlink-pair kernel-ifindex <(0-4294967295)> kernel-name NAME vpp-ifindex <(0-4294967295)> vpp-name NAME",
@@ -121,6 +136,19 @@ DEFUN (set_interface_netlink_pair,
   const char* k_name = argv[6]->arg;
   const char* v_name = argv[10]->arg;
   rd_ctx.add_interface(k_index, k_name, v_index, v_name);
+  return CMD_SUCCESS;
+}
+
+DEFUN (show_netlink_monitor,
+       show_netlink_monitor_cmd,
+       "show netlink monitor",
+       SHOW_STR
+       "Show netlink information\n"
+       "Show netlink-monifor information\n")
+{
+  vty_out(vty, " status: %s\n",
+      netlink_monitor_is_enable() ?
+			"enable" : "disable");
   return CMD_SUCCESS;
 }
 
@@ -151,11 +179,13 @@ setup_netlink_node(vui_t *vui)
 
   vui_install_default_element(vui, netlink_node->node);
   vui_install_element(vui, CONFIG_NODE, &netlink_cmd);
+  vui_install_element(vui, ENABLE_NODE, &show_netlink_monitor_cmd);
   vui_install_element(vui, ENABLE_NODE, &show_netlink_filter_cmd);
   vui_install_element(vui, ENABLE_NODE, &show_netlink_cache_cmd);
   vui_install_element(vui, ENABLE_NODE, &show_netlink_counter_cmd);
   vui_install_element(vui, ENABLE_NODE, &show_interface_netlink_pair_cmd);
   vui_install_element(vui, netlink_node->node, &filter_ifinfo_msg_flag_cmd);
   vui_install_element(vui, netlink_node->node, &set_interface_netlink_pair_cmd);
+  vui_install_element(vui, netlink_node->node, &netlink_monitor_cmd);
 }
 

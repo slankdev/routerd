@@ -44,6 +44,7 @@ extern netlink_counter counter;
 extern netlink_cache_t *nlc;
 
 void netlink_manager();
+bool netlink_monitor_is_enable();
 
 #ifdef __cplusplus
 }
