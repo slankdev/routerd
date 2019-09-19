@@ -180,6 +180,16 @@ route_analyze_and_hook(const routerd::route &route, bool is_new)
       printf("  oif: %s\r\n", oif.c_str());
       printf("  act: %s\r\n", act.c_str());
       printf("  nh4: %s\r\n", nh4.c_str());
+
+      if (connect_to_vpp("routerd", true) < 0) {
+        printf("%s: Couldn't connect to vpe, exiting...\r\n", __func__);
+        return;
+      }
+      ip6_route_srv6_end_dx4_add(13);
+      int ret = vpp_waitmsg_retval();
+      if (ret < 0)
+        printf("%s: failed ret=%d\r\n", __func__, ret);
+      disconnect_from_vpp ();
     }
 
     return;

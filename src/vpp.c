@@ -135,31 +135,44 @@ find_msg_id(const char* msg)
 int
 ip6_route_srv6_end_dx4_add(uint16_t msg_id) {
 
-	/*
-	 * "sr_localsid_add_del",
-	 * [ "u16", "_vl_msg_id" ],
-	 * [ "u32", "client_index" ],
-	 * [ "u32", "context" ],
-	 * [ "u8", "is_del" ],
-	 * [ "vl_api_srv6_sid_t", "localsid" ],
-	 * [ "u8", "end_psp" ],
-	 * [ "u8", "behavior" ],
-	 * [ "u32", "sw_if_index" ],
-	 * [ "u32", "vlan_index" ],
-	 * [ "u32", "fib_table" ],
-	 * [ "u8", "nh_addr6", 16 ],
-	 * [ "u8", "nh_addr4", 4 ],
-	 */
+  /*
+   * "sr_localsid_add_del",
+   * [ "u16", "_vl_msg_id" ],
+   * [ "u32", "client_index" ],
+   * [ "u32", "context" ],
+   * [ "u8", "is_del" ],
+   * [ "vl_api_srv6_sid_t", "localsid" ],
+   * [ "u8", "end_psp" ],
+   * [ "u8", "behavior" ],
+   * [ "u32", "sw_if_index" ],
+   * [ "u32", "vlan_index" ],
+   * [ "u32", "fib_table" ],
+   * [ "u8", "nh_addr6", 16 ],
+   * [ "u8", "nh_addr4", 4 ],
+   */
 
-	/* basic msg setting */
+  /* basic msg setting */
   routerd_main_t *xm = &routerd_main;
   vl_api_sr_localsid_add_del_t *mp = msg_alloc_zero(sizeof(*mp));
   mp->_vl_msg_id = ntohs(find_msg_id(SR_LOCALSID_ADD_DEL));
   mp->client_index = xm->my_client_index;
   mp->context = htonl(msg_id);
 
-	/* craft msg body */
-	/* mp-> */
+  /* craft msg body */
+  mp->is_del = 0;
+  mp->localsid.addr[0] = 0xff;
+  for (size_t i=1; i<16; i++)
+    mp->localsid.addr[i] = 0x00;
+  mp->end_psp = 0;
+  mp->behavior = 7; /* #define SR_BEHAVIOR_DX4 7 */
+  mp->sw_if_index = htonl(1);
+  mp->vlan_index = 0;
+  mp->fib_table = 0;
+  memset(mp->nh_addr6, 0x00, 16);
+  mp->nh_addr4[0] = 10;
+  mp->nh_addr4[1] = 12;
+  mp->nh_addr4[2] = 0;
+  mp->nh_addr4[3] = 2;
 
   /* send msg */
   vl_msg_api_send_shmem(xm->vl_input_queue, (u8 *) &mp);
