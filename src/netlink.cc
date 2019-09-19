@@ -182,9 +182,10 @@ route_analyze_and_hook(const routerd::route &route, bool is_new)
 
       struct in6_addr sid_addr;
       struct in_addr nh4_addr;
+      uint32_t oif_uint = atoi(oif.c_str());
       inet_pton(AF_INET6, dst.c_str(), &sid_addr);
       inet_pton(AF_INET, nh4.c_str(), &nh4_addr);
-      uint32_t sw_ifindex = 1; //TODO
+      uint32_t sw_ifindex = ifindex_kernel2vpp(oif_uint);
 
       if (connect_to_vpp("routerd", true) < 0) {
         printf("%s: Couldn't connect to vpe, exiting...\r\n", __func__);
