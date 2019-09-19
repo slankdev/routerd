@@ -133,7 +133,11 @@ find_msg_id(const char* msg)
 }
 
 int
-ip6_route_srv6_end_dx4_add(uint16_t msg_id) {
+ip6_route_srv6_end_dx4_add(uint16_t msg_id,
+  const struct in6_addr *sid,
+  const struct in_addr *nh4,
+  uint32_t nh_ifindex)
+{
 
   /*
    * "sr_localsid_add_del",
@@ -160,19 +164,14 @@ ip6_route_srv6_end_dx4_add(uint16_t msg_id) {
 
   /* craft msg body */
   mp->is_del = 0;
-  mp->localsid.addr[0] = 0xff;
-  for (size_t i=1; i<16; i++)
-    mp->localsid.addr[i] = 0x00;
   mp->end_psp = 0;
   mp->behavior = 7; /* #define SR_BEHAVIOR_DX4 7 */
-  mp->sw_if_index = htonl(1);
   mp->vlan_index = 0;
   mp->fib_table = 0;
   memset(mp->nh_addr6, 0x00, 16);
-  mp->nh_addr4[0] = 10;
-  mp->nh_addr4[1] = 12;
-  mp->nh_addr4[2] = 0;
-  mp->nh_addr4[3] = 2;
+  memcpy(mp->localsid.addr, sid, 16);
+  memcpy(mp->nh_addr4, nh4, 4);
+  mp->sw_if_index = htonl(nh_ifindex);
 
   /* send msg */
   vl_msg_api_send_shmem(xm->vl_input_queue, (u8 *) &mp);

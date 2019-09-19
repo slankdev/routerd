@@ -73,7 +73,7 @@ int enable_disable_tap_inject(uint16_t msg_id, bool is_enable);
 int32_t enable_disable_tap_inject_retval(void);
 int tap_inject_dump(uint16_t msg_id);
 int ip_route_add_del(uint16_t msg_id, bool is_add, const struct prefix *route, const struct prefix *nexthop, uint32_t nh_ifindex);
-int ip6_route_srv6_end_dx4_add(uint16_t msg_id);
+int ip6_route_srv6_end_dx4_add(uint16_t msg_id, const struct in6_addr *sid, const struct in_addr *nh4, uint32_t nh_ifindex);
 int get_node_info(uint16_t msg_id, const char *node_name);
 int get_proc_info(uint16_t msg_id, const char *node_name);
 

@@ -181,11 +181,19 @@ route_analyze_and_hook(const routerd::route &route, bool is_new)
       printf("  act: %s\r\n", act.c_str());
       printf("  nh4: %s\r\n", nh4.c_str());
 
+      // TODO
+
+      struct in6_addr sid;
+      struct in_addr nh4;
+      inet_pton(AF_INET6, "ff::", &sid);
+      inet_pton(AF_INET, "10.12.0.2", &nh4);
+      uint32_t sw_ifindex = 1;
+
       if (connect_to_vpp("routerd", true) < 0) {
         printf("%s: Couldn't connect to vpe, exiting...\r\n", __func__);
         return;
       }
-      ip6_route_srv6_end_dx4_add(13);
+      ip6_route_srv6_end_dx4_add(13, &sid, &nh4, sw_ifindex);
       int ret = vpp_waitmsg_retval();
       if (ret < 0)
         printf("%s: failed ret=%d\r\n", __func__, ret);
