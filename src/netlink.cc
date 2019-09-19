@@ -178,22 +178,19 @@ route_analyze_and_hook(const routerd::route &route, bool is_new)
       printf(" [install srv6 fib msg] \r\n");
       printf("  dst: %s\n\r", dst.c_str());
       printf("  oif: %s\r\n", oif.c_str());
-      printf("  act: %s\r\n", act.c_str());
       printf("  nh4: %s\r\n", nh4.c_str());
 
-      // TODO
-
-      struct in6_addr sid;
-      struct in_addr nh4;
-      inet_pton(AF_INET6, "ff::", &sid);
-      inet_pton(AF_INET, "10.12.0.2", &nh4);
-      uint32_t sw_ifindex = 1;
+      struct in6_addr sid_addr;
+      struct in_addr nh4_addr;
+      inet_pton(AF_INET6, dst.c_str(), &sid_addr);
+      inet_pton(AF_INET, nh4.c_str(), &nh4_addr);
+      uint32_t sw_ifindex = 1; //TODO
 
       if (connect_to_vpp("routerd", true) < 0) {
         printf("%s: Couldn't connect to vpe, exiting...\r\n", __func__);
         return;
       }
-      ip6_route_srv6_end_dx4_add(13, &sid, &nh4, sw_ifindex);
+      ip6_route_srv6_end_dx4_add(13, &sid_addr, &nh4_addr, sw_ifindex);
       int ret = vpp_waitmsg_retval();
       if (ret < 0)
         printf("%s: failed ret=%d\r\n", __func__, ret);
