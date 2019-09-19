@@ -134,49 +134,98 @@ static void
 route_analyze_and_hook(const routerd::route &route, bool is_new)
 {
   if (route.rtm->rtm_family != AF_INET) {
-    if (debug_enabled(NETLINK))
-      printf("is not AF_INET ignore\n\r");
+
+    std::string dst;
+    if (route.rtas->get(RTA_DST)) {
+      auto* dst_rta = route.rtas->get(RTA_DST);
+      auto* ptr = (const void*)rta_readptr(dst_rta);
+      if (ptr) dst = inetpton(ptr, route.rtm->rtm_family);
+    }
+
+    std::string oif;
+    if (route.rtas->get(RTA_OIF)) {
+      auto* oif_rta = route.rtas->get(RTA_OIF);
+      uint32_t index = rta_read32(oif_rta);
+      oif = ifindex2str(index);
+    }
+
+    std::string act, nh4;
+    if (route.rtas->get(RTA_ENCAP_TYPE)) {
+      auto* encap_rta = route.rtas->get(RTA_ENCAP_TYPE);
+      uint16_t encap_type = rta_read16(encap_rta);
+
+      if (encap_type == LWTUNNEL_ENCAP_SEG6_LOCAL) {
+        uint8_t* d = (uint8_t*)rta_readptr(route.rtas->get(RTA_ENCAP));
+        size_t l = rta_payload(route.rtas->get(RTA_ENCAP));
+        struct rtattr* sub[50000];
+        parse_rtattr(d, l, sub, sizeof(sub)/sizeof(sub[0]));
+
+        if (sub[SEG6_LOCAL_ACTION]) {
+          const struct rtattr* rta = sub[SEG6_LOCAL_ACTION];
+          uint32_t num = rta_read32(rta);
+          act = strfmt("%s", SEG6_LOCAL_ACTION_to_str2(num));
+
+          if (num == SEG6_LOCAL_ACTION_END_DX4 && sub[SEG6_LOCAL_NH4]) {
+            const struct rtattr* rta = sub[SEG6_LOCAL_NH4];
+            const void* addr_ptr = rta_readptr(rta);
+            nh4 = strfmt("%s", inetpton(addr_ptr, AF_INET).c_str());
+          }
+        }
+      }
+    }
+
+    if (dst != "" && oif != "" && nh4 != "" && act != "") {
+      printf(" [install srv6 fib msg] \r\n");
+      printf("  dst: %s\n\r", dst.c_str());
+      printf("  oif: %s\r\n", oif.c_str());
+      printf("  act: %s\r\n", act.c_str());
+      printf("  nh4: %s\r\n", nh4.c_str());
+    }
+
     return;
+
+  } else {
+
+    std::string dst;
+    if (route.rtas->get(RTA_DST)) {
+      auto* dst_rta = route.rtas->get(RTA_DST);
+      auto* ptr = (const void*)rta_readptr(dst_rta);
+      if (ptr) dst = inetpton(ptr, route.rtm->rtm_family);
+    }
+
+    std::string oif;
+    if (route.rtas->get(RTA_OIF)) {
+      auto* oif_rta = route.rtas->get(RTA_OIF);
+      uint32_t index = rta_read32(oif_rta);
+      oif = ifindex2str(index);
+    }
+
+    std::string gw;
+    if (route.rtas->get(RTA_GATEWAY)) {
+      auto* gw_rta = route.rtas->get(RTA_GATEWAY);
+      auto* ptr = (const void*)rta_readptr(gw_rta);
+      if (ptr)
+        gw = inetpton(ptr, route.rtm->rtm_family);
+    }
+
+    uint32_t k_index = 0;
+    if (route.rtas->get(RTA_OIF)) {
+      auto* oif_rta = route.rtas->get(RTA_OIF);
+      k_index = rta_read32(oif_rta);
+    }
+
+    std::string cli = strfmt("ip -%u route %s %s/%d %s",
+          route.rtm->rtm_family==AF_INET ? 4 : 6, is_new ? "add" : "del",
+          dst.c_str(), route.rtm->rtm_dst_len, gw.c_str());
+    // printf("%s: %s\r\n",__func__, cli.c_str());
+
+    std::string route_str = strfmt("%s/%d", dst.c_str(), route.rtm->rtm_dst_len);
+    std::string nh_str = strfmt("%s", gw.c_str());
+    uint32_t vpp_oif = ifindex_kernel2vpp(k_index);
+    set_route(route_str.c_str(), nh_str.c_str(), vpp_oif, is_new);
+
   }
-
-  std::string dst;
-  if (route.rtas->get(RTA_DST)) {
-    auto* dst_rta = route.rtas->get(RTA_DST);
-    auto* ptr = (const void*)rta_readptr(dst_rta);
-    if (ptr) dst = inetpton(ptr, route.rtm->rtm_family);
-  }
-
-  std::string oif;
-  if (route.rtas->get(RTA_OIF)) {
-    auto* oif_rta = route.rtas->get(RTA_OIF);
-    uint32_t index = rta_read32(oif_rta);
-    oif = ifindex2str(index);
-  }
-
-  std::string gw;
-  if (route.rtas->get(RTA_GATEWAY)) {
-    auto* gw_rta = route.rtas->get(RTA_GATEWAY);
-    auto* ptr = (const void*)rta_readptr(gw_rta);
-    if (ptr)
-      gw = inetpton(ptr, route.rtm->rtm_family);
-  }
-
-  uint32_t k_index = 0;
-  if (route.rtas->get(RTA_OIF)) {
-    auto* oif_rta = route.rtas->get(RTA_OIF);
-    k_index = rta_read32(oif_rta);
-  }
-
-  std::string cli = strfmt("ip -%u route %s %s/%d %s",
-        route.rtm->rtm_family==AF_INET ? 4 : 6, is_new ? "add" : "del",
-        dst.c_str(), route.rtm->rtm_dst_len, gw.c_str());
-  // printf("%s: %s\r\n",__func__, cli.c_str());
-
-  std::string route_str = strfmt("%s/%d", dst.c_str(), route.rtm->rtm_dst_len);
-  std::string nh_str = strfmt("%s", gw.c_str());
-  uint32_t vpp_oif = ifindex_kernel2vpp(k_index);
-  set_route(route_str.c_str(), nh_str.c_str(), vpp_oif, is_new);
-  return ;
+  return;
 }
 
 static void
