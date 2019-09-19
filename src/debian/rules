@@ -7,6 +7,7 @@ override_dh_auto_install:
 	mkdir -p `pwd`/debian/routerd/etc/systemd/system
 	install -D -m 0755 build/routerd.out `pwd`/debian/routerd/usr/bin/routerd
 	cp -f routerd.conf `pwd`/debian/routerd/etc/routerd/routerd.conf
+	cp -f systemd/routerd.service `pwd`/debian/routerd/etc/systemd/system/routerd.service
 
 override_dh_usrlocal:
 	install -D -m 0755 build/routerd.out `pwd`/debian/routerd/usr/bin/routerd

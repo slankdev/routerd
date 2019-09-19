@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/routerd
+ExecStart=/usr/bin/routerd
 TimeoutSec=3min
 
 [Install]
