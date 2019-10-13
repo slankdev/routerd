@@ -96,6 +96,60 @@ netlink_listen_until_done(netlink_t *rtnl,
 }
 
 int
+ge_netlink_listen(ge_netlink_t *rtnl,
+    rtnl_listen_filter_t handler, void *jarg)
+{
+  struct sockaddr_nl sa;
+  sa.nl_family = AF_NETLINK;
+  struct iovec iov;
+  struct msghdr msg;
+  memset(&msg, 0x0, sizeof(struct msghdr));
+  msg.msg_name = &sa;
+  msg.msg_namelen = sizeof(sa);
+  msg.msg_iov = &iov;
+  msg.msg_iovlen = 1;
+
+  char   buf[16384];
+  iov.iov_base = buf;
+  while (true) {
+    struct rtnl_ctrl_data ctrl;
+    iov.iov_len = sizeof(buf);
+    int status = recvmsg(rtnl->fd, &msg, 0);
+    if (status < 0) {
+      if (errno == EINTR
+       || errno == EAGAIN
+       || errno == ENOBUFS)
+        continue;
+      return -1;
+    }
+    if (status == 0) {
+      fprintf(stderr, "EOF on netlink\n");
+      return -1;
+    }
+
+    for (struct nlmsghdr* h = (struct nlmsghdr *)buf;
+         size_t(status) >= sizeof(*h);) {
+      int len = h->nlmsg_len;
+      int err = handler(&sa, &ctrl, h, jarg);
+      if (err < 0)
+        return err;
+
+      status -= NLMSG_ALIGN(len);
+      h = (struct nlmsghdr *)((char *)h + NLMSG_ALIGN(len));
+    }
+
+    if (msg.msg_flags & MSG_TRUNC) {
+      // Message truncated
+      continue;
+    }
+    if (status) {
+      // Remnant of size
+      exit(1);
+    }
+  }
+}
+
+int
 netlink_listen(netlink_t *rtnl,
     rtnl_listen_filter_t handler, void *jarg)
 {
@@ -148,6 +202,15 @@ netlink_listen(netlink_t *rtnl,
     }
   }
 }
+
+ge_netlink_t*
+ge_netlink_open(const char* family_str)
+{
+	printf("%s: unimplmeneted family=%s\n", __func__, family_str);
+	ge_netlink_t *nl = (ge_netlink_t*)malloc(sizeof(ge_netlink_t));
+	return nl;
+}
+
 netlink_t*
 netlink_open(uint32_t subscriptions, int32_t protocol)
 {
@@ -196,6 +259,13 @@ netlink_open(uint32_t subscriptions, int32_t protocol)
 
   return nl;
 }
+
+void
+ge_netlink_close(ge_netlink_t *nl)
+{
+  free(nl);
+}
+
 void
 netlink_close(netlink_t *nl)
 {

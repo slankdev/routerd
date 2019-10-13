@@ -31,6 +31,11 @@ typedef int (*rtnl_listen_filter_t)(
              struct rtnl_ctrl_data *,
              struct nlmsghdr *n, void *);
 
+typedef struct ge_netlink_s {
+	int32_t fd;
+	char family[128];
+} ge_netlink_t;
+
 typedef struct netlink_s {
   int32_t fd;
   struct sockaddr_nl local;
@@ -50,6 +55,10 @@ int netlink_listen(netlink_t *rtnl, rtnl_listen_filter_t handler, void *arg);
 int netlink_listen_until_done(netlink_t *rtnl, rtnl_listen_filter_t handler, void *arg);
 netlink_t* netlink_open(uint32_t subscriptions, int32_t protocol);
 void netlink_close(netlink_t *nl);
+
+ge_netlink_t* ge_netlink_open(const char *family_str);
+void ge_netlink_close(ge_netlink_t *nl);
+int ge_netlink_listen(ge_netlink_t *rtnl, rtnl_listen_filter_t handler, void *arg);
 
 #ifdef __cplusplus
 }
