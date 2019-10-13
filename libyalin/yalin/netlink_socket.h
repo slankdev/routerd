@@ -33,7 +33,9 @@ typedef int (*rtnl_listen_filter_t)(
 
 typedef struct ge_netlink_s {
 	int32_t fd;
+	uint32_t proto;
 	char family[128];
+	int genl_family;
 } ge_netlink_t;
 
 typedef struct netlink_s {

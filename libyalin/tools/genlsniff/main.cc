@@ -106,6 +106,10 @@ main(int argc, const char **argv)
       return 1;
 
 		printf("nl: %p\n", nl);
+		printf("nl->fd: %d\n", nl->fd);
+		printf("nl->family: %s\n", nl->family);
+		printf("nl->genl_family: %u\n", nl->genl_family);
+
     int ret = ge_netlink_listen(nl, rtnl_summary, NULL);
     if (ret < 0)
       return 1;
