@@ -174,9 +174,9 @@ netlink_open(uint32_t subscriptions, int32_t protocol)
     return NULL;
   }
 
-  int one = 1;
-  setsockopt(nl->fd, SOL_NETLINK,
-      NETLINK_EXT_ACK, &one, sizeof(one));
+  // int one = 1;
+  // setsockopt(nl->fd, SOL_NETLINK,
+  //     NETLINK_EXT_ACK, &one, sizeof(one));
 
   memset(&nl->local, 0, sizeof(nl->local));
   nl->local.nl_family = AF_NETLINK;

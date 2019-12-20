@@ -215,6 +215,9 @@ nlmsg_type_to_str(uint16_t type)
     case RTM_GETNSID: return "RTM_GETNSID";
     case RTM_NEWSTATS: return "RTM_NEWSTATS";
     case RTM_GETSTATS: return "RTM_GETSTATS";
+    case RTM_NEWNEXTHOP: return "RTM_NEWNEXTHOP";
+    case RTM_DELNEXTHOP: return "RTM_DELNEXTHOP";
+    case RTM_GETNEXTHOP: return "RTM_GETNEXTHOP";
     case RTM_NEWCACHEREPORT: return "RTM_NEWCACHEREPORT";
     default: return "RTM_XXXUNKNOWNXXX";
   }

@@ -5,6 +5,7 @@
 #include "core/route.h"
 #include "core/neigh.h"
 #include "core/netconf.h"
+#include "core/nexthop.h"
 
 int
 rtnl_summary(const struct sockaddr_nl *who __attribute__((unused)),
@@ -42,6 +43,12 @@ rtnl_summary(const struct sockaddr_nl *who __attribute__((unused)),
     case RTM_DELNETCONF:
     case RTM_GETNETCONF:
       str += rtnl_netconf_summary(n);
+      break;
+
+    case RTM_NEWNEXTHOP:
+    case RTM_DELNEXTHOP:
+    case RTM_GETNEXTHOP:
+      str += rtnl_nexthop_summary(n);
       break;
 
     case RTM_NEWNSID:
