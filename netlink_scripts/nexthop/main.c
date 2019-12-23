@@ -47,6 +47,17 @@ void main() {
   if (fd < 0)
     exit(1);
 
+#define SOL_NETLINK 270
+#define NETLINK_F_CAP_ACK 0x20
+#define NETLINK_F_EXT_ACK 0x40
+	const int one = 1;
+	/* int ret = setsockopt(fd, SOL_NETLINK, NETLINK_F_EXT_ACK, &one, sizeof(one)); */
+	int ret = setsockopt(fd, SOL_NETLINK, NETLINK_F_CAP_ACK, &one, sizeof(one));
+	if (ret < 0) {
+		perror("setsockopt(NETLINK_F_EXT_ACK)");
+		exit(1);
+	}
+
   uint32_t oif_idx = 4;
   uint32_t nh_id = 22;
   adddel_nexthop(fd, oif_idx, nh_id, true);
