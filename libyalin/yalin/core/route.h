@@ -44,6 +44,10 @@ rta_type_ROUTE_to_str(uint16_t type)
     case RTA_PAD          : return "RTA_PAD";
     case RTA_UID          : return "RTA_UID";
     case RTA_TTL_PROPAGATE: return "RTA_TTL_PROPAGATE";
+    case RTA_IP_PROTO     : return "RTA_IP_PROTO";
+    case RTA_SPORT        : return "RTA_SPORT";
+    case RTA_DPORT        : return "RTA_DPORT";
+    case RTA_NH_ID        : return "RTA_NH_ID";
     default: return "RTA_XXXUNKNOWNXXX";
   }
 }
@@ -268,6 +272,7 @@ rtmsg_rtattr_summary(const struct rtattr* rta)
     case RTA_TABLE:
     case RTA_IIF:
     case RTA_OIF:
+    case RTA_NH_ID:
     {
       assert(rta->rta_len == 8);
       uint32_t val = *(uint32_t*)(rta+1);
@@ -359,7 +364,6 @@ rtmsg_rtattr_summary(const struct rtattr* rta)
         str += strfmt("\n%4snexthop flags=0x%x hops=%u ifindex=%d",
             " ", rtnh->rtnh_flags, rtnh->rtnh_hops, rtnh->rtnh_ifindex);
         size_t sub_plen = rtnh->rtnh_len - sizeof(struct rtnexthop);
-        printf("SLANKDE!!!! sub_plen=%zd\n", sub_plen);
         for (struct rtattr* rta = RTNH_DATA(rtnh);
             RTA_OK(rta, sub_plen);
             rta = RTA_NEXT (rta, sub_plen)) {
@@ -370,6 +374,20 @@ rtmsg_rtattr_summary(const struct rtattr* rta)
       return hdr + str;
     }
 
+    case RTA_VIA:
+    {
+      struct rtvia *rtvia = (struct rtvia*)(rta+1);
+      size_t addr_len = rta->rta_len - sizeof(*rta);
+      assert((addr_len==6 && rtvia->rtvia_family==AF_INET)
+          || (addr_len==18 && rtvia->rtvia_family==AF_INET6));
+      if (rtvia->rtvia_family == AF_INET) {
+        return hdr + "inet " + inetpton(rtvia->rtvia_addr, AF_INET);
+      } else if (rtvia->rtvia_family == AF_INET6) {
+        return hdr + "inet6 " + inetpton(rtvia->rtvia_addr, AF_INET6);
+      } else
+        return hdr + "unknown-addr-fmt";
+    }
+
     // Others
     case RTA_METRICS:
     case RTA_PROTOINFO:
@@ -377,11 +395,13 @@ rtmsg_rtattr_summary(const struct rtattr* rta)
     case RTA_SESSION:
     case RTA_MP_ALGO:
     case RTA_MARK:
-    case RTA_VIA:
     case RTA_NEWDST:
     case RTA_PAD:
     case RTA_UID:
     case RTA_TTL_PROPAGATE:
+    case RTA_IP_PROTO:
+    case RTA_SPORT:
+    case RTA_DPORT:
     case RTA_CACHEINFO:
     default:
     {

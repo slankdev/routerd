@@ -21,6 +21,16 @@ nhmsg_summary(const struct nhmsg *nhm)
 }
 
 inline static const char*
+nexthop_grp_type_to_str(uint16_t type)
+{
+  /* defined at /usr/include/linux/nexthop.h */
+  switch (type) {
+    case NEXTHOP_GRP_TYPE_MPATH: return "NEXTHOP_GRP_TYPE_MPATH";
+    default: return "NHA_GRP_TYPE_XXXUNKNOWNXXX";
+  }
+}
+
+inline static const char*
 rta_type_NEXTHOP_to_str(uint16_t type)
 {
   /* defined at /usr/include/linux/nexthop.h */
@@ -62,6 +72,30 @@ nhmsg_rtattr_summary(const struct rtattr *rta)
           lwtunnel_encap_types_to_str(val));
     }
 
+    case NHA_GROUP:
+    {
+      std::string str = "array-data\n";
+      assert(((rta->rta_len - 4) % sizeof(struct nexthop_grp)) == 0);
+      size_t num_grp = (rta->rta_len-4) / sizeof(struct nexthop_grp);
+      struct nexthop_grp *array = (struct nexthop_grp*)(rta + 1);
+      for (size_t i=0; i<num_grp; i++) {
+        struct nexthop_grp *grp = &array[i];
+        std::string attr_str = strfmt("id=%u weight=%u", grp->id, grp->weight);
+        if (attr_str != "")
+          str += "    " + attr_str + "\n";
+      }
+      str.pop_back();
+      return hdr + str;
+    }
+
+    case NHA_GROUP_TYPE:
+    {
+      assert(rta->rta_len == 6);
+      uint16_t val = *(uint16_t*)(rta+1);
+      return hdr + strfmt("%u (%s)", val,
+          nexthop_grp_type_to_str(val));
+    }
+
     case NHA_ENCAP:
     {
       uint16_t encap_kind;
@@ -93,10 +127,17 @@ nhmsg_rtattr_summary(const struct rtattr *rta)
       return hdr + str;
     }
 
-    case NHA_GROUP:
-    case NHA_GROUP_TYPE:
-    case NHA_BLACKHOLE:
     case NHA_GATEWAY:
+    {
+      uint8_t* addr_ptr = (uint8_t*)(rta+1);
+      size_t addr_len = rta->rta_len - sizeof(*rta);
+      assert(addr_len==4 || addr_len==16);
+      if (addr_len == 4) return hdr + inetpton(addr_ptr, AF_INET);
+      if (addr_len == 16) return hdr + inetpton(addr_ptr, AF_INET6);
+      else return hdr + "unknown-addr-fmt";
+    }
+
+    case NHA_BLACKHOLE:
     case NHA_GROUPS:
     case NHA_MASTER:
     case NHA_UNSPEC:
