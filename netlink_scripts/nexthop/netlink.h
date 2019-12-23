@@ -129,7 +129,7 @@ nl_talk(int fd, struct nlmsghdr *n,
     perror("recv");
     exit(1);
   }
-  return 0;
+  return ret;
 }
 
 static inline int

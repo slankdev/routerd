@@ -29,16 +29,17 @@ static void adddel_nexthop(int fd,
     .nh.nh_flags = 0,
   };
 
-  /* #<{(| set RTA_DST |)}># */
-  /* addattr_l(&req.n, sizeof(req), RTA_DST, pref, sizeof(struct in6_addr)); */
-  /* req.r.rtm_dst_len = plen; */
-  /*  */
-  /* #<{(| set RTA_GATEWAY |)}># */
-  /* addattr_l(&req.n, sizeof(req), RTA_GATEWAY, nh6, sizeof(struct in6_addr)); */
+	addattr32(&req.n, sizeof(req), NHA_OIF, oif_idx);
+	addattr32(&req.n, sizeof(req), NHA_ID, nh_id);
 
-  /* talk with netlink-bus */
+	char answer[1000] = {0};
   hexdump(stdout, &req.n, req.n.nlmsg_len);
-  /* if (nl_talk(fd, &req.n, NULL, 0) < 0) exit(1); */
+	int ret = nl_talk(fd, &req.n, (void*)answer, sizeof(answer));
+  if (ret < 0)
+		exit(1);
+
+	printf("==========\n");
+	hexdump(stdout, answer, ret);
 }
 
 void main() {
