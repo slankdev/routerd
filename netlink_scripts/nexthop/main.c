@@ -19,11 +19,11 @@ static void adddel_nexthop(int fd,
     struct nhmsg nh;
     char buf[4096];
   } req = {
-    .n.nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg)),
+    .n.nlmsg_len = NLMSG_LENGTH(sizeof(struct nhmsg)),
     .n.nlmsg_flags = NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL | NLM_F_ACK,
     .n.nlmsg_type = install ? RTM_NEWNEXTHOP : RTM_DELNEXTHOP,
     .nh.nh_family = AF_INET,
-    .nh.nh_scope = 0xfd,
+    .nh.nh_scope = 0x00,
     .nh.nh_protocol = 0x03,
 		.nh.resvd = 0x00,
     .nh.nh_flags = 0,
@@ -48,11 +48,8 @@ void main() {
     exit(1);
 
 #define SOL_NETLINK 270
-#define NETLINK_F_CAP_ACK 0x20
-#define NETLINK_F_EXT_ACK 0x40
 	const int one = 1;
-	/* int ret = setsockopt(fd, SOL_NETLINK, NETLINK_F_EXT_ACK, &one, sizeof(one)); */
-	int ret = setsockopt(fd, SOL_NETLINK, NETLINK_F_CAP_ACK, &one, sizeof(one));
+	int ret = setsockopt(fd, SOL_NETLINK, NETLINK_EXT_ACK, &one, sizeof(one));
 	if (ret < 0) {
 		perror("setsockopt(NETLINK_F_EXT_ACK)");
 		exit(1);
